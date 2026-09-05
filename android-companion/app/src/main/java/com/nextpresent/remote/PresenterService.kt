@@ -70,9 +70,17 @@ class PresenterService : Service() {
     private var audioManager: AudioManager? = null
     private var mediaSession: MediaSession? = null
 
+    /** Continuous audio thread keeps audio DSP & lockscreen routing active */
+    private var isAudioRunning = false
+    private var audioThread: Thread? = null
+
     /** Volume midpoint we restore after every key press */
     private var midVolume: Int = 7
     private var lastHandledTs = 0L
+
+    /** Guard against bounce-back echoes caused by programmatic volume centering */
+    @Volatile private var isResettingVolume = false
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     /** Whether the broadcast receiver is registered */
     private var receiverRegistered = false
@@ -95,7 +103,7 @@ class PresenterService : Service() {
     @Synchronized
     private fun handleVolumeTrigger(isUp: Boolean) {
         val ts = System.currentTimeMillis()
-        if (ts - lastHandledTs < 160) return // debounce rapid echoes
+        if (ts - lastHandledTs < 180) return // debounce rapid echoes
         lastHandledTs = ts
 
         val action = if (isUp) "NEXT" else "PREV"
@@ -106,23 +114,31 @@ class PresenterService : Service() {
         // 2. Haptic feedback
         vibrateFeedback(40)
 
-        // 3. Reset audio stream volume back to midpoint
-        try {
-            audioManager?.setStreamVolume(
-                AudioManager.STREAM_MUSIC,
-                midVolume,
-                AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE
-            )
-        } catch (_: Exception) {}
+        // 3. Reset audio stream volume back to midpoint safely with bounce guard
+        isResettingVolume = true
+        mainHandler.postDelayed({
+            try {
+                audioManager?.setStreamVolume(
+                    AudioManager.STREAM_MUSIC,
+                    midVolume,
+                    AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE
+                )
+            } catch (_: Exception) {}
+            // Reset bounce guard after system volume adjustment settles
+            mainHandler.postDelayed({
+                isResettingVolume = false
+            }, 200)
+        }, 120)
     }
 
     // ─── Volume BroadcastReceiver (System broadcast) ─────────────────────────
     private val volumeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != "android.media.VOLUME_CHANGED_ACTION") return
+            if (isResettingVolume) return
 
             val streamType = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
-            if (streamType != AudioManager.STREAM_MUSIC) return
+            if (streamType != AudioManager.STREAM_MUSIC && streamType != -1) return
 
             val now  = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", -1)
             val prev = intent.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE", -1)
@@ -159,6 +175,17 @@ class PresenterService : Service() {
             relayBaseUrl  = it.getStringExtra(EXTRA_RELAY_BASE) ?: relayBaseUrl
         }
 
+        // Automatic fallback to SharedPreferences if intent didn't carry room code
+        val prefs = getSharedPreferences("nextPresentPrefs", Context.MODE_PRIVATE)
+        if (relayRoomCode == null) {
+            val savedCode = prefs.getString("relay_room_code", null)
+            if (!savedCode.isNullOrBlank()) relayRoomCode = savedCode
+        }
+        if (serverIp == "192.168.101.9") {
+            serverIp = prefs.getString("server_ip", serverIp) ?: serverIp
+            serverPort = prefs.getInt("server_port", serverPort)
+        }
+
         // Calculate mid-volume for current device
         val maxVol = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
         midVolume  = (maxVol / 2).coerceAtLeast(1)
@@ -177,7 +204,7 @@ class PresenterService : Service() {
 
         acquireLocks()
         setupMediaSession()
-        startSilentAudio()
+        startContinuousAudio()
         registerVolumeReceiver()
         registerVolumeObserver()
         registerActionReceiver()
@@ -193,7 +220,11 @@ class PresenterService : Service() {
         try { if (receiverRegistered) unregisterReceiver(volumeReceiver) } catch (_: Exception) {}
         try { unregisterReceiver(actionReceiver) } catch (_: Exception) {}
         try { volumeObserver?.let { contentResolver.unregisterContentObserver(it) } } catch (_: Exception) {}
-        
+
+        isAudioRunning = false
+        audioThread?.interrupt()
+        audioThread = null
+
         mediaSession?.isActive = false
         mediaSession?.release()
         audioTrack?.stop()
@@ -228,6 +259,8 @@ class PresenterService : Service() {
     private fun setupMediaSession() {
         try {
             mediaSession = MediaSession(this, "nextPresentPresenter").apply {
+                @Suppress("DEPRECATION")
+                setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS)
                 setCallback(object : MediaSession.Callback() {
                     override fun onSkipToNext() {
                         handleVolumeTrigger(true)
@@ -262,7 +295,7 @@ class PresenterService : Service() {
 
                 setPlaybackState(
                     PlaybackState.Builder()
-                        .setState(PlaybackState.STATE_PLAYING, 0, 1.0f)
+                        .setState(PlaybackState.STATE_PLAYING, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1.0f)
                         .setActions(
                             PlaybackState.ACTION_PLAY or
                             PlaybackState.ACTION_PAUSE or
@@ -276,17 +309,15 @@ class PresenterService : Service() {
         } catch (_: Exception) {}
     }
 
-    // ─── Silent AudioTrack with AudioFocus ────────────────────────────────────
-    private fun startSilentAudio() {
+    // ─── Continuous Inaudible Audio Engine with AudioFocus ───────────────────
+    private fun startContinuousAudio() {
         try {
             val sampleRate = 44100
             val minBufSize = AudioTrack.getMinBufferSize(
                 sampleRate,
-                AudioFormat.CHANNEL_OUT_STEREO,
+                AudioFormat.CHANNEL_OUT_MONO,
                 AudioFormat.ENCODING_PCM_16BIT
-            ).coerceAtLeast(1024)
-
-            val silence = ByteArray(minBufSize)
+            ).coerceAtLeast(2048)
 
             val attrs = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -296,14 +327,14 @@ class PresenterService : Service() {
             val format = AudioFormat.Builder()
                 .setSampleRate(sampleRate)
                 .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
                 .build()
 
             // Request AudioFocus so Android routes hardware volume buttons to this app
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val focusRequest = android.media.AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                     .setAudioAttributes(attrs)
-                    .setOnAudioFocusChangeListener { /* maintain continuous playback */ }
+                    .setOnAudioFocusChangeListener { /* keep rendering */ }
                     .build()
                 audioManager?.requestAudioFocus(focusRequest)
             } else {
@@ -311,16 +342,37 @@ class PresenterService : Service() {
                 audioManager?.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
             }
 
-            audioTrack = AudioTrack.Builder()
+            val track = AudioTrack.Builder()
                 .setAudioAttributes(attrs)
                 .setAudioFormat(format)
                 .setBufferSizeInBytes(minBufSize)
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .build().also { track ->
-                    track.write(silence, 0, silence.size)
-                    track.setLoopPoints(0, (minBufSize / 4).coerceAtLeast(1), -1)
-                    track.play()
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build()
+
+            audioTrack = track
+            track.play()
+
+            // Inaudible dither (+1, -1) prevents Audio DSP silence detection from entering power sleep
+            val buffer = ShortArray(minBufSize / 2)
+            for (i in buffer.indices) {
+                buffer[i] = if (i % 2 == 0) 1 else -1
+            }
+
+            isAudioRunning = true
+            audioThread = Thread({
+                while (isAudioRunning) {
+                    try {
+                        track.write(buffer, 0, buffer.size)
+                        Thread.sleep(40)
+                    } catch (_: InterruptedException) {
+                        break
+                    } catch (_: Exception) {}
                 }
+            }, "nextPresent-AudioEngine").apply {
+                isDaemon = true
+                priority = Thread.NORM_PRIORITY
+                start()
+            }
         } catch (_: Exception) {}
     }
 
@@ -328,13 +380,14 @@ class PresenterService : Service() {
     private fun registerVolumeObserver() {
         try {
             var lastVolume = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: midVolume
-            volumeObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            volumeObserver = object : ContentObserver(mainHandler) {
                 override fun onChange(selfChange: Boolean) {
                     super.onChange(selfChange)
+                    if (isResettingVolume) return
                     val cur = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: return
                     if (cur == lastVolume) return
                     val isUp = cur > lastVolume
-                    lastVolume = midVolume
+                    lastVolume = cur
                     handleVolumeTrigger(isUp)
                 }
             }

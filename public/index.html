@@ -3,278 +3,532 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>nextPresent — Presentation Remote Host</title>
-  <link rel="stylesheet" href="/css/dashboard.css">
+  <title>nextPresent — Turn Your Phone into an Invisible Presentation Clicker</title>
+  <meta name="description" content="Control PowerPoint, Google Slides, Keynote, and PDF presentations using your smartphone's physical volume buttons from inside your pocket. Zero latency, works behind locked screen.">
+  <meta name="keywords" content="presentation remote, clicker app, powerpoint clicker, volume button presentation, google slides remote, pocket presentation clicker">
+  
+  <!-- OpenGraph -->
+  <meta property="og:title" content="nextPresent — Invisible Presentation Clicker">
+  <meta property="og:description" content="Feel the click in your pocket. Control slides with physical volume buttons without ever breaking eye contact with your audience.">
+  <meta property="og:type" content="website">
+
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
+  <link rel="stylesheet" href="/css/landing.css">
 </head>
 <body>
-  <!-- Header -->
-  <header class="header">
-    <div class="brand">
-      <div class="logo-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="5 3 19 12 5 21 5 3"></polygon>
-        </svg>
-      </div>
-      <div class="brand-text">
-        <h1>nextPresent <span>Host</span> <span class="badge">Active</span></h1>
-        <p>Wireless Mobile Presentation Controller &mdash; PowerPoint, Slides, PDF &amp; more</p>
+
+  <!-- ── Navigation Bar ── -->
+  <nav class="navbar">
+    <div class="site-container navbar-inner">
+      <a href="#" class="nav-brand">
+        <div class="nav-logo-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        </div>
+        <span class="nav-brand-title">next<span>Present</span></span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#demoSection" class="nav-link">Interactive Demo</a></li>
+        <li><a href="#pocketSection" class="nav-link">Pocket Remote</a></li>
+        <li><a href="#comparisonSection" class="nav-link">Comparison</a></li>
+        <li><a href="#pricingSection" class="nav-link">Pricing</a></li>
+        <li><a href="#faqSection" class="nav-link">FAQ</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <a href="/dashboard" class="btn btn-secondary btn-sm" id="navDashboardBtn">
+          <span>Launch Dashboard</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+        </a>
+        <a href="#downloadSection" class="btn btn-primary btn-sm">Get App</a>
       </div>
     </div>
+  </nav>
 
-    <div class="header-status">
-      <div class="status-pill" id="wsStatusPill">
-        <span class="pulse-dot"></span>
-        <span id="wsStatusText">Listening on Port 3333</span>
+  <!-- ── Hero Section ── -->
+  <header class="hero-section">
+    <div class="site-container">
+      <div class="pill-badge">
+        <span class="pulse-circle"></span>
+        <span>Version 1.0 Live — Physical Volume Rocker & Lock-Screen Control</span>
+      </div>
+
+      <h1 class="hero-title">
+        Turn Your Phone Into An<br>
+        <span class="gradient-text">Invisible Presentation Clicker</span>
+      </h1>
+
+      <p class="hero-subtitle">
+        Feel the tactile click in your pocket. Control PowerPoint, Google Slides, Keynote, Canva & PDF without ever looking down. No $60 dongles. Zero latency.
+      </p>
+
+      <div class="hero-cta-group" id="downloadSection">
+        <a href="/downloads/nextPresent-Setup.exe" download="nextPresent-Setup.exe" class="btn btn-primary btn-lg" id="heroWinBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+          <span>Download for Windows (.exe)</span>
+        </a>
+
+        <a href="/downloads/nextPresent.apk" download="nextPresent.apk" class="btn btn-secondary btn-lg" id="heroAndroidBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5896 8.3976 13.856 8.0833 12 8.0833s-3.5896.3143-5.1368.8664L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/></svg>
+          <span>Get Android Companion (.apk)</span>
+        </a>
+
+        <a href="/dashboard" class="btn btn-secondary btn-lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          <span>Open Web Dashboard</span>
+        </a>
+      </div>
+
+      <div class="hero-meta-proof">
+        <div class="proof-item">
+          <span class="proof-icon">✓</span>
+          <span>100% Free to Start</span>
+        </div>
+        <div class="proof-item">
+          <span class="proof-icon">✓</span>
+          <span>Zero Dongles to Lose</span>
+        </div>
+        <div class="proof-item">
+          <span class="proof-icon">✓</span>
+          <span>Works Behind Locked Screen</span>
+        </div>
+        <div class="proof-item">
+          <span class="proof-icon">✓</span>
+          <span>Portable Zero-Install Mode</span>
+        </div>
       </div>
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="container">
-    <!-- Left Column: Connect & QR -->
-    <aside class="card connect-card">
-      <h2 class="card-title">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
-          <line x1="12" y1="18" x2="12.01" y2="18"></line>
-        </svg>
-        Connect Your Phone
-      </h2>
-      <p class="card-subtitle">Scan QR code or enter the room code in the nextPresent app</p>
-
-      <!-- ── Cloud Room Code Banner ── -->
-      <div id="relayBanner" style="
-        width:100%; margin-bottom:16px; padding:14px 16px;
-        background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.1));
-        border:1px solid rgba(99,102,241,.4); border-radius:12px; text-align:center;
-        display:none;
-      ">
-        <div style="font-size:.72rem;color:#818cf8;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;">
-          ☁️ Cloud Room Code
-        </div>
-        <div id="roomCodeDisplay" style="
-          font-size:2.2rem;font-weight:800;letter-spacing:.45rem;color:#a5b4fc;
-          font-family:'JetBrains Mono',monospace;line-height:1.2;
-        ">——————</div>
-        <div style="font-size:.72rem;color:#64748b;margin-top:4px;">
-          Works from any network — not just same Wi-Fi
-        </div>
-        <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;">
-          <button id="copyRelayUrlBtn" style="
-            padding:6px 14px;background:rgba(99,102,241,.25);color:#a5b4fc;
-            border:1px solid rgba(99,102,241,.4);border-radius:8px;
-            font-size:.8rem;cursor:pointer;font-weight:600;
-          ">📋 Copy Link</button>
-          <button id="shareRelayBtn" style="
-            padding:6px 14px;background:rgba(16,185,129,.15);color:#6ee7b7;
-            border:1px solid rgba(16,185,129,.3);border-radius:8px;
-            font-size:.8rem;cursor:pointer;font-weight:600;display:none;
-          ">🔗 Share</button>
-        </div>
-      </div>
-
-      <!-- ── Relay Connecting Indicator ── -->
-      <div id="relayConnecting" style="
-        width:100%; margin-bottom:16px; padding:10px 14px;
-        background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25);
-        border-radius:10px; font-size:.78rem; color:#fbbf24; text-align:center;
-      ">
-        ⏳ Connecting to cloud relay…
-      </div>
-
-      <div class="qr-wrapper">
-        <img id="qrCodeImg" class="qr-image" alt="QR Code to connect mobile" src="">
-      </div>
-
-      <div class="ip-selector">
-        <label for="ipSelect">LAN IP Address (same Wi-Fi only):</label>
-        <select id="ipSelect" class="ip-dropdown">
-          <option value="">Detecting local IPs...</option>
-        </select>
-      </div>
-
-      <div class="url-box">
-        <span class="url-text" id="remoteUrlDisplay">http://...</span>
-        <button class="copy-btn" id="copyUrlBtn" title="Copy URL">Copy</button>
-      </div>
-
-      <!-- Software Profile Selector -->
-      <div class="ip-selector" style="margin-top: 20px; width: 100%;">
-        <label for="profileSelect">🎯 Presentation Software:</label>
-        <select id="profileSelect" class="ip-dropdown">
-          <option value="powerpoint">Microsoft PowerPoint (Arrow keys)</option>
-          <option value="google_slides">Google Slides (Arrow keys)</option>
-          <option value="canva">Canva Presentations (Arrow keys)</option>
-          <option value="libreoffice">LibreOffice Impress (Page Up/Down)</option>
-          <option value="pdf">PDF Viewer — Adobe, Edge, Chrome (Page Up/Down)</option>
-          <option value="prezi">Prezi (Space / Backspace)</option>
-          <option value="keynote_mac">Apple Keynote / Mac (Arrow keys)</option>
-        </select>
-      </div>
-
-      <div id="profileKeyHint" style="
-        width: 100%; margin-top: 8px; padding: 10px 12px;
-        background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2);
-        border-radius: 8px; font-size: 0.78rem; color: #a5b4fc;
-        font-family: 'JetBrains Mono', monospace;
-      ">Next → Right Arrow &nbsp;|&nbsp; Prev → Left Arrow</div>
-
-      <!-- Android Companion APK Download -->
-      <div style="
-        margin-top: 18px; padding: 14px; background: rgba(16, 185, 129, 0.08);
-        border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 12px; width: 100%;
-      ">
-        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.88rem; color: #34d399;">
-          <span>🔊</span> Physical Volume Buttons APK
-        </div>
-        <p style="font-size: 0.78rem; color: #94a3b8; margin: 6px 0 10px 0; line-height: 1.4;">
-          Chrome blocks hardware volume keys in browser. Install our Android companion app on your phone for 100% physical Volume Up / Down slide control!
+  <!-- ── Interactive Live Clicker Demo ── -->
+  <section class="demo-section" id="demoSection">
+    <div class="site-container">
+      <div class="section-header">
+        <div class="section-tag">Hands-On Simulation</div>
+        <h2 class="section-title">Test the Pocket Clicker Right Now</h2>
+        <p class="section-desc">
+          Click the physical volume buttons on the side of the phone chassis or use on-screen controls to advance the pitch deck slide.
         </p>
-        <a href="/nextPresent.apk" download="nextPresent.apk" style="
-          display: block; text-align: center; padding: 8px 12px;
-          background: #10b981; color: #fff; text-decoration: none;
-          font-weight: 600; font-size: 0.82rem; border-radius: 8px;
-        ">📥 Download Android APK (6 MB)</a>
       </div>
-    </aside>
 
-    <!-- Right Column: Control Deck & Telemetry -->
-    <section class="dashboard-main">
-      <!-- Metrics -->
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <span class="metric-label">Connected Phones</span>
-          <div class="metric-value">
-            <span id="connectedClientsVal">0</span>
-            <span class="metric-sub">active</span>
+      <div class="simulator-frame">
+        <!-- Smartphone Mockup -->
+        <div class="phone-mockup-wrapper">
+          <div class="phone-vol-key-hint">Click Volume Key</div>
+
+          <div class="phone-mockup">
+            <!-- Hardware Volume Keys on Chassis Bezel -->
+            <div class="phone-vol-key vol-up-btn" id="simVolUp" title="Physical Volume Up (Advance Slide)"></div>
+            <div class="phone-vol-key vol-down-btn" id="simVolDown" title="Physical Volume Down (Previous Slide)"></div>
+
+            <!-- Screen Area -->
+            <div class="phone-screen">
+              <div class="phone-speaker-notch"></div>
+              
+              <div class="phone-app-header">
+                <div class="phone-app-title">nextPresent Remote</div>
+                <div class="phone-app-status">
+                  <span class="pulse-circle" style="width:6px;height:6px;"></span>
+                  <span>Connected • Pocket Ready</span>
+                </div>
+              </div>
+
+              <!-- Touch Buttons -->
+              <div class="phone-pad">
+                <button class="phone-btn" id="simPhoneNext">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  <span>NEXT SLIDE [Vol ▲]</span>
+                </button>
+
+                <button class="phone-btn" id="simPhonePrev">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                  <span>PREV SLIDE [Vol ▼]</span>
+                </button>
+              </div>
+
+              <div class="phone-pocket-badge">
+                🔒 Screen Off Mode Active
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="metric-card">
-          <span class="metric-label">Current Slide</span>
-          <div class="metric-value">
-            <span id="slideNumberVal">1</span>
-            <span class="metric-sub">approx.</span>
+        <!-- Presentation Slide Display -->
+        <div class="slide-display-wrapper">
+          <div class="slide-monitor">
+            <div class="slide-top-bar">
+              <span class="slide-deck-title" id="slideTag">Q3 Strategy Keynote</span>
+              <span class="slide-deck-badge" id="slideDeckBadge">Slide 1 of 6</span>
+            </div>
+
+            <div class="slide-body">
+              <div class="slide-content-card" id="slideCard">
+                <h3 class="slide-headline" id="slideHeadline">Scaling High-Performance Teams in 2026</h3>
+                <p class="slide-detail" id="slideDetail">
+                  How distributed autonomous teams deliver 10x output while maintaining radical clarity and zero overhead.
+                </p>
+              </div>
+            </div>
+
+            <div class="slide-bottom-bar">
+              <div class="slide-indicator" id="slideIndicator"><span>01</span> / 06</div>
+              <div class="slide-status-chip">
+                <span class="pulse-circle" style="width:6px;height:6px;"></span>
+                <span>PowerPoint Live Host</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Real-time Telemetry Readout -->
+          <div class="simulator-hud">
+            <div class="hud-pill">
+              <span class="hud-label">Simulated Latency</span>
+              <span class="hud-value highlight" id="simLatency">1.4 ms</span>
+            </div>
+            <div class="hud-pill">
+              <span class="hud-label">Keystroke Injected</span>
+              <span class="hud-value" id="simKeyInjected">Right Arrow [→]</span>
+            </div>
+            <div class="hud-pill">
+              <span class="hud-label">Presentation Timer</span>
+              <span class="hud-value" id="simTimerDisplay">02:48</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Pocket Control Secret Weapon ── -->
+  <section class="pocket-section" id="pocketSection">
+    <div class="site-container">
+      <div class="pocket-grid">
+        <div class="pocket-content">
+          <div class="section-tag">The Secret Advantage</div>
+          <h2>Why Top Speakers Never Use On-Screen Buttons</h2>
+          <p>
+            When using standard presenter apps, you constantly look down at flat glass to find the next button. Your eyes leave the audience. You lose authority.
+          </p>
+
+          <ul class="feature-check-list">
+            <li class="feature-check-item">
+              <div class="check-badge">✓</div>
+              <div class="check-text">
+                <h4>Feel the Physical Click</h4>
+                <p>Natural physical feedback through the fabric of your trousers or blazer pocket. You never doubt if a click registered.</p>
+              </div>
+            </li>
+            <li class="feature-check-item">
+              <div class="check-badge">✓</div>
+              <div class="check-text">
+                <h4>Zero Screen Glare in Dark Rooms</h4>
+                <p>No bright phone screen glowing in your hands on stage. Your phone stays dark, cool, and asleep in your pocket.</p>
+              </div>
+            </li>
+            <li class="feature-check-item">
+              <div class="check-badge">✓</div>
+              <div class="check-text">
+                <h4>All-Day Battery Life</h4>
+                <p>Operating behind a locked OLED screen uses less than 1% battery per hour of continuous presentation.</p>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="pocket-card-visual">
+          <div class="pocket-diagram">
+            <div class="diagram-step">
+              <div class="step-icon-box">📲</div>
+              <div>
+                <h4 style="font-size:0.95rem;color:#fff;">1. Lock Screen & Pocket Phone</h4>
+                <p style="font-size:0.84rem;color:#94a3b8;">Slip your phone into your pocket before stepping onto the stage.</p>
+              </div>
+            </div>
+
+            <div class="diagram-step">
+              <div class="step-icon-box">🔊</div>
+              <div>
+                <h4 style="font-size:0.95rem;color:#fff;">2. Press Volume Up Through Fabric</h4>
+                <p style="font-size:0.84rem;color:#94a3b8;">High-speed native service catches the hardware rocker press in &lt;1ms.</p>
+              </div>
+            </div>
+
+            <div class="diagram-step">
+              <div class="step-icon-box">🎯</div>
+              <div>
+                <h4 style="font-size:0.95rem;color:#fff;">3. Presentation Advances Seamlessly</h4>
+                <p style="font-size:0.84rem;color:#94a3b8;">Keystroke injected into PowerPoint or Google Slides instantly.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Supported Software Ecosystem ── -->
+  <section class="ecosystem-section">
+    <div class="site-container">
+      <div class="section-tag">Universal Compatibility</div>
+      <h2 class="section-title">Works with Every Tool You Present In</h2>
+      <p class="section-desc">Zero configuration required. Switch presets in one click.</p>
+
+      <div class="ecosystem-grid">
+        <div class="software-card">
+          <div class="software-icon-wrapper" style="color:#d97706;">📊</div>
+          <div class="software-name">PowerPoint</div>
+          <div class="software-keys">Right / Left Arrow</div>
+        </div>
+        <div class="software-card">
+          <div class="software-icon-wrapper" style="color:#f59e0b;">📑</div>
+          <div class="software-name">Google Slides</div>
+          <div class="software-keys">Right / Left Arrow</div>
+        </div>
+        <div class="software-card">
+          <div class="software-icon-wrapper" style="color:#06b6d4;">🎨</div>
+          <div class="software-name">Canva Decks</div>
+          <div class="software-keys">Right / Left Arrow</div>
+        </div>
+        <div class="software-card">
+          <div class="software-icon-wrapper" style="color:#3b82f6;">🍏</div>
+          <div class="software-name">Apple Keynote</div>
+          <div class="software-keys">Arrow Keys</div>
+        </div>
+        <div class="software-card">
+          <div class="software-icon-wrapper" style="color:#ef4444;">📕</div>
+          <div class="software-name">PDF Viewers</div>
+          <div class="software-keys">Page Up / Down</div>
+        </div>
+        <div class="software-card">
+          <div class="software-icon-wrapper" style="color:#8b5cf6;">🚀</div>
+          <div class="software-name">Prezi & Slidev</div>
+          <div class="software-keys">Space / Backspace</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Comparison Section ── -->
+  <section class="comparison-section" id="comparisonSection">
+    <div class="site-container">
+      <div class="section-header">
+        <div class="section-tag">Direct Comparison</div>
+        <h2 class="section-title">Why nextPresent Wins Every Time</h2>
+        <p class="section-desc">See how nextPresent stacks up against expensive dedicated hardware clickers and clunky apps.</p>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th class="col-highlight">🎯 nextPresent</th>
+              <th>Logitech R400 / Spotlight</th>
+              <th>Generic Remote Apps</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Cost</td>
+              <td class="col-highlight"><span class="table-check">Free / $19 Lifetime</span></td>
+              <td>$59.99 – $129.99</td>
+              <td>$4.99 / mo subscription</td>
+            </tr>
+            <tr>
+              <td>Physical Tactile Clicking</td>
+              <td class="col-highlight"><span class="table-check">✓ Phone Volume Rocker</span></td>
+              <td><span class="table-check">✓ Plastic buttons</span></td>
+              <td><span class="table-cross">✗ Flat glass only</span></td>
+            </tr>
+            <tr>
+              <td>Hardware Dongle Required</td>
+              <td class="col-highlight"><span class="table-check">✓ No dongle needed</span></td>
+              <td><span class="table-cross">✗ Lose dongle = useless</span></td>
+              <td><span class="table-check">✓ No dongle</span></td>
+            </tr>
+            <tr>
+              <td>Works with Screen Turned Off</td>
+              <td class="col-highlight"><span class="table-check">✓ Yes (Pocket Mode)</span></td>
+              <td>N/A</td>
+              <td><span class="table-cross">✗ Screen must stay on</span></td>
+            </tr>
+            <tr>
+              <td>Multi-Network / Cloud Relay</td>
+              <td class="col-highlight"><span class="table-check">✓ Yes (Cross-subnet)</span></td>
+              <td><span class="table-cross">✗ 10m RF range limit</span></td>
+              <td><span class="table-cross">✗ Same Wi-Fi only</span></td>
+            </tr>
+            <tr>
+              <td>Zero-Install Portable .exe</td>
+              <td class="col-highlight"><span class="table-check">✓ Yes (Locked laptops)</span></td>
+              <td><span class="table-check">✓ Yes</span></td>
+              <td><span class="table-cross">✗ No</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Pricing Plans ── -->
+  <section class="pricing-section" id="pricingSection">
+    <div class="site-container">
+      <div class="section-header">
+        <div class="section-tag">Honest Pricing</div>
+        <h2 class="section-title">No Subscriptions. Own It for Life.</h2>
+        <p class="section-desc">Start 100% free with your team, or unlock Pro lifetime cloud relay access.</p>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Free Community Tier -->
+        <div class="pricing-card">
+          <h3 class="plan-name">Community Free</h3>
+          <p class="plan-desc">Perfect for classroom presentations and local office meetups on the same Wi-Fi.</p>
+          <div class="plan-price">$0 <span>forever</span></div>
+
+          <ul class="plan-features">
+            <li class="plan-feature-item active">✓ Unlimited presentations</li>
+            <li class="plan-feature-item active">✓ Local Wi-Fi connection</li>
+            <li class="plan-feature-item active">✓ Physical volume key control</li>
+            <li class="plan-feature-item active">✓ All software profiles included</li>
+            <li class="plan-feature-item active">✓ Web host dashboard & remote</li>
+            <li class="plan-feature-item">✗ Cloud relay across networks</li>
+          </ul>
+
+          <a href="/downloads/nextPresent-Setup.exe" download="nextPresent-Setup.exe" class="btn btn-secondary">Download Free</a>
+        </div>
+
+        <!-- Pro Lifetime Tier -->
+        <div class="pricing-card featured">
+          <div class="pricing-badge">Most Popular</div>
+          <h3 class="plan-name">Pro Lifetime</h3>
+          <p class="plan-desc">For professional keynote speakers, sales leaders, and conference presenters.</p>
+          <div class="plan-price">$19 <span>one-time payment</span></div>
+
+          <ul class="plan-features">
+            <li class="plan-feature-item active">✓ <strong>Everything in Community</strong></li>
+            <li class="plan-feature-item active">✓ <strong>Global Cloud Relay</strong> (works across 5G/LTE/guest Wi-Fi)</li>
+            <li class="plan-feature-item active">✓ <strong>Portable .exe</strong> (run on locked corporate laptops)</li>
+            <li class="plan-feature-item active">✓ Custom tactile vibration patterns</li>
+            <li class="plan-feature-item active">✓ Speaker pacing telemetry & timer</li>
+            <li class="plan-feature-item active">✓ Commercial presentation license</li>
+            <li class="plan-feature-item active">✓ Lifetime updates & priority support</li>
+          </ul>
+
+          <a href="/downloads/nextPresent-Setup.exe" download="nextPresent-Setup.exe" class="btn btn-primary">Get Pro Lifetime Access</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FAQ Section ── -->
+  <section class="faq-section" id="faqSection">
+    <div class="site-container">
+      <div class="section-header">
+        <div class="section-tag">Got Questions?</div>
+        <h2 class="section-title">Frequently Asked Questions</h2>
+      </div>
+
+      <div class="faq-list">
+        <div class="faq-item open">
+          <button class="faq-question">
+            <span>Does the volume button really change slides with the phone screen off?</span>
+            <span class="faq-icon">▼</span>
+          </button>
+          <div class="faq-answer">
+            Yes! Our Android companion app uses a high-performance background audio session engine with an active MediaSession and partial wake lock. When you lock your phone and put it in your pocket, pressing Volume Up immediately advances the slide, and Volume Down goes to the previous slide with zero audio noise.
           </div>
         </div>
 
-        <div class="metric-card">
-          <span class="metric-label">Presentation Timer</span>
-          <div class="metric-value">
-            <span id="presentationTimerVal">00:00</span>
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Do I need administrator privileges on my corporate laptop?</span>
+            <span class="faq-icon">▼</span>
+          </button>
+          <div class="faq-answer">
+            No. We provide a zero-install <strong>Portable .exe</strong> that you can download directly to your desktop or run off a USB drive without installer prompts or administrative privileges.
           </div>
         </div>
 
-        <div class="metric-card">
-          <span class="metric-label">Total Clicks</span>
-          <div class="metric-value">
-            <span id="totalClicksVal">0</span>
-            <span class="metric-sub" id="clickRatioVal">0 fwd / 0 back</span>
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>What if my laptop and phone are on different Wi-Fi networks?</span>
+            <span class="faq-icon">▼</span>
+          </button>
+          <div class="faq-answer">
+            nextPresent features a global cloud relay. When you launch the app, you receive an instant 6-letter room code (e.g. <code>ABC123</code>). Enter that code in your companion app, and your phone and PC pair securely across cellular data, guest Wi-Fi, and corporate firewalls.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Will pressing the volume button play loud notification chimes?</span>
+            <span class="faq-icon">▼</span>
+          </button>
+          <div class="faq-answer">
+            No. nextPresent centers the stream volume silently and removes system sound flags, ensuring your presentation is completely silent except for a discreet haptic vibration on your phone.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="site-container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="nav-logo-icon" style="width:34px;height:34px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+            </div>
+            <span style="font-size:1.2rem;font-weight:800;">next<span>Present</span></span>
+          </div>
+          <p class="footer-desc">
+            The invisible presentation clicker that lets you control slides with physical volume buttons from inside your pocket.
+          </p>
+        </div>
+
+        <div class="footer-links-group">
+          <div class="footer-col">
+            <h4>Downloads</h4>
+            <ul>
+              <li><a href="/downloads/nextPresent-Setup.exe" download="nextPresent-Setup.exe">Windows Installer (.exe)</a></li>
+              <li><a href="/downloads/nextPresent-Portable.exe" download="nextPresent-Portable.exe">Windows Portable (.exe)</a></li>
+              <li><a href="/downloads/nextPresent.apk" download="nextPresent.apk">Android Companion (.apk)</a></li>
+              <li><a href="/dashboard">Web Host Dashboard</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h4>Software</h4>
+            <ul>
+              <li><a href="/dashboard">Microsoft PowerPoint</a></li>
+              <li><a href="/dashboard">Google Slides</a></li>
+              <li><a href="/dashboard">Canva Presentations</a></li>
+              <li><a href="/dashboard">Apple Keynote & PDF</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-col">
+            <h4>Open Source</h4>
+            <ul>
+              <li><a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener">GitHub Repository</a></li>
+              <li><a href="https://nextpresent-relay.onrender.com/health" target="_blank" rel="noopener">Cloud Relay Status</a></li>
+            </ul>
           </div>
         </div>
       </div>
 
-      <!-- Quick Test Control Deck -->
-      <div class="card control-deck">
-        <div class="deck-header">
-          <h2 class="card-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-              <line x1="8" y1="21" x2="16" y2="21"></line>
-              <line x1="12" y1="17" x2="12" y2="21"></line>
-            </svg>
-            Live Controller & Test Pad
-          </h2>
-          <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">Windows Keystroke Injector Ready</span>
-        </div>
-
-        <div class="btn-grid">
-          <button class="big-btn prev" id="btnPrev" title="Previous Slide (Left Arrow / Page Up)">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="15 18 9 12 15 6"></polyline>
-            </svg>
-            <span>Previous Slide</span>
-            <kbd>◄</kbd>
-          </button>
-
-          <button class="big-btn next" id="btnNext" title="Next Slide (Right Arrow / Page Down)">
-            <span>Next Slide</span>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-            <kbd>►</kbd>
-          </button>
-        </div>
-
-        <div class="action-row">
-          <button class="tool-btn" id="btnF5" title="Start Slideshow from beginning">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-            Start Slideshow <kbd>F5</kbd>
-          </button>
-
-          <button class="tool-btn" id="btnShiftF5" title="Start from current slide">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-            Current Slide <kbd>⇧ F5</kbd>
-          </button>
-
-          <button class="tool-btn" id="btnBlackout" title="Toggle Black Screen (PowerPoint & Google Slides)">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-            </svg>
-            Blackout <kbd>B</kbd>
-          </button>
-
-          <button class="tool-btn" id="btnWhiteout" title="Toggle White Screen">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10" stroke-dasharray="2 2"></circle>
-            </svg>
-            Whiteout <kbd>W</kbd>
-          </button>
-
-          <button class="tool-btn" id="btnEsc" title="Exit Presentation">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-            Exit <kbd>Esc</kbd>
-          </button>
-        </div>
+      <div class="footer-bottom">
+        <span>&copy; 2026 nextPresent. All rights reserved.</span>
+        <span>Crafted for keynote speakers, educators, and leaders worldwide.</span>
       </div>
+    </div>
+  </footer>
 
-      <!-- Real-time Activity Log -->
-      <div class="card event-log-container">
-        <div class="deck-header">
-          <h2 class="card-title">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-            </svg>
-            Live Activity Stream
-          </h2>
-          <button class="tool-btn" id="btnClearLog" style="flex: initial; padding: 4px 10px; font-size: 0.75rem;">Clear</button>
-        </div>
-        <div class="log-box" id="eventLogBox">
-          <div class="log-entry">
-            <span class="log-time">[Ready]</span>
-            <span class="log-action special">Server started</span>
-            <span class="log-source">System</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Instructions Banner -->
-      <div class="instructions-banner">
-        <div class="step-item"><span class="step-num">1</span><strong>Same Wi-Fi:</strong> Connect PC and Phone</div>
-        <div class="step-item"><span class="step-num">2</span><strong>Scan QR:</strong> Open remote on phone</div>
-        <div class="step-item"><span class="step-num">3</span><strong>Present:</strong> Press volume keys to change slides!</div>
-      </div>
-    </section>
-  </main>
-
-  <script src="/js/dashboard.js"></script>
+  <script src="/js/landing.js"></script>
 </body>
 </html>

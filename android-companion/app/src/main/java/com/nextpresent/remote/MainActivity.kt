@@ -171,12 +171,15 @@ class MainActivity : AppCompatActivity() {
                     // prefs already saved inside ConnectActivity
                     connectWebSocket()
                     syncConnectionToService()
+                    startPresenterService()
                     Toast.makeText(this, "☁️ Connected via cloud relay: $code", Toast.LENGTH_SHORT).show()
                 }
             } else {
                 // User chose LAN mode or cancelled
                 relayRoomCode = null
                 connectWebSocket()   // LAN fallback
+                syncConnectionToService()
+                startPresenterService()
             }
         }
     }

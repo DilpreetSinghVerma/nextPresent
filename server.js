@@ -127,7 +127,7 @@ try {
 }
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 // ─────────────────────────────────────────────────────────────────────
 // Software Profiles — maps NEXT/PREV to specific key commands
@@ -223,21 +223,31 @@ function getCurrentProfile() {
 // Routes
 // ─────────────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
-  const ua = req.headers['user-agent'] || '';
-  const isMobile = /android|iphone|ipad|ipod|mobile/i.test(ua);
-  if (isMobile) {
-    res.redirect('/remote');
-  } else {
-    res.redirect('/dashboard');
-  }
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
 app.get('/remote', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'mobile.html'));
+});
+
+// Direct Download Convenience Endpoints
+app.get('/download/windows', (req, res) => {
+  const filePath = path.join(__dirname, 'public', 'downloads', 'nextPresent-Setup.exe');
+  res.download(filePath, 'nextPresent-Setup.exe');
+});
+
+app.get('/download/portable', (req, res) => {
+  const filePath = path.join(__dirname, 'public', 'downloads', 'nextPresent-Portable.exe');
+  res.download(filePath, 'nextPresent-Portable.exe');
+});
+
+app.get('/download/android', (req, res) => {
+  const filePath = path.join(__dirname, 'public', 'downloads', 'nextPresent.apk');
+  res.download(filePath, 'nextPresent.apk');
 });
 
 app.get('/api/info', async (req, res) => {

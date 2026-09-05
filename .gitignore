@@ -25,3 +25,6 @@ android-companion/build/
 .DS_Store
 Thumbs.db
 .vscode/
+
+# Large installer executables (>100MB)
+public/downloads/*.exe
