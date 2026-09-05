@@ -43,7 +43,7 @@ function createWindow() {
     height: 780,
     minWidth: 860,
     minHeight: 620,
-    title: 'nextPresent — Slide Remote',
+    title: 'nextPresent — by Dilpreet Singh',
     icon: iconPath,
     backgroundColor: '#05070d',
     autoHideMenuBar: true,
@@ -82,6 +82,11 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
+      label: 'nextPresent v1.0 — by Dilpreet Singh',
+      enabled: false
+    },
+    { type: 'separator' },
+    {
       label: 'Show Dashboard',
       click: () => {
         mainWindow.show();
@@ -104,7 +109,7 @@ function createTray() {
     }
   ]);
 
-  tray.setToolTip('nextPresent — Presentation Remote (Active)');
+  tray.setToolTip('nextPresent — Presentation Remote by Dilpreet Singh');
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {
