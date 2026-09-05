@@ -130,6 +130,9 @@ try {
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
+// Health check endpoint (required for Railway / Render / Fly.io deployments)
+app.get('/health', (_req, res) => res.json({ status: 'ok', app: 'NXTslide', version: '1.0.0' }));
+
 // ─────────────────────────────────────────────────────────────────────
 // Software Profiles — maps NEXT/PREV to specific key commands
 // ─────────────────────────────────────────────────────────────────────
