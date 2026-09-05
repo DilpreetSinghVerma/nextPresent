@@ -1,7 +1,7 @@
 ﻿{
-  "name": "nextpresent-relay",
+  "name": "nxtslide-relay",
   "version": "1.0.0",
-  "description": "nextPresent cloud WebSocket relay — connects PC and phone via room codes",
+  "description": "NXTslide cloud WebSocket relay — connects PC and phone via room codes",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

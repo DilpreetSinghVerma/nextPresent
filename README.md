@@ -1,4 +1,4 @@
-# 🎯 nextPresent
+# 🎯 NXTslide
 
 > **Control your PC presentation from your phone using physical volume keys.**
 > No USB, no Bluetooth pairing, no extra hardware — just Wi-Fi.
@@ -28,7 +28,7 @@
 ### 1. Install & Start
 
 ```powershell
-# In nextPresent folder:
+# In NXTslide folder:
 npm install
 npm start
 ```
@@ -96,7 +96,7 @@ Open `http://localhost:3333/dashboard` to see:
 ## 🗂️ Project Structure
 
 ```
-nextPresent/
+NXTslide/
 ├── server.js               # Main WebSocket + Express server
 ├── lib/
 │   ├── keySender.cs        # Native C# Windows key injector source

@@ -289,7 +289,7 @@ class ConnectActivity : AppCompatActivity() {
                 }
 
                 // ✅ Valid code — save to prefs and return to MainActivity
-                val prefs = getSharedPreferences("nextPresentPrefs", Context.MODE_PRIVATE)
+                val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
                 prefs.edit()
                     .putString("relay_room_code", code.uppercase())
                     .putString("relay_base_url", RELAY_BASE)

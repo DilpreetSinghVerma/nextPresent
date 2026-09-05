@@ -1,3 +1,4 @@
+const fs      = require('fs');
 const http    = require('http');
 const path    = require('path');
 const dgram   = require('dgram');
@@ -109,12 +110,12 @@ try {
   });
   udpSocket.on('message', (msg, rinfo) => {
     const text = msg.toString().trim();
-    if (text.includes('NEXTPRESENT')) {
+    if (text.includes('NXTSLIDE')) {
       const reply = Buffer.from(JSON.stringify({
         type: 'DISCOVERY_RESPONSE',
         ip: primaryIp,
         port: PORT,
-        name: 'nextPresent Host'
+        name: 'NXTslide Host'
       }));
       udpSocket.send(reply, 0, reply.length, rinfo.port, rinfo.address, () => {});
     }
@@ -235,19 +236,21 @@ app.get('/remote', (req, res) => {
 });
 
 // Direct Download Convenience Endpoints
-app.get('/download/windows', (req, res) => {
-  const filePath = path.join(__dirname, 'public', 'downloads', 'nextPresent-Setup.exe');
-  res.download(filePath, 'nextPresent-Setup.exe');
+app.get(['/download/windows', '/downloads/NXTslide-Setup.exe', '/downloads/nextPresent-Setup.exe'], (req, res) => {
+  const filePath = path.join(__dirname, 'public', 'downloads', 'NXTslide-Setup.exe');
+  res.download(filePath, 'NXTslide-Setup.exe');
 });
 
-app.get('/download/portable', (req, res) => {
-  const filePath = path.join(__dirname, 'public', 'downloads', 'nextPresent-Portable.exe');
-  res.download(filePath, 'nextPresent-Portable.exe');
+app.get(['/download/portable', '/downloads/NXTslide-Portable.exe', '/downloads/nextPresent-Portable.exe'], (req, res) => {
+  const filePath = path.join(__dirname, 'public', 'downloads', 'NXTslide-Portable.exe');
+  res.download(filePath, 'NXTslide-Portable.exe');
 });
 
-app.get('/download/android', (req, res) => {
-  const filePath = path.join(__dirname, 'public', 'downloads', 'nextPresent.apk');
-  res.download(filePath, 'nextPresent.apk');
+app.get(['/download/android', '/downloads/NXTslide.apk', '/downloads/nextPresent.apk', '/NXTslide.apk', '/nextPresent.apk'], (req, res) => {
+  const fileInDownloads = path.join(__dirname, 'public', 'downloads', 'NXTslide.apk');
+  const fileInPublic = path.join(__dirname, 'public', 'NXTslide.apk');
+  const finalPath = fs.existsSync(fileInDownloads) ? fileInDownloads : fileInPublic;
+  res.download(finalPath, 'NXTslide.apk');
 });
 
 app.get('/api/info', async (req, res) => {
@@ -448,7 +451,7 @@ setInterval(() => {
 // ─────────────────────────────────────────────────────────────────────
 server.listen(PORT, '0.0.0.0', async () => {
   console.log('\n========================================================');
-  console.log('         🚀 nextPresent Host is Running!                ');
+  console.log('         🚀 NXTslide Host is Running!                ');
   console.log('========================================================');
   console.log(`💻 PC Dashboard:     http://localhost:${PORT}/dashboard`);
   console.log(`📱 LAN Controller:   ${remoteUrl}`);
@@ -467,7 +470,7 @@ server.listen(PORT, '0.0.0.0', async () => {
 });
 
 process.on('SIGINT', () => {
-  console.log('\nStopping nextPresent server...');
+  console.log('\nStopping NXTslide server...');
   keySender.destroy();
   server.close(() => process.exit(0));
 });

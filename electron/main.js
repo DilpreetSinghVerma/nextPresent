@@ -2,7 +2,7 @@ const { app, BrowserWindow, Tray, Menu, shell } = require('electron');
 const path = require('path');
 const http = require('http');
 
-// Start the internal nextPresent host server
+// Start the internal NXTslide host server
 try {
   require('../server.js');
 } catch (err) {
@@ -43,7 +43,7 @@ function createWindow() {
     height: 780,
     minWidth: 860,
     minHeight: 620,
-    title: 'nextPresent — by Dilpreet Singh',
+    title: 'NXTslide — by Dilpreet Singh',
     icon: iconPath,
     backgroundColor: '#05070d',
     autoHideMenuBar: true,
@@ -82,7 +82,7 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'nextPresent v1.0 — by Dilpreet Singh',
+      label: 'NXTslide v1.0 — by Dilpreet Singh',
       enabled: false
     },
     { type: 'separator' },
@@ -101,7 +101,7 @@ function createTray() {
     },
     { type: 'separator' },
     {
-      label: 'Quit nextPresent',
+      label: 'Quit NXTslide',
       click: () => {
         isQuitting = true;
         app.quit();
@@ -109,7 +109,7 @@ function createTray() {
     }
   ]);
 
-  tray.setToolTip('nextPresent — Presentation Remote by Dilpreet Singh');
+  tray.setToolTip('NXTslide — Presentation Remote by Dilpreet Singh');
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {

@@ -1,7 +1,7 @@
 {
-  "name": "nextpresent",
+  "name": "nxtslide",
   "version": "1.0.0",
-  "description": "nextPresent — Wireless Presentation Remote & Volume Key Controller",
+  "description": "NXTslide — Wireless Presentation Remote & Volume Key Controller",
   "main": "electron/main.js",
   "scripts": {
     "start": "node server.js",
@@ -14,7 +14,7 @@
   },
   "build": {
     "appId": "com.nextpresent.desktop",
-    "productName": "nextPresent",
+    "productName": "NXTslide",
     "copyright": "Copyright © 2026 Dilpreet Singh",
     "directories": {
       "output": "dist"
@@ -31,10 +31,10 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "nextPresent"
+      "shortcutName": "NXTslide"
     },
     "portable": {
-      "artifactName": "nextPresent-Portable.exe"
+      "artifactName": "NXTslide-Portable.exe"
     },
     "files": [
       "electron/**/*",

@@ -1,5 +1,5 @@
 // ══════════════════════════════════════════════════════════
-//  nextPresent Mobile Remote  •  mobile.js
+//  NXTslide Mobile Remote  •  mobile.js
 // ══════════════════════════════════════════════════════════
 let ws = null;
 let vibrate = true;
@@ -236,9 +236,9 @@ function setupMediaSession() {
   if (!('mediaSession' in navigator)) return;
 
   navigator.mediaSession.metadata = new MediaMetadata({
-    title: 'nextPresent — Slide Controller',
+    title: 'NXTslide — Slide Controller',
     artist: 'Headset Next/Prev → change slides',
-    album: 'nextPresent Remote Active',
+    album: 'NXTslide Remote Active',
   });
 
   // Headset multi-button "Next Track" → Next Slide

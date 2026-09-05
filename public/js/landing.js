@@ -1,5 +1,5 @@
 /**
- * nextPresent Landing Page Interactive Engine
+ * NXTslide Landing Page Interactive Engine
  */
 
 document.addEventListener('DOMContentLoaded', () => {

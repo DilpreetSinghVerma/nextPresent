@@ -1,5 +1,5 @@
 /**
- * nextPresent Cloud Relay Server
+ * NXTslide Cloud Relay Server
  * Runs on Railway / Render / Fly.io free tier.
  *
  * REST API:
@@ -126,7 +126,7 @@ app.get('/r/:code', (req, res) => {
   const code = req.params.code.toUpperCase();
   res.send(`<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>nextPresent - Connect</title>
+<title>NXTslide - Connect</title>
 <style>*{box-sizing:border-box;margin:0;padding:0}body{background:#05070d;color:#fff;
 font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;
 justify-content:center;min-height:100vh;padding:2rem;text-align:center}
@@ -135,7 +135,7 @@ h1{font-size:1.5rem;margin-bottom:.5rem;color:#818cf8}p{color:#94a3b8;margin-bot
 a.btn{display:block;padding:1rem 2rem;background:#6366f1;color:#fff;text-decoration:none;
 border-radius:12px;font-weight:600;font-size:1.1rem;margin-bottom:1rem}
 </style></head><body>
-<h1>nextPresent</h1><p>Your room code is:</p>
+<h1>NXTslide</h1><p>Your room code is:</p>
 <div class="code">${code}</div>
 <a class="btn" href="nextpresent://connect?code=${code}">Open in App</a>
 <p style="font-size:.85rem">Don't have the app? Download from Google Play Store.</p>
@@ -143,7 +143,7 @@ border-radius:12px;font-weight:600;font-size:1.1rem;margin-bottom:1rem}
 </body></html>`);
 });
 
-app.get('/', (_req, res) => res.json({ service:'nextPresent Relay', rooms:rooms.size, version:'1.0.0' }));
+app.get('/', (_req, res) => res.json({ service:'NXTslide Relay', rooms:rooms.size, version:'1.0.0' }));
 
 server.on('upgrade', (request, socket, head) => {
   const { pathname } = url.parse(request.url);
@@ -189,4 +189,4 @@ wss.on('connection', (ws, _req, code, role) => {
 });
 
 process.on('SIGTERM', () => { rooms.forEach((_,c)=>deleteRoom(c)); server.close(()=>process.exit(0)); });
-server.listen(PORT, () => console.log('[Relay] nextPresent Cloud Relay on port', PORT));
+server.listen(PORT, () => console.log('[Relay] NXTslide Cloud Relay on port', PORT));

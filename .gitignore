@@ -28,3 +28,4 @@ Thumbs.db
 
 # Large installer executables (>100MB)
 public/downloads/*.exe
+public/downloads/*.apk

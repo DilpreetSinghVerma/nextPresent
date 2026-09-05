@@ -174,7 +174,7 @@ class PresenterService : Service() {
         }
 
         // Automatic fallback to SharedPreferences if intent didn't carry room code
-        val prefs = getSharedPreferences("nextPresentPrefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
         if (relayRoomCode == null) {
             val savedCode = prefs.getString("relay_room_code", null)
             if (!savedCode.isNullOrBlank()) relayRoomCode = savedCode
@@ -241,14 +241,14 @@ class PresenterService : Service() {
             val pm = getSystemService(POWER_SERVICE) as PowerManager
             wakeLock = pm.newWakeLock(
                 PowerManager.PARTIAL_WAKE_LOCK,
-                "nextPresent::PresenterWakeLock"
+                "NXTslide::PresenterWakeLock"
             ).also { it.acquire(12 * 60 * 60 * 1000L /* 12 h */) }
 
             val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
             @Suppress("DEPRECATION")
             wifiLock = wm?.createWifiLock(
                 WifiManager.WIFI_MODE_FULL_HIGH_PERF,
-                "nextPresent::PresenterWifiLock"
+                "NXTslide::PresenterWifiLock"
             )?.also { it.acquire() }
         } catch (_: Exception) {}
     }
@@ -256,7 +256,7 @@ class PresenterService : Service() {
     // ─── MediaSession ─────────────────────────────────────────────────────────
     private fun setupMediaSession() {
         try {
-            mediaSession = MediaSession(this, "nextPresentPresenter").apply {
+            mediaSession = MediaSession(this, "NXTslidePresenter").apply {
                 @Suppress("DEPRECATION")
                 setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS)
                 setCallback(object : MediaSession.Callback() {
@@ -366,7 +366,7 @@ class PresenterService : Service() {
                         break
                     } catch (_: Exception) {}
                 }
-            }, "nextPresent-AudioEngine").apply {
+            }, "NXTslide-AudioEngine").apply {
                 isDaemon = true
                 priority = Thread.NORM_PRIORITY
                 start()
@@ -516,7 +516,7 @@ class PresenterService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "nextPresent Presenter",
+                "NXTslide Presenter",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Controls slides via volume buttons on lock screen"
@@ -546,7 +546,7 @@ class PresenterService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("nextPresent — Presenter Active")
+            .setContentTitle("NXTslide — Presenter Active")
             .setContentText("🔊 Volume keys control slides (screen can be locked)")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentIntent(openApp)

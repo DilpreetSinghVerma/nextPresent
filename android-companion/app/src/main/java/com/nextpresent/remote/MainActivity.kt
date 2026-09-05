@@ -89,7 +89,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         // Load saved prefs
-        val prefs = getSharedPreferences("nextPresentPrefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
         serverIp      = prefs.getString("server_ip",   "192.168.101.9") ?: "192.168.101.9"
         serverPort    = prefs.getInt(  "server_port",  3333)
         relayRoomCode = prefs.getString("relay_room_code", null)
@@ -255,7 +255,7 @@ class MainActivity : AppCompatActivity() {
                 socket.broadcast = true
                 socket.soTimeout = 2500
 
-                val data = "NEXTPRESENT_DISCOVER".toByteArray()
+                val data = "NXTSLIDE_DISCOVER".toByteArray()
                 val packet = DatagramPacket(data, data.size,
                     InetAddress.getByName("255.255.255.255"), 3334)
                 socket.send(packet)
@@ -280,7 +280,7 @@ class MainActivity : AppCompatActivity() {
     fun updateServerIp(newIp: String, port: Int = 3333) {
         serverIp   = newIp
         serverPort = port
-        getSharedPreferences("nextPresentPrefs", Context.MODE_PRIVATE)
+        getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
             .edit()
             .putString("server_ip",   serverIp)
             .putInt(   "server_port", serverPort)
@@ -403,7 +403,7 @@ class MainActivity : AppCompatActivity() {
                 if (ip.isNotEmpty()) {
                     // Switch to LAN mode
                     relayRoomCode = null
-                    getSharedPreferences("nextPresentPrefs", Context.MODE_PRIVATE)
+                    getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
                         .edit().remove("relay_room_code").apply()
                     updateServerIp(ip)
                 }

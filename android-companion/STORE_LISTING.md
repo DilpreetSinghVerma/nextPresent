@@ -1,10 +1,10 @@
-# nextPresent — Play Store Listing
+# NXTslide — Play Store Listing
 
 ## App Details
 
 | Field | Value |
 |---|---|
-| **App Name** | nextPresent — Slide Remote |
+| **App Name** | NXTslide — Slide Remote |
 | **Package ID** | `com.nextpresent.remote` |
 | **Category** | Productivity / Business |
 | **Content Rating** | Everyone |
@@ -17,15 +17,15 @@
 
 ## Full Description (4000 chars max)
 
-**nextPresent turns your Android phone into a wireless presentation remote — instantly.**
+**NXTslide turns your Android phone into a wireless presentation remote — instantly.**
 
 ### How it works
-1. Open nextPresent on your PC (download the tiny host app)
+1. Open NXTslide on your PC (download the tiny host app)
 2. Scan the QR code on your PC dashboard **or** type the 6-char room code
 3. You're connected! Now use your **volume buttons** to go forward/backward through slides
 
 ### Works from anywhere
-Unlike Bluetooth remotes that only work 10 metres away, nextPresent uses a **cloud relay** — so you can control slides across different Wi-Fi networks, through walls, or even from another room entirely.
+Unlike Bluetooth remotes that only work 10 metres away, NXTslide uses a **cloud relay** — so you can control slides across different Wi-Fi networks, through walls, or even from another room entirely.
 
 ### Features
 - 📸 **QR code scanning** — connect in under 3 seconds

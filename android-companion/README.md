@@ -1,4 +1,4 @@
-# nextPresent Android Companion App
+# NXTslide Android Companion App
 
 This lightweight Android companion app enables **direct physical volume key interception** (`Volume Up` -> Next Slide, `Volume Down` -> Previous Slide) while suppressing the Android system volume UI.
 
@@ -36,9 +36,9 @@ Transfer and install `app-debug.apk` on your phone.
 ---
 
 ## Usage
-1. Launch `nextPresent` on your PC (`npm start`).
+1. Launch `NXTslide` on your PC (`npm start`).
 2. Make sure your phone and laptop are connected to the same Wi-Fi network.
-3. Open the **nextPresent** app on your phone.
+3. Open the **NXTslide** app on your phone.
 4. Enter the IP address shown on your PC screen (e.g. `192.168.1.15`).
 5. Start your presentation in PowerPoint / Google Slides on your PC.
 6. Press your phone's **Volume Up** or **Volume Down** buttons to switch slides!

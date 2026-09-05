@@ -1,4 +1,4 @@
-// Dashboard Controller for nextPresent
+// Dashboard Controller for NXTslide
 let ws = null;
 let currentRemoteUrl = '';
 let currentPort = 3333;
@@ -125,7 +125,7 @@ if (shareRelayBtn) {
     if (!relayPhoneUrl) return;
     try {
       await navigator.share({
-        title: 'Join my nextPresent session',
+        title: 'Join my NXTslide session',
         text: 'Tap to open the slide remote',
         url: relayPhoneUrl,
       });
