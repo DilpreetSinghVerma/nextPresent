@@ -1,20 +1,88 @@
 {
   "name": "nextpresent",
   "version": "1.0.0",
-  "description": "Wireless presentation remote controller from mobile phone with volume key support",
-  "main": "server.js",
+  "description": "nextPresent — Wireless Presentation Remote & Volume Key Controller",
+  "main": "electron/main.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "desktop": "electron .",
+    "build:portable": "electron-builder --win portable --x64",
+    "build:installer": "electron-builder --win nsis --x64",
+    "build:all": "electron-builder --win --x64",
     "compile-sender": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /nologo /optimize+ /out:bin\\keySender.exe lib\\keySender.cs"
   },
-  "keywords": [],
-  "author": "",
+  "build": {
+    "appId": "com.nextpresent.desktop",
+    "productName": "nextPresent",
+    "copyright": "Copyright © 2026 Dilpreet Singh",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        "portable",
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "nextPresent"
+    },
+    "portable": {
+      "artifactName": "nextPresent-Portable.exe"
+    },
+    "files": [
+      "electron/**/*",
+      "lib/**/*",
+      "public/**/*",
+      "bin/**/*",
+      "assets/**/*",
+      "server.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "assets",
+        "to": "assets",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "asarUnpack": [
+      "bin/**/*"
+    ]
+  },
+  "keywords": [
+    "presentation",
+    "remote",
+    "slides",
+    "powerpoint",
+    "google-slides",
+    "canva"
+  ],
+  "author": "Dilpreet Singh",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
     "express": "^5.2.1",
     "qrcode": "^1.5.4",
     "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3"
   }
 }
