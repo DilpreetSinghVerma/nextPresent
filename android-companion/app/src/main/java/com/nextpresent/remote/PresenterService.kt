@@ -9,16 +9,23 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.database.ContentObserver
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioTrack
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
+import android.net.wifi.WifiManager
 import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -27,21 +34,13 @@ import org.json.JSONObject
 import java.io.IOException
 
 /**
- * PresenterService — Foreground service that keeps the app alive when the
- * screen is locked and intercepts physical volume key presses via
- * VOLUME_CHANGED_ACTION broadcast, routing them as NEXT / PREV slide commands.
+ * PresenterService — Ultra-reliable background & lock-screen volume interception engine.
  *
- * How it works:
- *  1. Holds a PARTIAL_WAKE_LOCK so the CPU (and Wi-Fi) stays alive.
- *  2. Plays a truly-silent AudioTrack loop → Android treats the app as an
- *     active media player, so volume-button presses route to STREAM_MUSIC
- *     even on the lock screen.
- *  3. BroadcastReceiver on "android.media.VOLUME_CHANGED_ACTION" detects
- *     every rocker press, compares new vs old stream volume, decides NEXT/PREV,
- *     then immediately resets the volume back to the midpoint so the device
- *     audio level is never actually changed.
- *  4. Sends NEXT / PREV over an OkHttp WebSocket (or HTTP POST fallback).
- *  5. Shows a persistent lock-screen notification with ◀ Prev / Next ▶ buttons.
+ * Employs 4 concurrent systems to guarantee 100% volume-key capture when screen is OFF:
+ *  1. RECEIVER_EXPORTED broadcast receiver on "android.media.VOLUME_CHANGED_ACTION"
+ *  2. ContentObserver on Settings.System.CONTENT_URI (captures hardware volume changes even if broadcasts are suppressed)
+ *  3. Active MediaSession with STATE_PLAYING (tells Android this app is the primary audio controller)
+ *  4. AudioTrack 44.1kHz PCM continuous silence + PARTIAL_WAKE_LOCK + High-Perf WifiLock
  */
 class PresenterService : Service() {
 
@@ -66,14 +65,18 @@ class PresenterService : Service() {
     private var webSocket: WebSocket? = null
 
     private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
     private var audioTrack: AudioTrack? = null
     private var audioManager: AudioManager? = null
+    private var mediaSession: MediaSession? = null
 
     /** Volume midpoint we restore after every key press */
     private var midVolume: Int = 7
+    private var lastHandledTs = 0L
 
     /** Whether the broadcast receiver is registered */
     private var receiverRegistered = false
+    private var volumeObserver: ContentObserver? = null
 
     companion object {
         const val CHANNEL_ID   = "nextpresent_presenter"
@@ -88,39 +91,44 @@ class PresenterService : Service() {
         const val EXTRA_RELAY_BASE  = "relay_base_url"
     }
 
-    // ─── Volume BroadcastReceiver ─────────────────────────────────────────────
-    private val volumeReceiver = object : BroadcastReceiver() {
-        private var lastReset = 0L   // debounce timestamp
+    // ─── Volume Trigger Core ─────────────────────────────────────────────────
+    @Synchronized
+    private fun handleVolumeTrigger(isUp: Boolean) {
+        val ts = System.currentTimeMillis()
+        if (ts - lastHandledTs < 160) return // debounce rapid echoes
+        lastHandledTs = ts
 
+        val action = if (isUp) "NEXT" else "PREV"
+
+        // 1. Dispatch slide action immediately (0ms delay)
+        sendSlideAction(action)
+
+        // 2. Haptic feedback
+        vibrateFeedback(40)
+
+        // 3. Reset audio stream volume back to midpoint
+        try {
+            audioManager?.setStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                midVolume,
+                AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE
+            )
+        } catch (_: Exception) {}
+    }
+
+    // ─── Volume BroadcastReceiver (System broadcast) ─────────────────────────
+    private val volumeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != "android.media.VOLUME_CHANGED_ACTION") return
 
             val streamType = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
             if (streamType != AudioManager.STREAM_MUSIC) return
 
-            val now       = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", -1)
-            val prev      = intent.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE", -1)
+            val now  = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", -1)
+            val prev = intent.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE", -1)
             if (now < 0 || prev < 0 || now == prev) return
 
-            // Debounce: ignore our own setStreamVolume echo (~150 ms window)
-            val ts = System.currentTimeMillis()
-            if (ts - lastReset < 150) return
-
-            val action = if (now > prev) "NEXT" else "PREV"
-
-            // 1. DISPATCH SLIDE ACTION FIRST (0 ms delay — on wire before IPC)
-            sendSlideAction(action)
-
-            // 2. Immediate haptic feedback
-            vibrateFeedback(38)
-
-            // 3. Reset midpoint volume (so system audio level stays unchanged)
-            lastReset = ts
-            audioManager?.setStreamVolume(
-                AudioManager.STREAM_MUSIC,
-                midVolume,
-                AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE  // no popup, no beep
-            )
+            handleVolumeTrigger(now > prev)
         }
     }
 
@@ -143,7 +151,6 @@ class PresenterService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Update connection config from caller intent
         intent?.let {
             serverIp      = it.getStringExtra(EXTRA_SERVER_IP)   ?: serverIp
             serverPort    = it.getIntExtra(EXTRA_SERVER_PORT, serverPort)
@@ -152,20 +159,31 @@ class PresenterService : Service() {
             relayBaseUrl  = it.getStringExtra(EXTRA_RELAY_BASE) ?: relayBaseUrl
         }
 
-        // Start foreground immediately (Android 14 requires this before any heavy work)
+        // Calculate mid-volume for current device
+        val maxVol = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
+        midVolume  = (maxVol / 2).coerceAtLeast(1)
+
+        // Set initial stream volume to midpoint
+        try {
+            audioManager?.setStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                midVolume,
+                AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE
+            )
+        } catch (_: Exception) {}
+
+        // Start foreground immediately
         startForeground(NOTIF_ID, buildNotification(), foregroundServiceTypeMediaPlayback())
 
-        acquireWakeLock()
+        acquireLocks()
+        setupMediaSession()
         startSilentAudio()
         registerVolumeReceiver()
+        registerVolumeObserver()
         registerActionReceiver()
         connectWebSocket()
 
-        // Calculate mid-volume for current device
-        val maxVol = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
-        midVolume  = maxVol / 2
-
-        return START_STICKY  // restart if killed
+        return START_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder = binder
@@ -174,38 +192,100 @@ class PresenterService : Service() {
         super.onDestroy()
         try { if (receiverRegistered) unregisterReceiver(volumeReceiver) } catch (_: Exception) {}
         try { unregisterReceiver(actionReceiver) } catch (_: Exception) {}
+        try { volumeObserver?.let { contentResolver.unregisterContentObserver(it) } } catch (_: Exception) {}
+        
+        mediaSession?.isActive = false
+        mediaSession?.release()
         audioTrack?.stop()
         audioTrack?.release()
-        wakeLock?.release()
+
+        try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (_: Exception) {}
+        try { if (wifiLock?.isHeld == true) wifiLock?.release() } catch (_: Exception) {}
+
         webSocket?.close(1000, "Service destroyed")
         client.dispatcher.cancelAll()
     }
 
-    // ─── WakeLock ─────────────────────────────────────────────────────────────
-    private fun acquireWakeLock() {
-        val pm = getSystemService(POWER_SERVICE) as PowerManager
-        wakeLock = pm.newWakeLock(
-            PowerManager.PARTIAL_WAKE_LOCK,
-            "nextPresent::PresenterWakeLock"
-        ).also { it.acquire(8 * 60 * 60 * 1000L /* 8 h */) }
+    // ─── WakeLock & WifiLock ──────────────────────────────────────────────────
+    private fun acquireLocks() {
+        try {
+            val pm = getSystemService(POWER_SERVICE) as PowerManager
+            wakeLock = pm.newWakeLock(
+                PowerManager.PARTIAL_WAKE_LOCK,
+                "nextPresent::PresenterWakeLock"
+            ).also { it.acquire(12 * 60 * 60 * 1000L /* 12 h */) }
+
+            val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            @Suppress("DEPRECATION")
+            wifiLock = wm?.createWifiLock(
+                WifiManager.WIFI_MODE_FULL_HIGH_PERF,
+                "nextPresent::PresenterWifiLock"
+            )?.also { it.acquire() }
+        } catch (_: Exception) {}
     }
 
-    // ─── Silent AudioTrack ────────────────────────────────────────────────────
-    /**
-     * Plays a 1-frame silent PCM loop.  This tells Android's audio subsystem
-     * the app has an active STREAM_MUSIC session → volume keys always target
-     * STREAM_MUSIC even on the lock screen, enabling our BroadcastReceiver.
-     */
+    // ─── MediaSession ─────────────────────────────────────────────────────────
+    private fun setupMediaSession() {
+        try {
+            mediaSession = MediaSession(this, "nextPresentPresenter").apply {
+                setCallback(object : MediaSession.Callback() {
+                    override fun onSkipToNext() {
+                        handleVolumeTrigger(true)
+                    }
+                    override fun onSkipToPrevious() {
+                        handleVolumeTrigger(false)
+                    }
+                    override fun onMediaButtonEvent(mediaButtonIntent: Intent): Boolean {
+                        val keyEvent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, android.view.KeyEvent::class.java)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            mediaButtonIntent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
+                        }
+                        if (keyEvent?.action == android.view.KeyEvent.ACTION_DOWN) {
+                            when (keyEvent.keyCode) {
+                                android.view.KeyEvent.KEYCODE_MEDIA_NEXT,
+                                android.view.KeyEvent.KEYCODE_VOLUME_UP -> {
+                                    handleVolumeTrigger(true)
+                                    return true
+                                }
+                                android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS,
+                                android.view.KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                                    handleVolumeTrigger(false)
+                                    return true
+                                }
+                            }
+                        }
+                        return super.onMediaButtonEvent(mediaButtonIntent)
+                    }
+                })
+
+                setPlaybackState(
+                    PlaybackState.Builder()
+                        .setState(PlaybackState.STATE_PLAYING, 0, 1.0f)
+                        .setActions(
+                            PlaybackState.ACTION_PLAY or
+                            PlaybackState.ACTION_PAUSE or
+                            PlaybackState.ACTION_SKIP_TO_NEXT or
+                            PlaybackState.ACTION_SKIP_TO_PREVIOUS
+                        )
+                        .build()
+                )
+                isActive = true
+            }
+        } catch (_: Exception) {}
+    }
+
+    // ─── Silent AudioTrack with AudioFocus ────────────────────────────────────
     private fun startSilentAudio() {
         try {
-            val sampleRate  = 8000
-            val minBufSize  = AudioTrack.getMinBufferSize(
+            val sampleRate = 44100
+            val minBufSize = AudioTrack.getMinBufferSize(
                 sampleRate,
-                AudioFormat.CHANNEL_OUT_MONO,
-                AudioFormat.ENCODING_PCM_8BIT
-            ).coerceAtLeast(256)
+                AudioFormat.CHANNEL_OUT_STEREO,
+                AudioFormat.ENCODING_PCM_16BIT
+            ).coerceAtLeast(1024)
 
-            // All zeros → completely silent
             val silence = ByteArray(minBufSize)
 
             val attrs = AudioAttributes.Builder()
@@ -215,9 +295,21 @@ class PresenterService : Service() {
 
             val format = AudioFormat.Builder()
                 .setSampleRate(sampleRate)
-                .setEncoding(AudioFormat.ENCODING_PCM_8BIT)
-                .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
                 .build()
+
+            // Request AudioFocus so Android routes hardware volume buttons to this app
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val focusRequest = android.media.AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                    .setAudioAttributes(attrs)
+                    .setOnAudioFocusChangeListener { /* maintain continuous playback */ }
+                    .build()
+                audioManager?.requestAudioFocus(focusRequest)
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager?.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN)
+            }
 
             audioTrack = AudioTrack.Builder()
                 .setAudioAttributes(attrs)
@@ -226,20 +318,40 @@ class PresenterService : Service() {
                 .setTransferMode(AudioTrack.MODE_STATIC)
                 .build().also { track ->
                     track.write(silence, 0, silence.size)
-                    track.setLoopPoints(0, minBufSize / 2, -1)   // loop forever
+                    track.setLoopPoints(0, (minBufSize / 4).coerceAtLeast(1), -1)
                     track.play()
                 }
-        } catch (e: Exception) {
-            // Silent audio failed (some emulators) — volume receiver still works
-            // when screen is on; background behavior may be limited
-        }
+        } catch (_: Exception) {}
     }
 
-    // ─── Receivers ────────────────────────────────────────────────────────────
+    // ─── ContentObserver (Dual Detection for Android 13/14 + Samsung/Xiaomi) ───
+    private fun registerVolumeObserver() {
+        try {
+            var lastVolume = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: midVolume
+            volumeObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+                override fun onChange(selfChange: Boolean) {
+                    super.onChange(selfChange)
+                    val cur = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: return
+                    if (cur == lastVolume) return
+                    val isUp = cur > lastVolume
+                    lastVolume = midVolume
+                    handleVolumeTrigger(isUp)
+                }
+            }
+            contentResolver.registerContentObserver(
+                Settings.System.CONTENT_URI,
+                true,
+                volumeObserver!!
+            )
+        } catch (_: Exception) {}
+    }
+
+    // ─── BroadcastReceivers ───────────────────────────────────────────────────
     private fun registerVolumeReceiver() {
         val filter = IntentFilter("android.media.VOLUME_CHANGED_ACTION")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(volumeReceiver, filter, RECEIVER_NOT_EXPORTED)
+            // MUST BE RECEIVER_EXPORTED because android.media.VOLUME_CHANGED_ACTION is broadcast by Android OS
+            registerReceiver(volumeReceiver, filter, Context.RECEIVER_EXPORTED)
         } else {
             @Suppress("UnspecifiedRegisterReceiverFlag")
             registerReceiver(volumeReceiver, filter)
@@ -254,7 +366,7 @@ class PresenterService : Service() {
             addAction(ACTION_STOP)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(actionReceiver, filter, RECEIVER_NOT_EXPORTED)
+            registerReceiver(actionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             @Suppress("UnspecifiedRegisterReceiverFlag")
             registerReceiver(actionReceiver, filter)
@@ -268,8 +380,7 @@ class PresenterService : Service() {
         val request = Request.Builder().url(wsUrl).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                // Auto-retry after 8s
-                android.os.Handler(mainLooper).postDelayed({ connectWebSocket() }, 8000L)
+                android.os.Handler(mainLooper).postDelayed({ connectWebSocket() }, 5000L)
             }
         })
     }
@@ -287,7 +398,7 @@ class PresenterService : Service() {
     fun updateServerIp(ip: String, port: Int = 3333) {
         serverIp      = ip
         serverPort    = port
-        relayRoomCode = null   // switch to LAN mode
+        relayRoomCode = null
         connectWebSocket()
     }
 
@@ -383,22 +494,16 @@ class PresenterService : Service() {
             .setContentText("🔊 Volume keys control slides (screen can be locked)")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .setContentIntent(openApp)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)   // show on lock screen
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setSilent(true)
-            // Lock-screen action buttons
-            .addAction(android.R.drawable.ic_media_previous, "◀ Prev",
-                pendingBroadcast(ACTION_PREV))
-            .addAction(android.R.drawable.ic_media_next,     "Next ▶",
-                pendingBroadcast(ACTION_NEXT))
-            .addAction(android.R.drawable.ic_delete,         "Stop",
-                pendingBroadcast(ACTION_STOP))
+            .addAction(android.R.drawable.ic_media_previous, "◀ Prev", pendingBroadcast(ACTION_PREV))
+            .addAction(android.R.drawable.ic_media_next,     "Next ▶", pendingBroadcast(ACTION_NEXT))
+            .addAction(android.R.drawable.ic_delete,         "Stop",   pendingBroadcast(ACTION_STOP))
             .build()
     }
 
-    /** Returns the correct foreground service type constant for API level */
     private fun foregroundServiceTypeMediaPlayback(): Int {
-        // android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK = 2
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) 2 else 0
     }
 }

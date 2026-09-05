@@ -17,6 +17,7 @@
 
     <!-- Notification channel (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- Camera — for QR code scanning in ConnectActivity -->
     <uses-permission android:name="android.permission.CAMERA" />

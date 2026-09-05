@@ -6,11 +6,14 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
+import android.provider.Settings
 import android.view.KeyEvent
 import android.view.View
 import android.webkit.JavascriptInterface
@@ -128,6 +131,26 @@ class MainActivity : AppCompatActivity() {
 
         startAutoDiscovery()
         startPresenterService()
+        requestBatteryOptimizationExemption()
+    }
+
+    private fun requestBatteryOptimizationExemption() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+            if (pm?.isIgnoringBatteryOptimizations(packageName) == false) {
+                try {
+                    @SuppressLint("BatteryLife")
+                    val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                        data = Uri.parse("package:$packageName")
+                    }
+                    startActivity(intent)
+                } catch (_: Exception) {
+                    try {
+                        startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+                    } catch (_: Exception) {}
+                }
+            }
+        }
     }
 
     // ─── ConnectActivity for result ───────────────────────────────────────────
