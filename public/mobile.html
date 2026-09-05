@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#05070d">
+  <title>nextPresent Remote</title>
+  <link rel="stylesheet" href="css/mobile.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ───── TOP HUD ───── -->
+  <header class="hud">
+    <div class="hud-left">
+      <div class="conn-dot off" id="connDot"></div>
+      <span class="slide-num" id="slideNum">Slide 1</span>
+      <span class="profile-pill" id="mobileProfilePill" style="font-size: 0.72rem; padding: 2px 7px; background: rgba(99,102,241,0.18); border: 1px solid rgba(99,102,241,0.35); border-radius: 12px; color: #a5b4fc; cursor: pointer;" title="Tap to switch software">PowerPoint</span>
+    </div>
+
+    <div class="timer-row" id="timerRow" title="Tap to toggle timer">
+      <span class="timer-val" id="timerVal">00:00</span>
+      <svg id="timerIcon" width="12" height="12" viewBox="0 0 24 24" fill="#818cf8">
+        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+      </svg>
+    </div>
+
+    <div class="hud-right">
+      <button class="hud-icon" id="infoBtn" aria-label="Info">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ───── VOLUME ACTIVATION BANNER ───── -->
+  <div class="vol-banner" id="volBanner">
+    <div class="vol-icon" id="volIcon">🔇</div>
+    <div class="vol-text">
+      <div class="vol-title" id="volTitle">Tap to enable Headset &amp; Media Keys</div>
+      <div class="vol-sub" id="volSub">Headset buttons &amp; lock screen controls → change slides</div>
+    </div>
+    <button class="vol-action-btn" id="volBtn">Activate</button>
+  </div>
+
+  <!-- ───── CLICKER ZONES ───── -->
+  <main class="zones" id="zones">
+    <!-- Previous Zone -->
+    <section class="zone-prev" id="zonePrev" role="button" aria-label="Previous Slide">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.5">
+        <polyline points="18 15 12 9 6 15"></polyline>
+      </svg>
+      <span class="zone-label">Previous</span>
+    </section>
+
+    <!-- Flash overlay (shared) -->
+    <div class="flash" id="flash"></div>
+
+    <!-- Next Zone -->
+    <section class="zone-next" id="zoneNext" role="button" aria-label="Next Slide">
+      <div class="next-orb">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </div>
+      <span class="next-title">Next Slide</span>
+      <span class="next-hint">Tap · Swipe Left · Headset Button</span>
+    </section>
+  </main>
+
+  <!-- ───── BOTTOM TOOLBAR ───── -->
+  <footer class="toolbar">
+    <button class="tool" id="toolBlackout">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+      </svg>
+      Blackout (B)
+    </button>
+
+    <button class="tool" id="toolF5">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+      Start (F5)
+    </button>
+
+    <button class="tool" id="toolVibrate" class="active">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M2 8v8M22 8v8M6 4v16M18 4v16M10 6v12M14 6v12"/>
+      </svg>
+      <span id="vibrateLabel">Vibrate ON</span>
+    </button>
+
+    <button class="tool" id="toolTimer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 2v6h6M21 12A9 9 0 0 0 6 5.3L3 8"/>
+      </svg>
+      Reset Timer
+    </button>
+  </footer>
+</div>
+
+<!-- ───── INFO MODAL ───── -->
+<div class="overlay" id="modal">
+  <div class="sheet">
+    <div class="handle"></div>
+    <h3 class="sheet-title">📱 Controls & Volume Keys</h3>
+
+    <div class="info-item" style="border: 1px solid rgba(99, 102, 241, 0.3); background: rgba(99, 102, 241, 0.08);">
+      <div class="info-item-icon">🎯</div>
+      <div class="info-item-text" style="width: 100%;">
+        <strong>Presentation Software</strong>
+        <span style="margin-bottom: 6px; display: block;">Target application on PC:</span>
+        <select id="mobileProfileSelect" style="
+          width: 100%; padding: 8px 10px; background: #131828;
+          border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 8px;
+          color: #fff; font-size: 0.85rem; font-family: inherit; outline: none;
+        ">
+          <option value="powerpoint">Microsoft PowerPoint (Arrows)</option>
+          <option value="google_slides">Google Slides (Arrows)</option>
+          <option value="canva">Canva Presentations (Arrows)</option>
+          <option value="libreoffice">LibreOffice Impress (Page Up/Down)</option>
+          <option value="pdf">PDF Viewer — Adobe, Edge (Page Up/Down)</option>
+          <option value="prezi">Prezi (Space / Backspace)</option>
+          <option value="keynote_mac">Apple Keynote (Arrows)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="info-item">
+      <div class="info-item-icon">🔊</div>
+      <div class="info-item-text">
+        <strong>Headset & Bluetooth media buttons</strong>
+        <span>After tapping <b>Activate</b> above, your wired headset's inline button, Bluetooth speaker/headphone next/prev, and lock screen media controls will all switch slides.</span>
+      </div>
+    </div>
+
+    <div class="info-item" style="border: 1px solid rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.08);">
+      <div class="info-item-icon">⚡</div>
+      <div class="info-item-text" style="width: 100%;">
+        <strong>Physical Volume Buttons (Android App)</strong>
+        <span style="display: block; margin-bottom: 8px;">Web browsers block hardware volume keys. Install our lightweight Android companion app to use physical Volume Up (Next) &amp; Volume Down (Prev) with zero volume popup:</span>
+        <a href="/nextPresent.apk" download="nextPresent.apk" style="
+          display: inline-block; padding: 8px 16px;
+          background: #10b981; color: #fff; text-decoration: none;
+          font-weight: 600; font-size: 0.85rem; border-radius: 8px;
+        ">📥 Download &amp; Install APK</a>
+      </div>
+    </div>
+
+    <div class="info-item">
+      <div class="info-item-icon">👆</div>
+      <div class="info-item-text">
+        <strong>Tap Zones (No-Look Mode)</strong>
+        <span>Bottom 72% of screen → Next Slide. Top 28% → Previous. Works blind — just keep your thumb resting in the lower half.</span>
+      </div>
+    </div>
+
+    <div class="info-item">
+      <div class="info-item-icon">↔️</div>
+      <div class="info-item-text">
+        <strong>Swipe Gestures</strong>
+        <span>Swipe <b>Left</b> → Next. Swipe <b>Right</b> → Previous. Swipe anywhere on the screen.</span>
+      </div>
+    </div>
+
+    <div class="badge-row">
+      <span class="badge green">✓ Tap zones</span>
+      <span class="badge green">✓ Swipe gestures</span>
+      <span class="badge green">✓ Headset buttons</span>
+      <span class="badge green">✓ Lock screen keys</span>
+      <span class="badge red">✗ Hardware Vol keys (browser)</span>
+    </div>
+
+    <button class="close-btn" id="closeModal">Got it!</button>
+  </div>
+</div>
+
+<script src="js/mobile.js"></script>
+</body>
+</html>

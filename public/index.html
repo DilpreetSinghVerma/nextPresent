@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>nextPresent — Presentation Remote Host</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎯</text></svg>">
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="brand">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="5 3 19 12 5 21 5 3"></polygon>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>nextPresent <span>Host</span> <span class="badge">Active</span></h1>
+        <p>Wireless Mobile Presentation Controller &mdash; PowerPoint, Slides, PDF &amp; more</p>
+      </div>
+    </div>
+
+    <div class="header-status">
+      <div class="status-pill" id="wsStatusPill">
+        <span class="pulse-dot"></span>
+        <span id="wsStatusText">Listening on Port 3333</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+    <!-- Left Column: Connect & QR -->
+    <aside class="card connect-card">
+      <h2 class="card-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+          <line x1="12" y1="18" x2="12.01" y2="18"></line>
+        </svg>
+        Connect Your Phone
+      </h2>
+      <p class="card-subtitle">Scan QR code or enter the room code in the nextPresent app</p>
+
+      <!-- ── Cloud Room Code Banner ── -->
+      <div id="relayBanner" style="
+        width:100%; margin-bottom:16px; padding:14px 16px;
+        background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.1));
+        border:1px solid rgba(99,102,241,.4); border-radius:12px; text-align:center;
+        display:none;
+      ">
+        <div style="font-size:.72rem;color:#818cf8;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;">
+          ☁️ Cloud Room Code
+        </div>
+        <div id="roomCodeDisplay" style="
+          font-size:2.2rem;font-weight:800;letter-spacing:.45rem;color:#a5b4fc;
+          font-family:'JetBrains Mono',monospace;line-height:1.2;
+        ">——————</div>
+        <div style="font-size:.72rem;color:#64748b;margin-top:4px;">
+          Works from any network — not just same Wi-Fi
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;">
+          <button id="copyRelayUrlBtn" style="
+            padding:6px 14px;background:rgba(99,102,241,.25);color:#a5b4fc;
+            border:1px solid rgba(99,102,241,.4);border-radius:8px;
+            font-size:.8rem;cursor:pointer;font-weight:600;
+          ">📋 Copy Link</button>
+          <button id="shareRelayBtn" style="
+            padding:6px 14px;background:rgba(16,185,129,.15);color:#6ee7b7;
+            border:1px solid rgba(16,185,129,.3);border-radius:8px;
+            font-size:.8rem;cursor:pointer;font-weight:600;display:none;
+          ">🔗 Share</button>
+        </div>
+      </div>
+
+      <!-- ── Relay Connecting Indicator ── -->
+      <div id="relayConnecting" style="
+        width:100%; margin-bottom:16px; padding:10px 14px;
+        background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25);
+        border-radius:10px; font-size:.78rem; color:#fbbf24; text-align:center;
+      ">
+        ⏳ Connecting to cloud relay…
+      </div>
+
+      <div class="qr-wrapper">
+        <img id="qrCodeImg" class="qr-image" alt="QR Code to connect mobile" src="">
+      </div>
+
+      <div class="ip-selector">
+        <label for="ipSelect">LAN IP Address (same Wi-Fi only):</label>
+        <select id="ipSelect" class="ip-dropdown">
+          <option value="">Detecting local IPs...</option>
+        </select>
+      </div>
+
+      <div class="url-box">
+        <span class="url-text" id="remoteUrlDisplay">http://...</span>
+        <button class="copy-btn" id="copyUrlBtn" title="Copy URL">Copy</button>
+      </div>
+
+      <!-- Software Profile Selector -->
+      <div class="ip-selector" style="margin-top: 20px; width: 100%;">
+        <label for="profileSelect">🎯 Presentation Software:</label>
+        <select id="profileSelect" class="ip-dropdown">
+          <option value="powerpoint">Microsoft PowerPoint (Arrow keys)</option>
+          <option value="google_slides">Google Slides (Arrow keys)</option>
+          <option value="canva">Canva Presentations (Arrow keys)</option>
+          <option value="libreoffice">LibreOffice Impress (Page Up/Down)</option>
+          <option value="pdf">PDF Viewer — Adobe, Edge, Chrome (Page Up/Down)</option>
+          <option value="prezi">Prezi (Space / Backspace)</option>
+          <option value="keynote_mac">Apple Keynote / Mac (Arrow keys)</option>
+        </select>
+      </div>
+
+      <div id="profileKeyHint" style="
+        width: 100%; margin-top: 8px; padding: 10px 12px;
+        background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2);
+        border-radius: 8px; font-size: 0.78rem; color: #a5b4fc;
+        font-family: 'JetBrains Mono', monospace;
+      ">Next → Right Arrow &nbsp;|&nbsp; Prev → Left Arrow</div>
+
+      <!-- Android Companion APK Download -->
+      <div style="
+        margin-top: 18px; padding: 14px; background: rgba(16, 185, 129, 0.08);
+        border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 12px; width: 100%;
+      ">
+        <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.88rem; color: #34d399;">
+          <span>🔊</span> Physical Volume Buttons APK
+        </div>
+        <p style="font-size: 0.78rem; color: #94a3b8; margin: 6px 0 10px 0; line-height: 1.4;">
+          Chrome blocks hardware volume keys in browser. Install our Android companion app on your phone for 100% physical Volume Up / Down slide control!
+        </p>
+        <a href="/nextPresent.apk" download="nextPresent.apk" style="
+          display: block; text-align: center; padding: 8px 12px;
+          background: #10b981; color: #fff; text-decoration: none;
+          font-weight: 600; font-size: 0.82rem; border-radius: 8px;
+        ">📥 Download Android APK (6 MB)</a>
+      </div>
+    </aside>
+
+    <!-- Right Column: Control Deck & Telemetry -->
+    <section class="dashboard-main">
+      <!-- Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <span class="metric-label">Connected Phones</span>
+          <div class="metric-value">
+            <span id="connectedClientsVal">0</span>
+            <span class="metric-sub">active</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">Current Slide</span>
+          <div class="metric-value">
+            <span id="slideNumberVal">1</span>
+            <span class="metric-sub">approx.</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">Presentation Timer</span>
+          <div class="metric-value">
+            <span id="presentationTimerVal">00:00</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">Total Clicks</span>
+          <div class="metric-value">
+            <span id="totalClicksVal">0</span>
+            <span class="metric-sub" id="clickRatioVal">0 fwd / 0 back</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Test Control Deck -->
+      <div class="card control-deck">
+        <div class="deck-header">
+          <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            Live Controller & Test Pad
+          </h2>
+          <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">Windows Keystroke Injector Ready</span>
+        </div>
+
+        <div class="btn-grid">
+          <button class="big-btn prev" id="btnPrev" title="Previous Slide (Left Arrow / Page Up)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            <span>Previous Slide</span>
+            <kbd>◄</kbd>
+          </button>
+
+          <button class="big-btn next" id="btnNext" title="Next Slide (Right Arrow / Page Down)">
+            <span>Next Slide</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+            <kbd>►</kbd>
+          </button>
+        </div>
+
+        <div class="action-row">
+          <button class="tool-btn" id="btnF5" title="Start Slideshow from beginning">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Start Slideshow <kbd>F5</kbd>
+          </button>
+
+          <button class="tool-btn" id="btnShiftF5" title="Start from current slide">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Current Slide <kbd>⇧ F5</kbd>
+          </button>
+
+          <button class="tool-btn" id="btnBlackout" title="Toggle Black Screen (PowerPoint & Google Slides)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+            </svg>
+            Blackout <kbd>B</kbd>
+          </button>
+
+          <button class="tool-btn" id="btnWhiteout" title="Toggle White Screen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" stroke-dasharray="2 2"></circle>
+            </svg>
+            Whiteout <kbd>W</kbd>
+          </button>
+
+          <button class="tool-btn" id="btnEsc" title="Exit Presentation">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+            Exit <kbd>Esc</kbd>
+          </button>
+        </div>
+      </div>
+
+      <!-- Real-time Activity Log -->
+      <div class="card event-log-container">
+        <div class="deck-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            Live Activity Stream
+          </h2>
+          <button class="tool-btn" id="btnClearLog" style="flex: initial; padding: 4px 10px; font-size: 0.75rem;">Clear</button>
+        </div>
+        <div class="log-box" id="eventLogBox">
+          <div class="log-entry">
+            <span class="log-time">[Ready]</span>
+            <span class="log-action special">Server started</span>
+            <span class="log-source">System</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Instructions Banner -->
+      <div class="instructions-banner">
+        <div class="step-item"><span class="step-num">1</span><strong>Same Wi-Fi:</strong> Connect PC and Phone</div>
+        <div class="step-item"><span class="step-num">2</span><strong>Scan QR:</strong> Open remote on phone</div>
+        <div class="step-item"><span class="step-num">3</span><strong>Present:</strong> Press volume keys to change slides!</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

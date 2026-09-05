@@ -1,0 +1,20 @@
+{
+  "name": "nextpresent",
+  "version": "1.0.0",
+  "description": "Wireless presentation remote controller from mobile phone with volume key support",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "compile-sender": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /nologo /optimize+ /out:bin\\keySender.exe lib\\keySender.cs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "qrcode": "^1.5.4",
+    "ws": "^8.21.3"
+  }
+}

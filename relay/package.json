@@ -1,0 +1,16 @@
+﻿{
+  "name": "nextpresent-relay",
+  "version": "1.0.0",
+  "description": "nextPresent cloud WebSocket relay — connects PC and phone via room codes",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.2.1",
+    "ws": "^8.21.3"
+  }
+}

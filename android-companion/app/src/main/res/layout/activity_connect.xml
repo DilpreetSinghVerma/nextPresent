@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#05070D"
+    android:id="@+id/connectRoot">
+
+    <!-- ── App logo + title ───────────────────────────────────────────── -->
+    <TextView
+        android:id="@+id/tvTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="nextPresent"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="#A5B4FC"
+        android:letterSpacing="0.04"
+        android:layout_marginTop="52dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <TextView
+        android:id="@+id/tvSubtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Scan QR code or enter room code to connect"
+        android:textSize="13sp"
+        android:textColor="#64748B"
+        android:layout_marginTop="6dp"
+        app:layout_constraintTop_toBottomOf="@id/tvTitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ── Camera viewfinder for QR scan ─────────────────────────────── -->
+    <androidx.camera.view.PreviewView
+        android:id="@+id/cameraPreview"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="28dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        app:layout_constraintTop_toBottomOf="@id/tvSubtitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintDimensionRatio="1:1" />
+
+    <!-- Corner overlay hint -->
+    <TextView
+        android:id="@+id/tvScanHint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Point camera at QR code on PC dashboard"
+        android:textSize="11.5sp"
+        android:textColor="#818CF8"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/cameraPreview"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ── Divider ─────────────────────────────────────────────────────── -->
+    <TextView
+        android:id="@+id/tvOr"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="— or enter code manually —"
+        android:textSize="11sp"
+        android:textColor="#334155"
+        android:layout_marginTop="18dp"
+        app:layout_constraintTop_toBottomOf="@id/tvScanHint"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ── Manual code input ──────────────────────────────────────────── -->
+    <EditText
+        android:id="@+id/etRoomCode"
+        android:layout_width="0dp"
+        android:layout_height="52dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:hint="e.g. ABC-123"
+        android:inputType="textCapCharacters"
+        android:textSize="20sp"
+        android:textColor="#E2E8F0"
+        android:textColorHint="#334155"
+        android:textStyle="bold"
+        android:letterSpacing="0.15"
+        android:gravity="center"
+        android:background="@drawable/rounded_input_bg"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:maxLength="7"
+        app:layout_constraintTop_toBottomOf="@id/tvOr"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ── Connect button ────────────────────────────────────────────── -->
+    <Button
+        android:id="@+id/btnConnect"
+        android:layout_width="0dp"
+        android:layout_height="52dp"
+        android:layout_marginTop="14dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:text="Connect"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#6366F1"
+        android:stateListAnimator="@null"
+        app:layout_constraintTop_toBottomOf="@id/etRoomCode"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ── Status text ────────────────────────────────────────────────── -->
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="12sp"
+        android:textColor="#94A3B8"
+        android:gravity="center"
+        android:layout_marginTop="10dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        app:layout_constraintTop_toBottomOf="@id/btnConnect"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ── Skip / LAN mode fallback ──────────────────────────────────── -->
+    <Button
+        android:id="@+id/btnLanMode"
+        android:layout_width="wrap_content"
+        android:layout_height="40dp"
+        android:layout_marginBottom="24dp"
+        android:text="Use LAN / Same Wi-Fi instead"
+        android:textSize="12sp"
+        android:textColor="#475569"
+        android:backgroundTint="@android:color/transparent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
