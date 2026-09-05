@@ -12,7 +12,7 @@ const keySender = require('./lib/keySender');
 // Set RELAY_URL env var to enable cloud mode (e.g. wss://yourapp.railway.app)
 // Leave unset to use LAN-only mode.
 // ─────────────────────────────────────────────────────────────────────
-const RELAY_BASE_URL = process.env.RELAY_URL || 'https://nextpresent-relay.up.railway.app';
+const RELAY_BASE_URL = process.env.RELAY_URL || 'https://nextpresent-relay.onrender.com';
 const RELAY_WS_BASE  = RELAY_BASE_URL.replace(/^http/, 'ws');
 
 // Keep cloud relay awake (prevents Render/free-tier cold starts)

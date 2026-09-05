@@ -46,7 +46,7 @@ class ConnectActivity : AppCompatActivity() {
 
     companion object {
         const val CAMERA_PERMISSION_CODE = 1001
-        const val RELAY_BASE = "https://nextpresent-relay.up.railway.app"
+        const val RELAY_BASE = "https://nextpresent-relay.onrender.com"
 
         /** Key used to pass validated room code back to caller */
         const val EXTRA_ROOM_CODE = "room_code"

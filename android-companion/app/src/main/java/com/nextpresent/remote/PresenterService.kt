@@ -55,7 +55,7 @@ class PresenterService : Service() {
     var serverIp: String   = "192.168.101.9"
     var serverPort: Int    = 3333
     var relayRoomCode: String? = null
-    var relayBaseUrl: String   = "https://nextpresent-relay.up.railway.app"
+    var relayBaseUrl: String   = "https://nextpresent-relay.onrender.com"
 
     // ─── Internals ───────────────────────────────────────────────────────────
     private val client = OkHttpClient.Builder()

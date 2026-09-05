@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity() {
     // ─── Connection mode ──────────────────────────────────────────────────────
     /** Relay room code (e.g. "ABC123") — null means LAN mode */
     private var relayRoomCode: String? = null
-    private var relayBaseUrl: String   = "https://nextpresent-relay.up.railway.app"
+    private var relayBaseUrl: String   = "https://nextpresent-relay.onrender.com"
 
     // LAN fallback fields
     var serverIp: String = "192.168.101.9"
@@ -91,7 +91,7 @@ class MainActivity : AppCompatActivity() {
         serverPort    = prefs.getInt(  "server_port",  3333)
         relayRoomCode = prefs.getString("relay_room_code", null)
         relayBaseUrl  = prefs.getString("relay_base_url",
-            "https://nextpresent-relay.up.railway.app") ?: "https://nextpresent-relay.up.railway.app"
+            "https://nextpresent-relay.onrender.com") ?: "https://nextpresent-relay.onrender.com"
 
         // Initialize Immersive Fullscreen WebView
         webView = WebView(this).apply {

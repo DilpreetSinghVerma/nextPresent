@@ -45,7 +45,7 @@
             ConnectActivity — QR scanner + manual code entry.
             Launched on first install, or when room code is missing.
             Also handles deep links: nextpresent://connect?code=ABC123
-            and HTTPS relay share links:  https://nextpresent-relay.up.railway.app/r/ABC123
+            and HTTPS relay share links:  https://nextpresent-relay.onrender.com/r/ABC123
         -->
         <activity
             android:name=".ConnectActivity"
@@ -61,14 +61,14 @@
                 <data android:scheme="nextpresent" android:host="connect" />
             </intent-filter>
 
-            <!-- HTTPS relay share link: https://nextpresent-relay.up.railway.app/r/* -->
+            <!-- HTTPS relay share link: https://nextpresent-relay.onrender.com/r/* -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
                     android:scheme="https"
-                    android:host="nextpresent-relay.up.railway.app"
+                    android:host="nextpresent-relay.onrender.com"
                     android:pathPrefix="/r/" />
             </intent-filter>
         </activity>
