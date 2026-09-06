@@ -1,213 +1,219 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#05070D"
-    android:id="@+id/connectRoot">
+    android:fillViewport="true"
+    android:background="#05070D">
 
-    <!-- ── App logo + title ───────────────────────────────────────────── -->
-    <ImageView
-        android:id="@+id/ivLogo"
-        android:layout_width="52dp"
-        android:layout_height="52dp"
-        android:src="@drawable/ic_launcher"
-        android:contentDescription="NXTslide Logo"
-        android:layout_marginTop="36dp"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <TextView
-        android:id="@+id/tvTitle"
-        android:layout_width="wrap_content"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="NXTslide"
-        android:textSize="26sp"
-        android:textStyle="bold"
-        android:textColor="#A5B4FC"
-        android:letterSpacing="0.04"
-        android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@id/ivLogo"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        android:paddingBottom="24dp"
+        android:id="@+id/connectRoot">
 
-    <TextView
-        android:id="@+id/tvFounder"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="By Dilpreet Singh • Founder"
-        android:textSize="11sp"
-        android:textColor="#818CF8"
-        android:layout_marginTop="2dp"
-        app:layout_constraintTop_toBottomOf="@id/tvTitle"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <!-- ── App logo + title ───────────────────────────────────────────── -->
+        <ImageView
+            android:id="@+id/ivLogo"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:src="@drawable/ic_launcher"
+            android:contentDescription="NXTslide Logo"
+            android:layout_marginTop="28dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-    <TextView
-        android:id="@+id/tvSubtitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Choose mode or scan QR code to connect"
-        android:textSize="12.5sp"
-        android:textColor="#64748B"
-        android:layout_marginTop="6dp"
-        app:layout_constraintTop_toBottomOf="@id/tvFounder"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="NXTslide"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="#A5B4FC"
+            android:letterSpacing="0.04"
+            android:layout_marginTop="6dp"
+            app:layout_constraintTop_toBottomOf="@id/ivLogo"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- ── Mode Toggle Switch ── -->
-    <LinearLayout
-        android:id="@+id/llModeToggle"
-        android:layout_width="0dp"
-        android:layout_height="44dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"
-        android:background="@drawable/rounded_input_bg"
-        android:orientation="horizontal"
-        android:padding="3dp"
-        app:layout_constraintTop_toBottomOf="@id/tvSubtitle"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        <TextView
+            android:id="@+id/tvFounder"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="By Dilpreet Singh • Founder"
+            android:textSize="11sp"
+            android:textColor="#818CF8"
+            android:layout_marginTop="2dp"
+            app:layout_constraintTop_toBottomOf="@id/tvTitle"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <Button
-            android:id="@+id/btnTabLocal"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:text="🏠 Local (Free)"
+        <TextView
+            android:id="@+id/tvSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Choose mode or scan QR code to connect"
             android:textSize="12sp"
+            android:textColor="#64748B"
+            android:layout_marginTop="4dp"
+            app:layout_constraintTop_toBottomOf="@id/tvFounder"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- ── Mode Toggle Switch ── -->
+        <LinearLayout
+            android:id="@+id/llModeToggle"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_marginTop="14dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
+            android:background="@drawable/rounded_input_bg"
+            android:orientation="horizontal"
+            android:padding="3dp"
+            app:layout_constraintTop_toBottomOf="@id/tvSubtitle"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <Button
+                android:id="@+id/btnTabLocal"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="🏠 Local (Free)"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#16A34A"
+                android:stateListAnimator="@null"
+                android:padding="0dp" />
+
+            <Button
+                android:id="@+id/btnTabCloud"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="☁️ Cloud (PRO 🔒)"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#94A3B8"
+                android:backgroundTint="@android:color/transparent"
+                android:stateListAnimator="@null"
+                android:padding="0dp" />
+        </LinearLayout>
+
+        <!-- ── Camera viewfinder for QR scan ─────────────────────────────── -->
+        <androidx.camera.view.PreviewView
+            android:id="@+id/cameraPreview"
+            android:layout_width="210dp"
+            android:layout_height="210dp"
+            android:layout_marginTop="14dp"
+            app:layout_constraintTop_toBottomOf="@id/llModeToggle"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- Corner overlay hint -->
+        <TextView
+            android:id="@+id/tvScanHint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Point camera at QR code on PC dashboard"
+            android:textSize="11.5sp"
+            android:textColor="#818CF8"
+            android:layout_marginTop="8dp"
+            app:layout_constraintTop_toBottomOf="@id/cameraPreview"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- ── Divider ─────────────────────────────────────────────────────── -->
+        <TextView
+            android:id="@+id/tvOr"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="— or enter code manually —"
+            android:textSize="11sp"
+            android:textColor="#334155"
+            android:layout_marginTop="12dp"
+            app:layout_constraintTop_toBottomOf="@id/tvScanHint"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- ── Manual code input ──────────────────────────────────────────── -->
+        <EditText
+            android:id="@+id/etRoomCode"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
+            android:hint="e.g. ABC-123"
+            android:inputType="textCapCharacters"
+            android:textSize="19sp"
+            android:textColor="#E2E8F0"
+            android:textColorHint="#334155"
+            android:textStyle="bold"
+            android:letterSpacing="0.15"
+            android:gravity="center"
+            android:background="@drawable/rounded_input_bg"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:maxLength="7"
+            app:layout_constraintTop_toBottomOf="@id/tvOr"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- ── Connect button ────────────────────────────────────────────── -->
+        <Button
+            android:id="@+id/btnConnect"
+            android:layout_width="0dp"
+            android:layout_height="50dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
+            android:text="Connect"
+            android:textSize="15sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#16A34A"
+            android:backgroundTint="#6366F1"
             android:stateListAnimator="@null"
-            android:padding="0dp" />
+            app:layout_constraintTop_toBottomOf="@id/etRoomCode"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <Button
-            android:id="@+id/btnTabCloud"
+        <!-- ── Status text ────────────────────────────────────────────────── -->
+        <TextView
+            android:id="@+id/tvStatus"
             android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:text="☁️ Cloud (PRO 🔒)"
+            android:layout_height="wrap_content"
+            android:text=""
             android:textSize="12sp"
-            android:textStyle="bold"
             android:textColor="#94A3B8"
+            android:gravity="center"
+            android:layout_marginTop="8dp"
+            android:layout_marginStart="32dp"
+            android:layout_marginEnd="32dp"
+            app:layout_constraintTop_toBottomOf="@id/btnConnect"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- ── Skip / LAN mode fallback ──────────────────────────────────── -->
+        <Button
+            android:id="@+id/btnLanMode"
+            android:layout_width="wrap_content"
+            android:layout_height="42dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="16dp"
+            android:text="Use LAN / Same Wi-Fi instead"
+            android:textSize="12.5sp"
+            android:textColor="#818CF8"
             android:backgroundTint="@android:color/transparent"
-            android:stateListAnimator="@null"
-            android:padding="0dp" />
-    </LinearLayout>
+            app:layout_constraintTop_toBottomOf="@id/tvStatus"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- ── Camera viewfinder for QR scan ─────────────────────────────── -->
-    <androidx.camera.view.PreviewView
-        android:id="@+id/cameraPreview"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"
-        app:layout_constraintTop_toBottomOf="@id/llModeToggle"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintDimensionRatio="1:1" />
-
-    <!-- Corner overlay hint -->
-    <TextView
-        android:id="@+id/tvScanHint"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Point camera at QR code on PC dashboard"
-        android:textSize="11.5sp"
-        android:textColor="#818CF8"
-        android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@id/cameraPreview"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- ── Divider ─────────────────────────────────────────────────────── -->
-    <TextView
-        android:id="@+id/tvOr"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="— or enter code manually —"
-        android:textSize="11sp"
-        android:textColor="#334155"
-        android:layout_marginTop="18dp"
-        app:layout_constraintTop_toBottomOf="@id/tvScanHint"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- ── Manual code input ──────────────────────────────────────────── -->
-    <EditText
-        android:id="@+id/etRoomCode"
-        android:layout_width="0dp"
-        android:layout_height="52dp"
-        android:layout_marginTop="12dp"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"
-        android:hint="e.g. ABC-123"
-        android:inputType="textCapCharacters"
-        android:textSize="20sp"
-        android:textColor="#E2E8F0"
-        android:textColorHint="#334155"
-        android:textStyle="bold"
-        android:letterSpacing="0.15"
-        android:gravity="center"
-        android:background="@drawable/rounded_input_bg"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:maxLength="7"
-        app:layout_constraintTop_toBottomOf="@id/tvOr"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- ── Connect button ────────────────────────────────────────────── -->
-    <Button
-        android:id="@+id/btnConnect"
-        android:layout_width="0dp"
-        android:layout_height="52dp"
-        android:layout_marginTop="14dp"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"
-        android:text="Connect"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        android:textColor="#FFFFFF"
-        android:backgroundTint="#6366F1"
-        android:stateListAnimator="@null"
-        app:layout_constraintTop_toBottomOf="@id/etRoomCode"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- ── Status text ────────────────────────────────────────────────── -->
-    <TextView
-        android:id="@+id/tvStatus"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:text=""
-        android:textSize="12sp"
-        android:textColor="#94A3B8"
-        android:gravity="center"
-        android:layout_marginTop="10dp"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"
-        app:layout_constraintTop_toBottomOf="@id/btnConnect"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- ── Skip / LAN mode fallback ──────────────────────────────────── -->
-    <Button
-        android:id="@+id/btnLanMode"
-        android:layout_width="wrap_content"
-        android:layout_height="40dp"
-        android:layout_marginBottom="24dp"
-        android:text="Use LAN / Same Wi-Fi instead"
-        android:textSize="12sp"
-        android:textColor="#475569"
-        android:backgroundTint="@android:color/transparent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>
