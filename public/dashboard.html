@@ -46,62 +46,82 @@
         </svg>
         Connect Your Phone
       </h2>
-      <p class="card-subtitle">Scan QR code or enter the room code in the NXTslide app</p>
+      <p class="card-subtitle" id="connectSubtitle">Scan QR code or open URL on your mobile browser</p>
 
-      <!-- ── Cloud Room Code Banner ── -->
-      <div id="relayBanner" style="
-        width:100%; margin-bottom:16px; padding:14px 16px;
-        background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.1));
-        border:1px solid rgba(99,102,241,.4); border-radius:12px; text-align:center;
-        display:none;
-      ">
-        <div style="font-size:.72rem;color:#818cf8;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;">
-          ☁️ Cloud Room Code
+      <!-- ── Mode Selector Toggle ── -->
+      <div class="mode-toggle-bar">
+        <button type="button" class="mode-toggle-btn active" id="btnModeLocal">
+          <span class="mode-icon">🏠</span>
+          <span class="mode-title">Local Wi-Fi</span>
+          <span class="mode-badge free-badge">Free</span>
+        </button>
+        <button type="button" class="mode-toggle-btn" id="btnModeCloud">
+          <span class="mode-icon">☁️</span>
+          <span class="mode-title">Cloud Relay</span>
+          <span class="mode-badge pro-badge" id="cloudModeBadge">PRO 🔒</span>
+        </button>
+      </div>
+
+      <!-- ── Local Mode Connect View (Default Free) ── -->
+      <div id="localConnectView">
+        <div class="qr-wrapper">
+          <img id="qrCodeImg" class="qr-image" alt="QR Code to connect mobile" src="">
         </div>
-        <div id="roomCodeDisplay" style="
-          font-size:2.2rem;font-weight:800;letter-spacing:.45rem;color:#a5b4fc;
-          font-family:'JetBrains Mono',monospace;line-height:1.2;
-        ">——————</div>
-        <div style="font-size:.72rem;color:#64748b;margin-top:4px;">
-          Works from any network — not just same Wi-Fi
+
+        <div class="ip-selector">
+          <label for="ipSelect">Local IP (Same Wi-Fi or Phone Hotspot):</label>
+          <select id="ipSelect" class="ip-dropdown">
+            <option value="">Detecting local IPs...</option>
+          </select>
         </div>
-        <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;">
-          <button id="copyRelayUrlBtn" style="
-            padding:6px 14px;background:rgba(99,102,241,.25);color:#a5b4fc;
-            border:1px solid rgba(99,102,241,.4);border-radius:8px;
-            font-size:.8rem;cursor:pointer;font-weight:600;
-          ">📋 Copy Link</button>
-          <button id="shareRelayBtn" style="
-            padding:6px 14px;background:rgba(16,185,129,.15);color:#6ee7b7;
-            border:1px solid rgba(16,185,129,.3);border-radius:8px;
-            font-size:.8rem;cursor:pointer;font-weight:600;display:none;
-          ">🔗 Share</button>
+
+        <div class="url-box">
+          <span class="url-text" id="remoteUrlDisplay">http://...</span>
+          <button class="copy-btn" id="copyUrlBtn" title="Copy URL">Copy</button>
+        </div>
+
+        <div class="local-hint-box">
+          💡 <strong>Offline Tip:</strong> Works with zero internet! Just turn on your phone's personal hotspot and connect your laptop.
         </div>
       </div>
 
-      <!-- ── Relay Connecting Indicator ── -->
-      <div id="relayConnecting" style="
-        width:100%; margin-bottom:16px; padding:10px 14px;
-        background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25);
-        border-radius:10px; font-size:.78rem; color:#fbbf24; text-align:center;
-      ">
-        ⏳ Connecting to cloud relay…
-      </div>
+      <!-- ── Cloud Mode Connect View (Pro) ── -->
+      <div id="cloudConnectView" style="display: none;">
+        <div id="relayBanner" style="
+          width:100%; margin-bottom:16px; padding:14px 16px;
+          background:linear-gradient(135deg,rgba(16,185,129,.15),rgba(5,150,105,.1));
+          border:1px solid rgba(16,185,129,.4); border-radius:12px; text-align:center;
+        ">
+          <div style="font-size:.72rem;color:#34d399;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;font-weight:700;">
+            ☁️ Cloud Room Code
+          </div>
+          <div id="roomCodeDisplay" style="
+            font-size:2.2rem;font-weight:800;letter-spacing:.45rem;color:#6ee7b7;
+            font-family:'JetBrains Mono',monospace;line-height:1.2;
+          ">——————</div>
+          <div style="font-size:.72rem;color:#94a3b8;margin-top:4px;">
+            Works across any network — 5G, LTE, guest Wi-Fi, and firewalls
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;">
+            <button id="copyRelayUrlBtn" style="
+              padding:6px 14px;background:rgba(16,185,129,.2);color:#6ee7b7;
+              border:1px solid rgba(16,185,129,.4);border-radius:8px;
+              font-size:.8rem;cursor:pointer;font-weight:600;
+            ">📋 Copy Link</button>
+          </div>
+        </div>
 
-      <div class="qr-wrapper">
-        <img id="qrCodeImg" class="qr-image" alt="QR Code to connect mobile" src="">
-      </div>
+        <div id="relayConnecting" style="
+          width:100%; margin-bottom:16px; padding:10px 14px;
+          background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25);
+          border-radius:10px; font-size:.78rem; color:#fbbf24; text-align:center; display:none;
+        ">
+          ⏳ Connecting to cloud relay…
+        </div>
 
-      <div class="ip-selector">
-        <label for="ipSelect">LAN IP Address (same Wi-Fi only):</label>
-        <select id="ipSelect" class="ip-dropdown">
-          <option value="">Detecting local IPs...</option>
-        </select>
-      </div>
-
-      <div class="url-box">
-        <span class="url-text" id="remoteUrlDisplay">http://...</span>
-        <button class="copy-btn" id="copyUrlBtn" title="Copy URL">Copy</button>
+        <div class="qr-wrapper">
+          <img id="cloudQrCodeImg" class="qr-image" alt="Cloud QR Code" src="">
+        </div>
       </div>
 
       <!-- Software Profile Selector -->
@@ -261,6 +281,67 @@
       </div>
     </section>
   </main>
+
+  <!-- Pro Upgrade Modal -->
+  <div class="modal-backdrop" id="proModalBackdrop" style="display:none;">
+    <div class="pro-modal">
+      <button class="modal-close-btn" id="closeProModalBtn" aria-label="Close modal">&times;</button>
+      
+      <div class="pro-modal-badge">NXTslide Pro</div>
+      <h3 class="pro-modal-title">Unlock Global Cloud Relay</h3>
+      <p class="pro-modal-sub">Present anywhere over 5G, cellular data, hotel Wi-Fi, and corporate firewalls without touching Wi-Fi settings.</p>
+
+      <div class="pro-features-grid">
+        <div class="pro-feature-row">
+          <span class="pro-feat-icon">⚡</span>
+          <div class="pro-feat-text">
+            <strong>Cross-Network Freedom</strong>
+            <span>Laptop on hotel Wi-Fi and phone on 5G? Bridges instantly.</span>
+          </div>
+        </div>
+        <div class="pro-feature-row">
+          <span class="pro-feat-icon">🔒</span>
+          <div class="pro-feat-text">
+            <strong>Instant 6-Letter Room Code</strong>
+            <span>Pair in 2 seconds before walking on stage. No IP addresses.</span>
+          </div>
+        </div>
+        <div class="pro-feature-row">
+          <span class="pro-feat-icon">⏱️</span>
+          <div class="pro-feat-text">
+            <strong>Haptic Pacing Countdown</strong>
+            <span>Pocket vibrations at 10m, 5m, and 1m remaining.</span>
+          </div>
+        </div>
+        <div class="pro-feature-row">
+          <span class="pro-feat-icon">💎</span>
+          <div class="pro-feat-text">
+            <strong>Lifetime License — No Subscriptions</strong>
+            <span>Pay once, keep forever with all future updates.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="pro-cta-box">
+        <div class="pro-price-col">
+          <span class="pro-price-num">$19</span>
+          <span class="pro-price-term">one-time payment</span>
+        </div>
+        <a href="https://github.com/DilpreetSinghVerma/nextPresent#pricing" target="_blank" class="pro-upgrade-btn">
+          Unlock Pro Lifetime
+        </a>
+      </div>
+
+      <div class="pro-key-section">
+        <span class="pro-key-heading">Already have a license key?</span>
+        <div class="pro-key-form">
+          <input type="text" id="licenseKeyInput" placeholder="Enter license key (e.g. NXT-PRO-XXXX)" />
+          <button type="button" id="btnActivateKey">Activate</button>
+        </div>
+        <div id="licenseFeedback" class="license-feedback"></div>
+      </div>
+    </div>
+  </div>
 
   <script src="/js/dashboard.js"></script>
 </body>

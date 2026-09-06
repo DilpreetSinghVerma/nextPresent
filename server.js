@@ -290,21 +290,30 @@ app.get('/api/info', async (req, res) => {
     const useIp  = overrideIp || primaryIp;
     const lanUrl = `http://${useIp}:${PORT}/remote`;
 
-    // Prefer cloud relay URL if connected, fall back to LAN URL for QR
-    const qrTargetUrl = relayPhoneUrl || lanUrl;
-
-    const qrDataUrl = await QRCode.toDataURL(qrTargetUrl, {
+    // Generate distinct QR codes for Local LAN and Cloud Relay
+    const lanQrDataUrl = await QRCode.toDataURL(lanUrl, {
       margin: 1,
       width: 320,
       color: { dark: '#0f172a', light: '#ffffff' }
     });
+
+    let cloudQrDataUrl = null;
+    if (relayPhoneUrl) {
+      cloudQrDataUrl = await QRCode.toDataURL(relayPhoneUrl, {
+        margin: 1,
+        width: 320,
+        color: { dark: '#0f172a', light: '#ffffff' }
+      });
+    }
 
     res.json({
       port: PORT,
       primaryIp,
       remoteUrl:    lanUrl,
       allIps:       getLocalIpAddresses(),
-      qrDataUrl,
+      qrDataUrl:    lanQrDataUrl,
+      lanQrDataUrl,
+      cloudQrDataUrl,
       sessionState,
       profiles:     SOFTWARE_PROFILES,
       // Cloud relay info (null if relay not connected)

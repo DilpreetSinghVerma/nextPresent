@@ -57,6 +57,9 @@ class ConnectActivity : AppCompatActivity() {
     private lateinit var btnConnect: Button
     private lateinit var btnLanMode: Button
     private lateinit var tvStatus: TextView
+    private lateinit var btnTabLocal: Button
+    private lateinit var btnTabCloud: Button
+    private var currentMode = "local"
 
     private lateinit var cameraExecutor: ExecutorService
     private val httpClient = OkHttpClient()
@@ -84,8 +87,23 @@ class ConnectActivity : AppCompatActivity() {
         btnConnect    = findViewById(R.id.btnConnect)
         btnLanMode    = findViewById(R.id.btnLanMode)
         tvStatus      = findViewById(R.id.tvStatus)
+        btnTabLocal   = findViewById(R.id.btnTabLocal)
+        btnTabCloud   = findViewById(R.id.btnTabCloud)
 
         cameraExecutor = Executors.newSingleThreadExecutor()
+
+        updateProBadgeUI()
+
+        btnTabLocal.setOnClickListener { switchMode("local") }
+        btnTabCloud.setOnClickListener {
+            val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+            val isPro = prefs.getBoolean("nxtslide_pro_unlocked", false)
+            if (isPro) {
+                switchMode("cloud")
+            } else {
+                showProPaywallDialog()
+            }
+        }
 
         requestCameraOrStart()
         checkForAppUpdate()
@@ -373,6 +391,90 @@ class ConnectActivity : AppCompatActivity() {
                 startActivity(intent)
             }
             .setNegativeButton("Later", null)
+            .show()
+    }
+
+    // ─── Pro Mode & Paywall ───────────────────────────────────────────────
+    private fun updateProBadgeUI() {
+        val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+        val isPro = prefs.getBoolean("nxtslide_pro_unlocked", false)
+        if (isPro) {
+            btnTabCloud.text = "☁️ Cloud (PRO ✓)"
+        } else {
+            btnTabCloud.text = "☁️ Cloud (PRO 🔒)"
+        }
+    }
+
+    private fun switchMode(mode: String) {
+        currentMode = mode
+        if (mode == "local") {
+            btnTabLocal.setBackgroundColor(android.graphics.Color.parseColor("#16A34A"))
+            btnTabLocal.setTextColor(android.graphics.Color.WHITE)
+            btnTabCloud.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            btnTabCloud.setTextColor(android.graphics.Color.parseColor("#94A3B8"))
+            findViewById<TextView>(R.id.tvScanHint).text = "Point camera at Local QR on PC (Same Wi-Fi/Hotspot)"
+        } else {
+            btnTabCloud.setBackgroundColor(android.graphics.Color.parseColor("#16A34A"))
+            btnTabCloud.setTextColor(android.graphics.Color.WHITE)
+            btnTabLocal.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+            btnTabLocal.setTextColor(android.graphics.Color.parseColor("#94A3B8"))
+            findViewById<TextView>(R.id.tvScanHint).text = "Scan Cloud QR or type 6-letter Room Code"
+        }
+    }
+
+    private fun showProPaywallDialog() {
+        val options = arrayOf("Unlock Pro Lifetime ($19)", "Enter License Key", "Stay on Free Local Mode")
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("⭐ Unlock Global Cloud Relay (PRO)")
+            .setMessage("Global Cloud Relay lets you control slides across ANY network (5G, LTE, hotel Wi-Fi, firewalls) without configuring your network.")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/DilpreetSinghVerma/nextPresent#pricing"))
+                        startActivity(intent)
+                    }
+                    1 -> {
+                        showEnterKeyDialog()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showEnterKeyDialog() {
+        val input = EditText(this)
+        input.hint = "e.g. NXT-PRO-XXXX"
+        input.setSingleLine()
+        input.setTextColor(android.graphics.Color.WHITE)
+        input.setHintTextColor(android.graphics.Color.GRAY)
+        val container = android.widget.FrameLayout(this)
+        val params = android.widget.FrameLayout.LayoutParams(
+            android.widget.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.widget.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        params.leftMargin = 50
+        params.rightMargin = 50
+        input.layoutParams = params
+        container.addView(input)
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Activate Pro License")
+            .setMessage("Enter your NXTslide Pro license key:")
+            .setView(container)
+            .setPositiveButton("Activate") { _, _ ->
+                val key = input.text.toString().trim().uppercase()
+                if (key.length >= 6) {
+                    val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+                    prefs.edit().putBoolean("nxtslide_pro_unlocked", true).apply()
+                    updateProBadgeUI()
+                    switchMode("cloud")
+                    Toast.makeText(this, "✅ Pro Activated! Cloud mode unlocked.", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(this, "Invalid license key", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 

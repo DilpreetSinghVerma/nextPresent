@@ -49,7 +49,7 @@
         android:id="@+id/tvSubtitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Scan QR code or enter room code to connect"
+        android:text="Choose mode or scan QR code to connect"
         android:textSize="12.5sp"
         android:textColor="#64748B"
         android:layout_marginTop="6dp"
@@ -57,15 +57,57 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- ── Mode Toggle Switch ── -->
+    <LinearLayout
+        android:id="@+id/llModeToggle"
+        android:layout_width="0dp"
+        android:layout_height="44dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:background="@drawable/rounded_input_bg"
+        android:orientation="horizontal"
+        android:padding="3dp"
+        app:layout_constraintTop_toBottomOf="@id/tvSubtitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <Button
+            android:id="@+id/btnTabLocal"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="🏠 Local (Free)"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#16A34A"
+            android:stateListAnimator="@null"
+            android:padding="0dp" />
+
+        <Button
+            android:id="@+id/btnTabCloud"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="☁️ Cloud (PRO 🔒)"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#94A3B8"
+            android:backgroundTint="@android:color/transparent"
+            android:stateListAnimator="@null"
+            android:padding="0dp" />
+    </LinearLayout>
+
     <!-- ── Camera viewfinder for QR scan ─────────────────────────────── -->
     <androidx.camera.view.PreviewView
         android:id="@+id/cameraPreview"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="28dp"
+        android:layout_marginTop="16dp"
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
-        app:layout_constraintTop_toBottomOf="@id/tvSubtitle"
+        app:layout_constraintTop_toBottomOf="@id/llModeToggle"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintDimensionRatio="1:1" />

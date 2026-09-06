@@ -133,8 +133,140 @@ if (shareRelayBtn) {
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────
+// Mode Toggle (Local Wi-Fi Free vs. Cloud Relay Pro)
+// ─────────────────────────────────────────────────────────────────────
+const btnModeLocal      = document.getElementById('btnModeLocal');
+const btnModeCloud      = document.getElementById('btnModeCloud');
+const cloudModeBadge    = document.getElementById('cloudModeBadge');
+const localConnectView  = document.getElementById('localConnectView');
+const cloudConnectView  = document.getElementById('cloudConnectView');
+const connectSubtitle   = document.getElementById('connectSubtitle');
+const cloudQrCodeImg    = document.getElementById('cloudQrCodeImg');
+
+const proModalBackdrop  = document.getElementById('proModalBackdrop');
+const closeProModalBtn  = document.getElementById('closeProModalBtn');
+const licenseKeyInput   = document.getElementById('licenseKeyInput');
+const btnActivateKey    = document.getElementById('btnActivateKey');
+const licenseFeedback   = document.getElementById('licenseFeedback');
+
+let currentMode = 'local';
+
+function isProUnlocked() {
+  return localStorage.getItem('nxtslide_pro_unlocked') === 'true';
+}
+
+function updateProBadge() {
+  if (!cloudModeBadge) return;
+  if (isProUnlocked()) {
+    cloudModeBadge.textContent = 'PRO ✓';
+    cloudModeBadge.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+    cloudModeBadge.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.4)';
+  } else {
+    cloudModeBadge.textContent = 'PRO 🔒';
+    cloudModeBadge.style.background = '';
+    cloudModeBadge.style.boxShadow = '';
+  }
+}
+
+function switchMode(mode) {
+  if (mode === 'local') {
+    currentMode = 'local';
+    if (btnModeLocal) btnModeLocal.classList.add('active');
+    if (btnModeCloud) btnModeCloud.classList.remove('active');
+    if (localConnectView) localConnectView.style.display = 'block';
+    if (cloudConnectView) cloudConnectView.style.display = 'none';
+    if (connectSubtitle) connectSubtitle.textContent = 'Scan QR code or open URL on your mobile browser';
+  } else if (mode === 'cloud') {
+    currentMode = 'cloud';
+    if (btnModeCloud) btnModeCloud.classList.add('active');
+    if (btnModeLocal) btnModeLocal.classList.remove('active');
+    if (cloudConnectView) cloudConnectView.style.display = 'block';
+    if (localConnectView) localConnectView.style.display = 'none';
+    if (connectSubtitle) connectSubtitle.textContent = 'Enter the 6-letter room code or scan cloud QR code';
+  }
+}
+
+function openProModal() {
+  if (proModalBackdrop) {
+    proModalBackdrop.style.display = 'flex';
+    if (licenseKeyInput) licenseKeyInput.value = '';
+    if (licenseFeedback) {
+      licenseFeedback.textContent = '';
+      licenseFeedback.className = 'license-feedback';
+    }
+  }
+}
+
+function closeProModal() {
+  if (proModalBackdrop) {
+    proModalBackdrop.style.display = 'none';
+  }
+}
+
+function handleLicenseActivation() {
+  const key = (licenseKeyInput ? licenseKeyInput.value : '').trim().toUpperCase();
+  if (key.length >= 6) {
+    localStorage.setItem('nxtslide_pro_unlocked', 'true');
+    updateProBadge();
+    if (licenseFeedback) {
+      licenseFeedback.className = 'license-feedback success';
+      licenseFeedback.textContent = '✅ Pro Lifetime Activated! Switching to Cloud Mode...';
+    }
+    setTimeout(() => {
+      closeProModal();
+      switchMode('cloud');
+    }, 1000);
+  } else {
+    if (licenseFeedback) {
+      licenseFeedback.className = 'license-feedback error';
+      licenseFeedback.textContent = 'Please enter a valid license key.';
+    }
+  }
+}
+
+function initModeSwitcher() {
+  updateProBadge();
+
+  if (btnModeLocal) {
+    btnModeLocal.addEventListener('click', () => switchMode('local'));
+  }
+
+  if (btnModeCloud) {
+    btnModeCloud.addEventListener('click', () => {
+      if (isProUnlocked()) {
+        switchMode('cloud');
+      } else {
+        openProModal();
+      }
+    });
+  }
+
+  if (closeProModalBtn) {
+    closeProModalBtn.addEventListener('click', closeProModal);
+  }
+
+  if (proModalBackdrop) {
+    proModalBackdrop.addEventListener('click', (e) => {
+      if (e.target === proModalBackdrop) closeProModal();
+    });
+  }
+
+  if (btnActivateKey) {
+    btnActivateKey.addEventListener('click', handleLicenseActivation);
+  }
+
+  if (licenseKeyInput) {
+    licenseKeyInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') handleLicenseActivation();
+    });
+  }
+}
+
 // Initialize Dashboard
 async function initDashboard() {
+  initModeSwitcher();
+
   // Detect if we're running on the cloud (Render) vs locally
   const isCloud = location.hostname.includes('onrender.com') ||
                   location.hostname.includes('netlify.app') ||
@@ -153,7 +285,10 @@ async function initDashboard() {
 
     currentPort = data.port;
     currentRemoteUrl = data.remoteUrl;
-    qrCodeImg.src = data.qrDataUrl;
+    qrCodeImg.src = data.lanQrDataUrl || data.qrDataUrl;
+    if (cloudQrCodeImg && data.cloudQrDataUrl) {
+      cloudQrCodeImg.src = data.cloudQrDataUrl;
+    }
     remoteUrlDisplay.textContent = currentRemoteUrl;
 
     // Populate IP Dropdown
