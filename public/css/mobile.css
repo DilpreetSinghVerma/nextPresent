@@ -29,6 +29,9 @@ html, body {
   color: var(--text);
   font-family: 'Outfit', -apple-system, sans-serif;
   touch-action: manipulation;
+  /* Ensure content respects device safe areas (notch, home bar) */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* ══════════════════════════════════════
@@ -44,11 +47,12 @@ html, body {
    TOP HUD
 ══════════════════════════════════════ */
 .hud {
-  height: 56px; padding: 0 14px;
+  height: 52px; padding: 0 14px;
   display: flex; align-items: center; justify-content: space-between;
   background: rgba(8, 11, 20, 0.95);
   border-bottom: 1px solid var(--border);
   position: relative; z-index: 60; flex-shrink: 0;
+  min-height: 44px;
 }
 
 .hud-left { display: flex; align-items: center; gap: 10px; }
@@ -125,6 +129,8 @@ html, body {
 .zones {
   flex: 1; display: flex; flex-direction: column;
   position: relative; overflow: hidden;
+  /* Ensure zones always have at least some usable height */
+  min-height: 0;
 }
 
 /* PREV Zone — top 28% */
@@ -184,19 +190,23 @@ html, body {
    BOTTOM TOOLBAR
 ══════════════════════════════════════ */
 .toolbar {
-  flex-shrink: 0; height: 58px;
+  flex-shrink: 0;
+  height: auto; min-height: 54px;
   background: rgba(8,11,20,0.97);
   border-top: 1px solid var(--border);
   display: flex; align-items: center;
-  justify-content: space-around; padding: 0 6px; z-index: 60;
+  justify-content: space-around;
+  padding: 6px 4px env(safe-area-inset-bottom);
+  z-index: 60;
 }
 
 .tool {
-  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
   background: none; border: none; color: var(--text-muted);
-  font-family: inherit; font-size: 0.63rem; font-weight: 500;
-  cursor: pointer; padding: 6px 10px; border-radius: 8px;
+  font-family: inherit; font-size: 0.6rem; font-weight: 500;
+  cursor: pointer; padding: 5px 6px; border-radius: 8px;
   transition: all 0.15s; flex: 1;
+  white-space: nowrap; overflow: hidden;
 }
 .tool:active { color: white; background: rgba(255,255,255,0.06); }
 .tool.active { color: #818cf8; }
@@ -261,4 +271,29 @@ html, body {
   font-size: 0.72rem; font-weight: 600; color: var(--text-dim);
   cursor: pointer; display: flex; align-items: center; gap: 4px;
   max-width: 120px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+
+/* ══════════════════════════════════════
+   RESPONSIVE: Short Screens (< 620px tall)
+   e.g. iPhone SE, small Android phones
+══════════════════════════════════════ */
+@media (max-height: 620px) {
+  .hud { height: 44px; padding: 0 10px; }
+  .timer-val { font-size: 0.95rem; }
+
+  .vol-banner { padding: 7px 12px; }
+  .vol-title { font-size: 0.78rem; }
+  .vol-sub { display: none; }   /* hide subtitle on tiny screens */
+
+  .zone-prev { height: 22%; }
+
+  .toolbar { min-height: 48px; padding: 4px 2px env(safe-area-inset-bottom); }
+  .tool { font-size: 0.56rem; padding: 4px 4px; }
+  .tool svg { width: 15px; height: 15px; }
+}
+
+@media (max-height: 500px) {
+  /* Landscape on small phones — hide vol-banner entirely */
+  .vol-banner { display: none; }
+  .zone-prev { height: 20%; }
 }
