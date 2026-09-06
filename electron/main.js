@@ -6,48 +6,56 @@ const { execSync } = require('child_process');
 let autoUpdater = null;
 
 /**
- * Frees port 3333 (or any port) by finding and killing the process occupying it.
- * Works on Windows using netstat + taskkill.
+ * Frees port 3333 by killing the process occupying it.
+ * Uses PowerShell Get-NetTCPConnection for reliability on Windows.
  */
 function freePort(port) {
   try {
-    // netstat output has the PID in the last column of lines matching the port
-    const output = execSync(
-      `netstat -ano | findstr :${port}`,
-      { encoding: 'utf8', windowsHide: true }
-    );
-    const lines = output.split('\n').filter(l =>
-      l.includes(`:${port} `) && l.includes('LISTENING')
-    );
-    const pids = new Set();
-    lines.forEach(line => {
-      const parts = line.trim().split(/\s+/);
-      const pid = parseInt(parts[parts.length - 1], 10);
-      if (pid && pid > 0) pids.add(pid);
-    });
-
-    pids.forEach(pid => {
-      try {
-        execSync(`taskkill /PID ${pid} /F`, { windowsHide: true });
-        console.log(`[Electron] Freed port ${port} — killed PID ${pid}`);
-      } catch (_) {}
-    });
+    // PowerShell approach — most reliable on modern Windows
+    const psCmd = `powershell -NoProfile -Command "` +
+      `$c = Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue;` +
+      `if ($c) { $c.OwningProcess | Sort-Object -Unique | ForEach-Object { taskkill /PID $_ /F 2>$null } }"`;
+    execSync(psCmd, { windowsHide: true, timeout: 5000 });
+    console.log(`[Electron] freePort(${port}) completed via PowerShell`);
   } catch (_) {
-    // Port was already free — no output from netstat, that's fine
+    // Fallback: cmd /c with netstat pipe
+    try {
+      const output = execSync(
+        `cmd /c "netstat -ano | findstr :${port}"`,
+        { encoding: 'utf8', windowsHide: true, timeout: 5000 }
+      );
+      const pids = new Set();
+      output.split('\n').forEach(line => {
+        // Match lines that have :PORT followed by a space (avoids matching :PORT1 etc.)
+        if (new RegExp(`:${port}[\\s\\r]`).test(line)) {
+          const parts = line.trim().split(/\s+/);
+          const pid = parseInt(parts[parts.length - 1], 10);
+          if (pid > 4) pids.add(pid); // skip system PIDs (0, 4)
+        }
+      });
+      pids.forEach(pid => {
+        try {
+          execSync(`taskkill /PID ${pid} /F`, { windowsHide: true });
+          console.log(`[Electron] Freed port ${port} — killed PID ${pid}`);
+        } catch (_) {}
+      });
+    } catch (_) {
+      // Port was already free
+    }
   }
 }
 
 // Free port 3333 before starting the internal server so we never get EADDRINUSE
 freePort(3333);
 
-// Small delay to let the OS reclaim the port socket
+// Wait for OS to fully release the socket before binding again
 setTimeout(() => {
   try {
     require('../server.js');
   } catch (err) {
     console.error('[Electron] Server start error:', err);
   }
-}, 250);
+}, 600);
 
 let mainWindow = null;
 let tray = null;
