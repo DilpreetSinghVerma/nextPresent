@@ -1,6 +1,6 @@
 {
   "name": "nxtslide",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "NXTslide — Wireless Presentation Remote & Volume Key Controller",
   "main": "electron/main.js",
   "scripts": {

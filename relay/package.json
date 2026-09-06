@@ -1,6 +1,6 @@
-﻿{
+{
   "name": "nxtslide-relay",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "NXTslide cloud WebSocket relay — connects PC and phone via room codes",
   "main": "server.js",
   "scripts": {
