@@ -3,175 +3,180 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NXTslide — Turn Your Phone into an Invisible Presentation Clicker</title>
+  <title>NXTslide — Turn Your Phone into a Presentation Clicker</title>
   <meta name="description" content="Control PowerPoint, Google Slides, Keynote, and PDF presentations using your smartphone's physical volume buttons from inside your pocket. Zero latency, works behind locked screen.">
   <meta name="keywords" content="presentation remote, clicker app, powerpoint clicker, volume button presentation, google slides remote, pocket presentation clicker">
-  
-  <!-- OpenGraph -->
   <meta property="og:title" content="NXTslide — Invisible Presentation Clicker">
-  <meta property="og:description" content="Feel the click in your pocket. Control slides with physical volume buttons without ever breaking eye contact with your audience.">
+  <meta property="og:description" content="Feel the click in your pocket. Control slides with volume buttons without ever breaking eye contact.">
   <meta property="og:type" content="website">
-
   <link rel="icon" href="/logo-icon.jpg" type="image/jpeg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/landing.css">
 </head>
 <body>
 
-  <!-- ── Navigation Bar ── -->
-  <nav class="navbar">
-    <div class="site-container navbar-inner">
-      <a href="#" class="nav-brand">
-        <img src="/logo-icon.jpg" alt="NXTslide Logo" class="nav-logo-img" width="36" height="36" style="border-radius:10px;object-fit:cover;flex-shrink:0;">
-        <span class="nav-brand-title">NXT<span>slide</span></span>
+  <!-- NAV -->
+  <nav class="nav" id="mainNav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo">
+        <img src="/logo-icon.jpg" alt="NXTslide" width="28" height="28">
+        <span>NXT<strong>slide</strong></span>
       </a>
 
       <ul class="nav-links">
-        <li><a href="#demoSection" class="nav-link">Interactive Demo</a></li>
-        <li><a href="#pocketSection" class="nav-link">Pocket Remote</a></li>
-        <li><a href="#comparisonSection" class="nav-link">Comparison</a></li>
-        <li><a href="#pricingSection" class="nav-link">Pricing</a></li>
-        <li><a href="#faqSection" class="nav-link">FAQ</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#demo">Demo</a></li>
+        <li><a href="#compare">Compare</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#faq">FAQ</a></li>
       </ul>
 
-      <div class="nav-actions">
-        <a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" id="navGithubBtn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-          <span>GitHub</span>
+      <div class="nav-right">
+        <a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener" class="nav-gh" aria-label="GitHub">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         </a>
-        <a href="#downloadSection" class="btn btn-primary btn-sm">Get App</a>
+        <a href="#download" class="btn-nav">Download Free</a>
       </div>
+
+      <button class="nav-hamburger" id="navHamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
     </div>
   </nav>
 
-  <!-- ── Hero Section ── -->
-  <header class="hero-section">
-    <div class="site-container">
-      <div class="pill-badge">
-        <span class="pulse-circle"></span>
-        <span>Version 1.0 Live — Physical Volume Rocker & Lock-Screen Control</span>
+  <!-- HERO -->
+  <section class="hero" id="download">
+    <div class="hero-noise"></div>
+    <div class="container">
+
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        v1.0 — Volume Rocker &amp; Lock-Screen Control
       </div>
 
-      <h1 class="hero-title">
-        Turn Your Phone Into An<br>
-        <span class="gradient-text">Invisible Presentation Clicker</span>
+      <h1 class="hero-h1">
+        Your phone is already<br>
+        <span class="hero-accent">a presentation clicker</span>
       </h1>
 
-      <p class="hero-subtitle">
-        Feel the tactile click in your pocket. Control PowerPoint, Google Slides, Keynote, Canva & PDF without ever looking down. No $60 dongles. Zero latency.
+      <p class="hero-sub">
+        Press the volume buttons through your pocket fabric. Slides advance instantly.<br>
+        No dongle. No subscription. No looking down.
       </p>
 
-      <div class="hero-cta-group" id="downloadSection">
-        <a href="https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe" download="NXTslide-Setup.exe" class="btn btn-primary btn-lg" id="heroWinBtn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
-          <span>Download for Windows (.exe)</span>
+      <div class="hero-actions" id="downloadSection">
+        <a href="https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe"
+           download="NXTslide-Setup.exe"
+           class="btn-primary" id="heroWinBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+          Download for Windows
+          <span class="btn-sub">Free · 97 MB installer</span>
         </a>
-
-        <a href="/NXTslide.apk" download="NXTslide.apk" class="btn btn-secondary btn-lg" id="heroAndroidBtn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5896 8.3976 13.856 8.0833 12 8.0833s-3.5896.3143-5.1368.8664L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/></svg>
-          <span>Get Android Companion (.apk)</span>
+        <a href="/NXTslide.apk" download="NXTslide.apk" class="btn-secondary" id="heroAndroidBtn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5896 8.3976 13.856 8.0833 12 8.0833s-3.5896.3143-5.1368.8664L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/></svg>
+          Android Companion
+          <span class="btn-sub">APK · 28 MB</span>
         </a>
       </div>
 
-      <!-- Founder Trust Badge -->
-      <div style="margin-top:28px;margin-bottom:12px;display:flex;align-items:center;justify-content:center;">
-        <div style="display:inline-flex;align-items:center;gap:10px;padding:6px 16px 6px 8px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:999px;backdrop-filter:blur(10px);">
-          <img src="/logo-icon.jpg" alt="Dilpreet Singh" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1.5px solid #a78bfa;">
-          <span style="font-size:0.83rem;color:#cbd5e1;">Founded &amp; Crafted by <strong style="color:#ffffff;">Dilpreet Singh</strong></span>
-          <span style="font-size:0.7rem;padding:2px 8px;background:linear-gradient(135deg,#7c3aed,#6366f1);color:#fff;border-radius:999px;font-weight:600;letter-spacing:0.03em;">FOUNDER</span>
-        </div>
+      <div class="hero-trust">
+        <span>✓ 100% Free</span>
+        <span class="trust-sep">·</span>
+        <span>✓ No dongle</span>
+        <span class="trust-sep">·</span>
+        <span>✓ Works locked-screen</span>
+        <span class="trust-sep">·</span>
+        <span>✓ Zero-install portable mode</span>
       </div>
 
-      <div class="hero-meta-proof">
-        <div class="proof-item">
-          <span class="proof-icon">✓</span>
-          <span>100% Free to Start</span>
+      <!-- Portable option -->
+      <div class="portable-note">
+        On a locked corporate laptop?
+        <a href="https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide-Portable.exe"
+           download="NXTslide-Portable.exe">Download Portable .exe instead →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS (3 steps) -->
+  <section class="steps-section" id="features">
+    <div class="container">
+      <div class="section-eyebrow">How it works</div>
+      <h2 class="section-h2">Three steps. Then forget it exists.</h2>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">01</div>
+          <h3>Install on PC &amp; Phone</h3>
+          <p>Run NXTslide on your Windows laptop. Install the Android companion. They pair automatically via cloud relay or local Wi-Fi.</p>
         </div>
-        <div class="proof-item">
-          <span class="proof-icon">✓</span>
-          <span>Zero Dongles to Lose</span>
+        <div class="step-card">
+          <div class="step-num">02</div>
+          <h3>Lock screen, slip into pocket</h3>
+          <p>Once connected, lock your phone and put it away. The background service stays active without draining battery or making noise.</p>
         </div>
-        <div class="proof-item">
-          <span class="proof-icon">✓</span>
-          <span>Works Behind Locked Screen</span>
-        </div>
-        <div class="proof-item">
-          <span class="proof-icon">✓</span>
-          <span>Portable Zero-Install Mode</span>
+        <div class="step-card">
+          <div class="step-num">03</div>
+          <h3>Press volume through fabric</h3>
+          <p>Vol Up → next slide. Vol Down → previous. Tactile physical click. You never look down. Your audience never notices.</p>
         </div>
       </div>
     </div>
-  </header>
+  </section>
 
-  <!-- ── Interactive Live Clicker Demo ── -->
-  <section class="demo-section" id="demoSection">
-    <div class="site-container">
-      <div class="section-header">
-        <div class="section-tag">Hands-On Simulation</div>
-        <h2 class="section-title">Test the Pocket Clicker Right Now</h2>
-        <p class="section-desc">
-          Click the physical volume buttons on the side of the phone chassis or use on-screen controls to advance the pitch deck slide.
-        </p>
-      </div>
+  <!-- INTERACTIVE DEMO -->
+  <section class="demo-section" id="demo">
+    <div class="container">
+      <div class="section-eyebrow">Interactive Demo</div>
+      <h2 class="section-h2">Try it right now</h2>
+      <p class="section-sub">Click the volume keys on the phone or use the buttons to advance slides</p>
 
-      <div class="simulator-frame">
-        <!-- Smartphone Mockup -->
+      <div class="demo-frame">
+        <!-- Phone mockup -->
         <div class="phone-mockup-wrapper">
           <div class="phone-vol-key-hint">Click Volume Key</div>
-
           <div class="phone-mockup">
-            <!-- Hardware Volume Keys on Chassis Bezel -->
-            <div class="phone-vol-key vol-up-btn" id="simVolUp" title="Physical Volume Up (Advance Slide)"></div>
-            <div class="phone-vol-key vol-down-btn" id="simVolDown" title="Physical Volume Down (Previous Slide)"></div>
-
-            <!-- Screen Area -->
+            <div class="phone-vol-key vol-up-btn" id="simVolUp" title="Volume Up — Next Slide"></div>
+            <div class="phone-vol-key vol-down-btn" id="simVolDown" title="Volume Down — Prev Slide"></div>
             <div class="phone-screen">
               <div class="phone-speaker-notch"></div>
-              
               <div class="phone-app-header">
                 <div class="phone-app-title">NXTslide Remote</div>
                 <div class="phone-app-status">
                   <span class="pulse-circle" style="width:6px;height:6px;"></span>
-                  <span>Connected • Pocket Ready</span>
+                  <span>Connected · Pocket Ready</span>
                 </div>
               </div>
-
-              <!-- Touch Buttons -->
               <div class="phone-pad">
                 <button class="phone-btn" id="simPhoneNext">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                  <span>NEXT SLIDE [Vol ▲]</span>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  <span>NEXT [Vol ▲]</span>
                 </button>
-
                 <button class="phone-btn" id="simPhonePrev">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                  <span>PREV SLIDE [Vol ▼]</span>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                  <span>PREV [Vol ▼]</span>
                 </button>
               </div>
-
-              <div class="phone-pocket-badge">
-                🔒 Screen Off Mode Active
-              </div>
+              <div class="phone-pocket-badge">🔒 Screen Off Mode Active</div>
             </div>
           </div>
         </div>
 
-        <!-- Presentation Slide Display -->
+        <!-- Slide preview -->
         <div class="slide-display-wrapper">
           <div class="slide-monitor">
             <div class="slide-top-bar">
               <span class="slide-deck-title" id="slideTag">Q3 Strategy Keynote</span>
               <span class="slide-deck-badge" id="slideDeckBadge">Slide 1 of 6</span>
             </div>
-
             <div class="slide-body">
               <div class="slide-content-card" id="slideCard">
                 <h3 class="slide-headline" id="slideHeadline">Scaling High-Performance Teams in 2026</h3>
-                <p class="slide-detail" id="slideDetail">
-                  How distributed autonomous teams deliver 10x output while maintaining radical clarity and zero overhead.
-                </p>
+                <p class="slide-detail" id="slideDetail">How distributed autonomous teams deliver 10x output while maintaining radical clarity and zero overhead.</p>
               </div>
             </div>
-
             <div class="slide-bottom-bar">
               <div class="slide-indicator" id="slideIndicator"><span>01</span> / 06</div>
               <div class="slide-status-chip">
@@ -180,19 +185,17 @@
               </div>
             </div>
           </div>
-
-          <!-- Real-time Telemetry Readout -->
           <div class="simulator-hud">
             <div class="hud-pill">
-              <span class="hud-label">Simulated Latency</span>
-              <span class="hud-value highlight" id="simLatency">1.4 ms</span>
+              <span class="hud-label">Latency</span>
+              <span class="hud-value" id="simLatency">1.4 ms</span>
             </div>
             <div class="hud-pill">
-              <span class="hud-label">Keystroke Injected</span>
+              <span class="hud-label">Keystroke</span>
               <span class="hud-value" id="simKeyInjected">Right Arrow [→]</span>
             </div>
             <div class="hud-pill">
-              <span class="hud-label">Presentation Timer</span>
+              <span class="hud-label">Timer</span>
               <span class="hud-value" id="simTimerDisplay">02:48</span>
             </div>
           </div>
@@ -201,130 +204,59 @@
     </div>
   </section>
 
-  <!-- ── Pocket Control Secret Weapon ── -->
-  <section class="pocket-section" id="pocketSection">
-    <div class="site-container">
-      <div class="pocket-grid">
-        <div class="pocket-content">
-          <div class="section-tag">The Secret Advantage</div>
-          <h2>Why Top Speakers Never Use On-Screen Buttons</h2>
-          <p>
-            When using standard presenter apps, you constantly look down at flat glass to find the next button. Your eyes leave the audience. You lose authority.
-          </p>
+  <!-- FEATURES GRID -->
+  <section class="features-section">
+    <div class="container">
+      <div class="section-eyebrow">Why NXTslide</div>
+      <h2 class="section-h2">Built for the stage, not the screen</h2>
 
-          <ul class="feature-check-list">
-            <li class="feature-check-item">
-              <div class="check-badge">✓</div>
-              <div class="check-text">
-                <h4>Feel the Physical Click</h4>
-                <p>Natural physical feedback through the fabric of your trousers or blazer pocket. You never doubt if a click registered.</p>
-              </div>
-            </li>
-            <li class="feature-check-item">
-              <div class="check-badge">✓</div>
-              <div class="check-text">
-                <h4>Zero Screen Glare in Dark Rooms</h4>
-                <p>No bright phone screen glowing in your hands on stage. Your phone stays dark, cool, and asleep in your pocket.</p>
-              </div>
-            </li>
-            <li class="feature-check-item">
-              <div class="check-badge">✓</div>
-              <div class="check-text">
-                <h4>All-Day Battery Life</h4>
-                <p>Operating behind a locked OLED screen uses less than 1% battery per hour of continuous presentation.</p>
-              </div>
-            </li>
-          </ul>
+      <div class="features-grid">
+        <div class="feature-card feature-wide">
+          <div class="feature-icon">🔒</div>
+          <h3>Works behind a locked screen</h3>
+          <p>A high-priority background audio session keeps the service alive. Lock your phone, pocket it, and present for hours. Less than 1% battery per hour.</p>
         </div>
-
-        <div class="pocket-card-visual">
-          <div class="pocket-diagram">
-            <div class="diagram-step">
-              <div class="step-icon-box">📲</div>
-              <div>
-                <h4 style="font-size:0.95rem;color:#fff;">1. Lock Screen & Pocket Phone</h4>
-                <p style="font-size:0.84rem;color:#94a3b8;">Slip your phone into your pocket before stepping onto the stage.</p>
-              </div>
-            </div>
-
-            <div class="diagram-step">
-              <div class="step-icon-box">🔊</div>
-              <div>
-                <h4 style="font-size:0.95rem;color:#fff;">2. Press Volume Up Through Fabric</h4>
-                <p style="font-size:0.84rem;color:#94a3b8;">High-speed native service catches the hardware rocker press in &lt;1ms.</p>
-              </div>
-            </div>
-
-            <div class="diagram-step">
-              <div class="step-icon-box">🎯</div>
-              <div>
-                <h4 style="font-size:0.95rem;color:#fff;">3. Presentation Advances Seamlessly</h4>
-                <p style="font-size:0.84rem;color:#94a3b8;">Keystroke injected into PowerPoint or Google Slides instantly.</p>
-              </div>
-            </div>
-          </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Sub-2ms keystroke injection</h3>
+          <p>Native Windows keystroke injection via a lightweight C# helper. No perceptible delay between click and slide change.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">☁️</div>
+          <h3>Cloud relay — any network</h3>
+          <p>Phone on cellular, laptop on hotel Wi-Fi? The cloud relay bridges them instantly with a 6-letter room code.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📦</div>
+          <h3>Zero-install portable</h3>
+          <p>No admin rights needed. Run the portable .exe from a USB drive on a locked corporate laptop.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔇</div>
+          <h3>Completely silent</h3>
+          <p>Volume resets silently. No chime. No notification. Your audience hears nothing except your voice.</p>
+        </div>
+        <div class="feature-card feature-wide">
+          <div class="feature-icon">🎯</div>
+          <h3>Universal software support</h3>
+          <p>Switch profiles in one click — PowerPoint, Google Slides, Keynote, Canva, PDF viewers, Prezi. Each profile sends the correct keystrokes automatically.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── Supported Software Ecosystem ── -->
-  <section class="ecosystem-section">
-    <div class="site-container">
-      <div class="section-tag">Universal Compatibility</div>
-      <h2 class="section-title">Works with Every Tool You Present In</h2>
-      <p class="section-desc">Zero configuration required. Switch presets in one click.</p>
+  <!-- COMPARISON TABLE -->
+  <section class="compare-section" id="compare">
+    <div class="container">
+      <div class="section-eyebrow">Direct Comparison</div>
+      <h2 class="section-h2">NXTslide vs the alternatives</h2>
 
-      <div class="ecosystem-grid">
-        <div class="software-card">
-          <div class="software-icon-wrapper" style="color:#d97706;">📊</div>
-          <div class="software-name">PowerPoint</div>
-          <div class="software-keys">Right / Left Arrow</div>
-        </div>
-        <div class="software-card">
-          <div class="software-icon-wrapper" style="color:#f59e0b;">📑</div>
-          <div class="software-name">Google Slides</div>
-          <div class="software-keys">Right / Left Arrow</div>
-        </div>
-        <div class="software-card">
-          <div class="software-icon-wrapper" style="color:#06b6d4;">🎨</div>
-          <div class="software-name">Canva Decks</div>
-          <div class="software-keys">Right / Left Arrow</div>
-        </div>
-        <div class="software-card">
-          <div class="software-icon-wrapper" style="color:#3b82f6;">🍏</div>
-          <div class="software-name">Apple Keynote</div>
-          <div class="software-keys">Arrow Keys</div>
-        </div>
-        <div class="software-card">
-          <div class="software-icon-wrapper" style="color:#ef4444;">📕</div>
-          <div class="software-name">PDF Viewers</div>
-          <div class="software-keys">Page Up / Down</div>
-        </div>
-        <div class="software-card">
-          <div class="software-icon-wrapper" style="color:#8b5cf6;">🚀</div>
-          <div class="software-name">Prezi & Slidev</div>
-          <div class="software-keys">Space / Backspace</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── Comparison Section ── -->
-  <section class="comparison-section" id="comparisonSection">
-    <div class="site-container">
-      <div class="section-header">
-        <div class="section-tag">Direct Comparison</div>
-        <h2 class="section-title">Why NXTslide Wins Every Time</h2>
-        <p class="section-desc">See how NXTslide stacks up against expensive dedicated hardware clickers and clunky apps.</p>
-      </div>
-
-      <div class="table-wrapper">
-        <table class="comparison-table">
+      <div class="table-scroll">
+        <table class="compare-table">
           <thead>
             <tr>
               <th>Feature</th>
-              <th class="col-highlight">🎯 NXTslide</th>
+              <th class="col-nxt">🎯 NXTslide</th>
               <th>Logitech R400 / Spotlight</th>
               <th>Generic Remote Apps</th>
             </tr>
@@ -332,39 +264,39 @@
           <tbody>
             <tr>
               <td>Cost</td>
-              <td class="col-highlight"><span class="table-check">Free / $19 Lifetime</span></td>
-              <td>$59.99 – $129.99</td>
-              <td>$4.99 / mo subscription</td>
+              <td class="col-nxt"><span class="yes">Free</span></td>
+              <td>$60 – $130</td>
+              <td>$5/mo subscription</td>
             </tr>
             <tr>
-              <td>Physical Tactile Clicking</td>
-              <td class="col-highlight"><span class="table-check">✓ Phone Volume Rocker</span></td>
-              <td><span class="table-check">✓ Plastic buttons</span></td>
-              <td><span class="table-cross">✗ Flat glass only</span></td>
+              <td>Physical tactile click</td>
+              <td class="col-nxt"><span class="yes">✓ Volume rocker</span></td>
+              <td><span class="yes">✓ Plastic button</span></td>
+              <td><span class="no">✗ Flat glass only</span></td>
             </tr>
             <tr>
-              <td>Hardware Dongle Required</td>
-              <td class="col-highlight"><span class="table-check">✓ No dongle needed</span></td>
-              <td><span class="table-cross">✗ Lose dongle = useless</span></td>
-              <td><span class="table-check">✓ No dongle</span></td>
+              <td>Hardware dongle required</td>
+              <td class="col-nxt"><span class="yes">✓ No dongle</span></td>
+              <td><span class="no">✗ Lose it → useless</span></td>
+              <td><span class="yes">✓ No dongle</span></td>
             </tr>
             <tr>
-              <td>Works with Screen Turned Off</td>
-              <td class="col-highlight"><span class="table-check">✓ Yes (Pocket Mode)</span></td>
+              <td>Works with screen off</td>
+              <td class="col-nxt"><span class="yes">✓ Pocket Mode</span></td>
               <td>N/A</td>
-              <td><span class="table-cross">✗ Screen must stay on</span></td>
+              <td><span class="no">✗ Screen must stay on</span></td>
             </tr>
             <tr>
-              <td>Multi-Network / Cloud Relay</td>
-              <td class="col-highlight"><span class="table-check">✓ Yes (Cross-subnet)</span></td>
-              <td><span class="table-cross">✗ 10m RF range limit</span></td>
-              <td><span class="table-cross">✗ Same Wi-Fi only</span></td>
+              <td>Cross-network cloud relay</td>
+              <td class="col-nxt"><span class="yes">✓ Any network</span></td>
+              <td><span class="no">✗ 10m RF range</span></td>
+              <td><span class="no">✗ Same Wi-Fi only</span></td>
             </tr>
             <tr>
-              <td>Zero-Install Portable .exe</td>
-              <td class="col-highlight"><span class="table-check">✓ Yes (Locked laptops)</span></td>
-              <td><span class="table-check">✓ Yes</span></td>
-              <td><span class="table-cross">✗ No</span></td>
+              <td>Zero-install portable</td>
+              <td class="col-nxt"><span class="yes">✓ Run from USB</span></td>
+              <td><span class="yes">✓ Yes</span></td>
+              <td><span class="no">✗ No</span></td>
             </tr>
           </tbody>
         </table>
@@ -372,197 +304,167 @@
     </div>
   </section>
 
-  <!-- ── Pricing Plans ── -->
-  <section class="pricing-section" id="pricingSection">
-    <div id="downloadSection" style="position:relative;top:-80px;"></div>
-    <div class="site-container">
-      <div class="section-header">
-        <div class="section-tag">Honest Pricing</div>
-        <h2 class="section-title">No Subscriptions. Own It for Life.</h2>
-        <p class="section-desc">Start 100% free with your team, or unlock Pro lifetime cloud relay access.</p>
-      </div>
+  <!-- PRICING -->
+  <section class="pricing-section" id="pricing">
+    <div class="container">
+      <div class="section-eyebrow">Pricing</div>
+      <h2 class="section-h2">No subscriptions. Ever.</h2>
+      <p class="section-sub">Start free. Upgrade once if you want cloud relay.</p>
 
       <div class="pricing-grid">
-        <!-- Free Community Tier -->
         <div class="pricing-card">
-          <h3 class="plan-name">Community Free</h3>
-          <p class="plan-desc">Perfect for classroom presentations and local office meetups on the same Wi-Fi.</p>
-          <div class="plan-price">$0 <span>forever</span></div>
-
+          <div class="plan-top">
+            <span class="plan-name">Community</span>
+            <div class="plan-price">$0 <span>forever</span></div>
+          </div>
           <ul class="plan-features">
-            <li class="plan-feature-item active">✓ Unlimited presentations</li>
-            <li class="plan-feature-item active">✓ Local Wi-Fi connection</li>
-            <li class="plan-feature-item active">✓ Physical volume key control</li>
-            <li class="plan-feature-item active">✓ All software profiles included</li>
-            <li class="plan-feature-item active">✓ Web host dashboard & remote</li>
-            <li class="plan-feature-item">✗ Cloud relay across networks</li>
+            <li class="on">Unlimited presentations</li>
+            <li class="on">Local Wi-Fi connection</li>
+            <li class="on">Physical volume key control</li>
+            <li class="on">All software profiles</li>
+            <li class="on">Portable .exe mode</li>
+            <li class="off">Cloud relay (cross-network)</li>
           </ul>
-
-          <a href="https://github.com/DilpreetSinghVerma/nextPresent/releases/tag/v1.0.0" target="_blank" rel="noopener" class="btn btn-secondary">Download Free</a>
+          <a href="https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe"
+             download="NXTslide-Setup.exe" class="plan-btn">Download Free</a>
         </div>
 
-        <!-- Pro Lifetime Tier -->
         <div class="pricing-card featured">
-          <div class="pricing-badge">Most Popular</div>
-          <h3 class="plan-name">Pro Lifetime</h3>
-          <p class="plan-desc">For professional keynote speakers, sales leaders, and conference presenters.</p>
-          <div class="plan-price">$19 <span>one-time payment</span></div>
-
+          <div class="plan-badge">Most Popular</div>
+          <div class="plan-top">
+            <span class="plan-name">Pro Lifetime</span>
+            <div class="plan-price">$19 <span>one-time</span></div>
+          </div>
           <ul class="plan-features">
-            <li class="plan-feature-item active">✓ <strong>Everything in Community</strong></li>
-            <li class="plan-feature-item active">✓ <strong>Global Cloud Relay</strong> (works across 5G/LTE/guest Wi-Fi)</li>
-            <li class="plan-feature-item active">✓ <strong>Portable .exe</strong> (run on locked corporate laptops)</li>
-            <li class="plan-feature-item active">✓ Custom tactile vibration patterns</li>
-            <li class="plan-feature-item active">✓ Speaker pacing telemetry & timer</li>
-            <li class="plan-feature-item active">✓ Commercial presentation license</li>
-            <li class="plan-feature-item active">✓ Lifetime updates & priority support</li>
+            <li class="on">Everything in Community</li>
+            <li class="on"><strong>Global Cloud Relay</strong> — 5G, LTE, guest Wi-Fi</li>
+            <li class="on">Custom vibration patterns</li>
+            <li class="on">Speaker pacing timer</li>
+            <li class="on">Commercial license</li>
+            <li class="on">Lifetime updates + priority support</li>
           </ul>
-
-          <a href="https://github.com/DilpreetSinghVerma/nextPresent/releases/tag/v1.0.0" target="_blank" rel="noopener" class="btn btn-primary">Get Pro Lifetime Access</a>
+          <a href="https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe"
+             download="NXTslide-Setup.exe" class="plan-btn plan-btn-primary">Get Pro Lifetime</a>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── FAQ Section ── -->
-  <section class="faq-section" id="faqSection">
-    <div class="site-container">
-      <div class="section-header">
-        <div class="section-tag">Got Questions?</div>
-        <h2 class="section-title">Frequently Asked Questions</h2>
-      </div>
+  <!-- FAQ -->
+  <section class="faq-section" id="faq">
+    <div class="container faq-container">
+      <div class="section-eyebrow">FAQ</div>
+      <h2 class="section-h2">Common questions</h2>
 
       <div class="faq-list">
         <div class="faq-item open">
           <button class="faq-question">
-            <span>Does the volume button really change slides with the phone screen off?</span>
-            <span class="faq-icon">▼</span>
+            <span>Does the volume button really change slides with the screen off?</span>
+            <span class="faq-icon">+</span>
           </button>
           <div class="faq-answer">
-            Yes! Our Android companion app uses a high-performance background audio session engine with an active MediaSession and partial wake lock. When you lock your phone and put it in your pocket, pressing Volume Up immediately advances the slide, and Volume Down goes to the previous slide with zero audio noise.
+            Yes. The Android companion uses a background MediaSession with a partial wake lock. Lock your phone, pocket it — pressing Volume Up advances the slide, Volume Down goes back. Zero audio noise.
           </div>
         </div>
-
         <div class="faq-item">
           <button class="faq-question">
-            <span>Do I need administrator privileges on my corporate laptop?</span>
-            <span class="faq-icon">▼</span>
+            <span>Do I need admin rights on my corporate laptop?</span>
+            <span class="faq-icon">+</span>
           </button>
           <div class="faq-answer">
-            No. We provide a zero-install <strong>Portable .exe</strong> that you can download directly to your desktop or run off a USB drive without installer prompts or administrative privileges.
+            No. The Portable .exe runs without installation or admin privileges. Download it to your desktop or USB drive and double-click.
           </div>
         </div>
-
         <div class="faq-item">
           <button class="faq-question">
-            <span>What if my laptop and phone are on different Wi-Fi networks?</span>
-            <span class="faq-icon">▼</span>
+            <span>What if my laptop and phone are on different networks?</span>
+            <span class="faq-icon">+</span>
           </button>
           <div class="faq-answer">
-            NXTslide features a global cloud relay. When you launch the app, you receive an instant 6-letter room code (e.g. <code>ABC123</code>). Enter that code in your companion app, and your phone and PC pair securely across cellular data, guest Wi-Fi, and corporate firewalls.
+            The cloud relay handles this. When you open NXTslide you get a 6-letter room code (e.g. <code>ABC-123</code>). Enter it in the phone app — they pair across any network, firewall, or cellular connection.
           </div>
         </div>
-
         <div class="faq-item">
           <button class="faq-question">
-            <span>Will pressing the volume button play loud notification chimes?</span>
-            <span class="faq-icon">▼</span>
+            <span>Will pressing volume play a sound or notification?</span>
+            <span class="faq-icon">+</span>
           </button>
           <div class="faq-answer">
-            No. NXTslide centers the stream volume silently and removes system sound flags, ensuring your presentation is completely silent except for a discreet haptic vibration on your phone.
+            No. NXTslide silently resets the volume stream and suppresses all audio flags. The only feedback is a discreet vibration on your phone.
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Which presentation software does it support?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            PowerPoint, Google Slides, Keynote (Windows/Mac), Canva, LibreOffice Impress, PDF viewers (Adobe, Edge, Chrome), and Prezi. Each has a one-click profile preset in the dashboard.
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── Meet the Founder ── -->
-  <section class="founder-section" style="padding:64px 0;border-top:1px solid rgba(255,255,255,0.06);background:radial-gradient(ellipse at 50% 0%,rgba(99,102,241,0.08),transparent 70%);">
-    <div class="site-container">
-      <div style="max-width:680px;margin:0 auto;text-align:center;padding:36px 30px;background:rgba(15,19,36,0.65);border:1px solid rgba(99,102,241,0.22);border-radius:24px;box-shadow:0 20px 40px -15px rgba(0,0,0,0.5);backdrop-filter:blur(16px);">
-        <div style="width:84px;height:84px;margin:0 auto 16px;">
-          <img src="/logo-icon.jpg" alt="NXTslide Logo" style="width:84px;height:84px;border-radius:22px;object-fit:cover;box-shadow:0 0 28px rgba(124,58,237,0.5);border:2px solid rgba(167,139,250,0.4);">
-        </div>
-        <div style="display:inline-flex;align-items:center;gap:6px;padding:3px 12px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);border-radius:999px;font-size:0.72rem;font-weight:700;color:#a5b4fc;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;">
-          Founder &amp; Creator
-        </div>
-        <h3 style="font-size:1.65rem;font-weight:800;color:#ffffff;margin-bottom:8px;letter-spacing:-0.02em;">
-          Dilpreet Singh
-        </h3>
-        <p style="font-size:0.92rem;color:#94a3b8;line-height:1.65;margin-bottom:20px;max-width:540px;margin-left:auto;margin-right:auto;">
-          &ldquo;I engineered NXTslide to eliminate the anxiety of forgotten presentation dongles and dead batteries. Every speaker, teacher, and executive should feel confident commanding their audience straight from their pocket.&rdquo;
-        </p>
-        <div style="display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;">
-          <a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="display:inline-flex;align-items:center;gap:8px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-            <span>GitHub @DilpreetSinghVerma</span>
-          </a>
-          <a href="#downloadSection" class="btn btn-primary btn-sm">
-            <span>Get NXTslide Free</span>
-          </a>
+  <!-- FOUNDER -->
+  <section class="founder-section">
+    <div class="container">
+      <div class="founder-card">
+        <img src="/logo-icon.jpg" alt="NXTslide" class="founder-logo" width="64" height="64">
+        <div class="founder-text">
+          <div class="founder-label">Founder &amp; Creator</div>
+          <div class="founder-name">Dilpreet Singh</div>
+          <p>"I built NXTslide to eliminate presentation anxiety — no more fumbling for dongles, no more looking down at a screen. Every speaker deserves to command the room from their pocket."</p>
+          <div class="founder-actions">
+            <a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener" class="btn-secondary-sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+              GitHub
+            </a>
+            <a href="#download" class="btn-primary-sm">Download Free</a>
+          </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ── Footer ── -->
+  <!-- FOOTER -->
   <footer class="footer">
-    <div class="site-container">
-      <div class="footer-top">
-        <div class="footer-brand">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
-            <img src="/logo-icon.jpg" alt="NXTslide" width="44" height="44" style="border-radius:12px;object-fit:cover;flex-shrink:0;box-shadow:0 0 18px rgba(124,58,237,.45);">
-            <div>
-              <div style="font-size:1.25rem;font-weight:800;letter-spacing:-.02em;">NXT<span style="color:#a78bfa;">slide</span></div>
-              <div style="font-size:.7rem;color:#64748b;letter-spacing:.06em;text-transform:uppercase;">Invisible Presentation Clicker</div>
-            </div>
-          </div>
-          <p class="footer-desc">
-            The invisible presentation clicker that lets you control slides with physical volume buttons from inside your pocket.
-          </p>
-          <div style="margin-top:14px;display:flex;align-items:center;gap:8px;">
-            <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#06b6d4);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:#fff;flex-shrink:0;">D</div>
-            <div>
-              <div style="font-size:.78rem;font-weight:600;color:#e2e8f0;">Dilpreet Singh</div>
-              <div style="font-size:.68rem;color:#7c3aed;">Founder &amp; Creator</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="footer-links-group">
-          <div class="footer-col">
-            <h4>Downloads</h4>
-            <ul>
-              <li><a href="https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe" download="NXTslide-Setup.exe">Windows Installer (.exe)</a></li>
-              <li><a href="https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide-Portable.exe" download="NXTslide-Portable.exe">Windows Portable (.exe)</a></li>
-              <li><a href="/NXTslide.apk" download="NXTslide.apk">Android Companion (.apk)</a></li>
-            </ul>
-          </div>
-
-          <div class="footer-col">
-            <h4>Software</h4>
-            <ul>
-              <li><a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener">Microsoft PowerPoint</a></li>
-              <li><a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener">Google Slides</a></li>
-              <li><a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener">Canva Presentations</a></li>
-              <li><a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener">Apple Keynote &amp; PDF</a></li>
-            </ul>
-          </div>
-
-          <div class="footer-col">
-            <h4>Open Source</h4>
-            <ul>
-              <li><a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener">GitHub Repository</a></li>
-              <li><a href="https://nextpresent-relay.onrender.com/health" target="_blank" rel="noopener">Cloud Relay Status</a></li>
-            </ul>
-          </div>
-        </div>
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <img src="/logo-icon.jpg" alt="NXTslide" width="32" height="32">
+        <span>NXT<strong>slide</strong></span>
       </div>
 
-      <div class="footer-bottom">
-        <span>&copy; 2026 NXTslide &mdash; Built with ❤️ by <strong style="color:#a78bfa;">Dilpreet Singh</strong></span>
-        <span>Crafted for keynote speakers, educators, and leaders worldwide.</span>
+      <div class="footer-cols">
+        <div class="footer-col">
+          <div class="footer-col-title">Downloads</div>
+          <ul>
+            <li><a href="https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe" download="NXTslide-Setup.exe">Windows Installer</a></li>
+            <li><a href="https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide-Portable.exe" download="NXTslide-Portable.exe">Windows Portable</a></li>
+            <li><a href="/NXTslide.apk" download="NXTslide.apk">Android APK</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Works With</div>
+          <ul>
+            <li>Microsoft PowerPoint</li>
+            <li>Google Slides</li>
+            <li>Canva Decks</li>
+            <li>Apple Keynote &amp; PDF</li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Project</div>
+          <ul>
+            <li><a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener">GitHub Repository</a></li>
+            <li><a href="https://nextpresent-relay.onrender.com/health" target="_blank" rel="noopener">Relay Status</a></li>
+          </ul>
+        </div>
       </div>
+    </div>
+    <div class="container footer-bottom">
+      <span>© 2026 NXTslide · Built by <strong>Dilpreet Singh</strong></span>
+      <span>Open source · Free forever</span>
     </div>
   </footer>
 

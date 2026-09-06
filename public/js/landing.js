@@ -3,11 +3,48 @@
  */
 
 document.addEventListener('DOMContentLoaded', () => {
+  initNavBehavior();
   initSimulator();
   initFaqAccordion();
   initPlatformDownloadHighlight();
   initSmoothScroll();
+  injectSlideAnimStyles();
 });
+
+function initNavBehavior() {
+  const nav = document.getElementById('mainNav');
+  if (!nav) return;
+  const onScroll = () => {
+    nav.classList.toggle('scrolled', window.scrollY > 20);
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+
+  const hamburger = document.getElementById('navHamburger');
+  const navLinks  = document.querySelector('.nav-links');
+  if (hamburger && navLinks) {
+    hamburger.addEventListener('click', () => {
+      navLinks.classList.toggle('open');
+    });
+    // Close on link click
+    navLinks.querySelectorAll('a').forEach(a => {
+      a.addEventListener('click', () => navLinks.classList.remove('open'));
+    });
+  }
+}
+
+function injectSlideAnimStyles() {
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideInRight { from { opacity:0; transform:translateX(24px); } to { opacity:1; transform:translateX(0); } }
+    @keyframes slideInLeft  { from { opacity:0; transform:translateX(-24px); } to { opacity:1; transform:translateX(0); } }
+    .anim-next { animation: slideInRight 0.3s cubic-bezier(0.16,1,0.3,1) both; }
+    .anim-prev { animation: slideInLeft  0.3s cubic-bezier(0.16,1,0.3,1) both; }
+  `;
+  document.head.appendChild(style);
+}
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Interactive Presentation Simulator Engine
