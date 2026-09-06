@@ -6,6 +6,15 @@
   <title>NXTslide — Presentation Remote Host</title>
   <link rel="stylesheet" href="/css/dashboard.css">
   <link rel="icon" href="/logo-icon.jpg" type="image/jpeg">
+  <script>
+    // Redirect to landing page if accessed from cloud (not local desktop app server)
+    (function() {
+      var h = location.hostname;
+      var isCloud = h.includes('onrender.com') || h.includes('netlify.app') ||
+                    h.includes('vercel.app') || h.includes('github.io');
+      if (isCloud) { location.replace('/?from=dashboard'); }
+    })();
+  </script>
 </head>
 <body>
   <!-- Header -->
