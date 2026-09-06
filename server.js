@@ -96,6 +96,16 @@ async function connectToRelay() {
 
 const app = express();
 const server = http.createServer(app);
+
+// Graceful port collision handling (e.g. if background server is already active)
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.warn(`[NXTslide] Port ${PORT} is already in use. Attaching to existing running server.`);
+  } else {
+    console.error('[NXTslide] Server error:', err);
+  }
+});
+
 const wss = new WebSocketServer({ server, path: '/ws', perMessageDeflate: false });
 
 const PORT = process.env.PORT || 3333;

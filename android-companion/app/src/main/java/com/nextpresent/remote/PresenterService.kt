@@ -77,6 +77,7 @@ class PresenterService : Service() {
     /** Volume midpoint we restore silently after every key press */
     private var midVolume: Int = 7
     private var lastHandledTs = 0L
+    @Volatile private var isResettingVolume = false
     private val mainHandler = Handler(Looper.getMainLooper())
 
     /** Whether the broadcast receiver is registered */
@@ -100,7 +101,7 @@ class PresenterService : Service() {
     @Synchronized
     private fun handleVolumeTrigger(isUp: Boolean) {
         val ts = System.currentTimeMillis()
-        if (ts - lastHandledTs < 350) return // debounce: must be longer than reset settle time
+        if (ts - lastHandledTs < 300) return // debounce rapid presses
         lastHandledTs = ts
 
         val action = if (isUp) "NEXT" else "PREV"
@@ -111,9 +112,8 @@ class PresenterService : Service() {
         // 2. Haptic feedback
         vibrateFeedback(40)
 
-        // 3. Synchronously reset volume to midpoint — no delay needed because:
-        //    a) BroadcastReceiver only fires when prev==midVolume, so the reset echo (prev=user_level → midVolume) is ignored
-        //    b) ContentObserver pre-sets lastVolume=midVolume before calling us, so reset echo finds cur==lastVolume and exits
+        // 3. Mark reset flag and restore stream volume to midpoint
+        isResettingVolume = true
         try {
             audioManager?.setStreamVolume(
                 AudioManager.STREAM_MUSIC,
@@ -121,15 +121,17 @@ class PresenterService : Service() {
                 AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE
             )
         } catch (_: Exception) {}
+
+        mainHandler.postDelayed({
+            isResettingVolume = false
+        }, 180)
     }
 
     // ─── Volume BroadcastReceiver (System broadcast) ─────────────────────────
-    // DESIGN: Only triggers when prev == midVolume (user pressed from our known baseline).
-    // Reset echoes always have prev != midVolume (going from user-set level back to mid),
-    // so they are silently filtered out by the `prev != midVolume` check.
     private val volumeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != "android.media.VOLUME_CHANGED_ACTION") return
+            if (isResettingVolume) return
 
             val streamType = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
             if (streamType != AudioManager.STREAM_MUSIC && streamType != -1) return
@@ -137,12 +139,12 @@ class PresenterService : Service() {
             val now  = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", -1)
             val prev = intent.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE", -1)
             if (now < 0 || prev < 0 || now == prev) return
+            if (now == midVolume) return // Ignore reset echo returning to midpoint
 
-            // Only accept presses that started from our midpoint baseline.
-            // The reset echo (e.g. 8→7) has prev=8 != midVolume=7, so it is dropped here.
-            if (prev != midVolume) return
-
-            handleVolumeTrigger(now > prev)
+            // now > midVolume (or now > prev) => Volume UP (NEXT)
+            // now < midVolume (or now < prev) => Volume DOWN (PREV)
+            val isUp = if (now != midVolume) (now > midVolume) else (now > prev)
+            handleVolumeTrigger(isUp)
         }
     }
 
@@ -375,23 +377,18 @@ class PresenterService : Service() {
     }
 
     // ─── ContentObserver (Dual Detection for Android 13/14 + Samsung/Xiaomi) ───
-    // DESIGN: lastVolume is pre-set to midVolume BEFORE calling handleVolumeTrigger.
-    // handleVolumeTrigger then resets the stream volume back to midVolume.
-    // When the reset fires, onChange runs again: cur==midVolume==lastVolume → `if (cur == lastVolume) return`.
-    // This eliminates the bounce-back echo with zero timing dependencies.
     private fun registerVolumeObserver() {
         try {
-            var lastVolume = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: midVolume
             volumeObserver = object : ContentObserver(mainHandler) {
                 override fun onChange(selfChange: Boolean) {
                     super.onChange(selfChange)
+                    if (isResettingVolume) return
                     val cur = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: return
-                    if (cur == lastVolume) return
-                    val isUp = cur > lastVolume
-                    // Pre-set lastVolume to midVolume NOW, before resetting the stream.
-                    // When the stream reset echo fires (cur→midVolume), we see cur==lastVolume and exit.
-                    lastVolume = midVolume
-                    handleVolumeTrigger(isUp)
+                    if (cur == midVolume) return // Ignore reset echo returning to midpoint
+
+                    // cur > midVolume => Volume UP (NEXT)
+                    // cur < midVolume => Volume DOWN (PREV)
+                    handleVolumeTrigger(cur > midVolume)
                 }
             }
             contentResolver.registerContentObserver(

@@ -298,9 +298,9 @@ class MainActivity : AppCompatActivity() {
 
     // ─── Volume keys (foreground — app visible) ────────────────────────────────
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (event.action == KeyEvent.ACTION_DOWN) {
-            when (event.keyCode) {
-                KeyEvent.KEYCODE_VOLUME_UP -> {
+        if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP || event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
                     vibrateFeedback(35)
                     sendSlideAction("NEXT")
                     webView.post {
@@ -308,9 +308,7 @@ class MainActivity : AppCompatActivity() {
                             "if(typeof window.onHardwareVolumeKey==='function') " +
                             "window.onHardwareVolumeKey('NEXT');", null)
                     }
-                    return true
-                }
-                KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                } else {
                     vibrateFeedback(35)
                     sendSlideAction("PREV")
                     webView.post {
@@ -318,9 +316,9 @@ class MainActivity : AppCompatActivity() {
                             "if(typeof window.onHardwareVolumeKey==='function') " +
                             "window.onHardwareVolumeKey('PREV');", null)
                     }
-                    return true
                 }
             }
+            return true // Consume BOTH ACTION_DOWN and ACTION_UP completely
         }
         return super.dispatchKeyEvent(event)
     }
