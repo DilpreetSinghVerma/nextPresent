@@ -462,20 +462,16 @@ class ConnectActivity : AppCompatActivity() {
     }
 
     private fun showEnterKeyDialog() {
-        val input = EditText(this)
-        input.hint = "e.g. NXT-PRO-XXXX"
-        input.setSingleLine()
-        input.setTextColor(android.graphics.Color.WHITE)
-        input.setHintTextColor(android.graphics.Color.GRAY)
-        val container = android.widget.FrameLayout(this)
-        val params = android.widget.FrameLayout.LayoutParams(
-            android.widget.ViewGroup.LayoutParams.MATCH_PARENT,
-            android.widget.ViewGroup.LayoutParams.WRAP_CONTENT
-        )
-        params.leftMargin = 50
-        params.rightMargin = 50
-        input.layoutParams = params
-        container.addView(input)
+        val input = EditText(this).apply {
+            hint = "e.g. NXT-PRO-XXXX"
+            setSingleLine()
+            setTextColor(android.graphics.Color.WHITE)
+            setHintTextColor(android.graphics.Color.GRAY)
+        }
+        val container = android.widget.FrameLayout(this).apply {
+            setPadding(60, 20, 60, 20)
+            addView(input)
+        }
 
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("Activate Pro License")
