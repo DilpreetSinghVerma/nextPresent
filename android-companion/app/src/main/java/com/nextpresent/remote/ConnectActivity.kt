@@ -423,10 +423,29 @@ class ConnectActivity : AppCompatActivity() {
     }
 
     private fun showProPaywallDialog() {
-        val options = arrayOf("Unlock Pro Lifetime ($19)", "Enter License Key", "Stay on Free Local Mode")
+        val options = arrayOf("⭐ Unlock Pro Lifetime ($19)", "🔑 Enter License Key", "🏠 Stay on Free Local Mode")
+        val message = """
+            🚀 NXTslide Pro Lifetime Features:
+
+            🌍 Present from Anywhere on Earth
+            Control slides across 5G/LTE, hotel Wi-Fi, or across countries without network configuration.
+
+            📱 Multi-Presenter Mode (Up to 5 Phones)
+            Connect up to 5 mobile phones simultaneously to pass slide control seamlessly on stage.
+
+            💎 Zero Subscriptions — Pay Once ($19)
+            No monthly fees or recurring charges. Keep forever with all future updates.
+
+            ⚡ Instant 6-Letter Room Code
+            Bypasses hotel, university, and corporate firewalls in 2 seconds.
+
+            📳 Stealth Pocket Haptic Timer
+            Discreet vibration pulses at 10m, 5m, and 1m remaining.
+        """.trimIndent()
+
         androidx.appcompat.app.AlertDialog.Builder(this)
             .setTitle("⭐ Unlock Global Cloud Relay (PRO)")
-            .setMessage("Global Cloud Relay lets you control slides across ANY network (5G, LTE, hotel Wi-Fi, firewalls) without configuring your network.")
+            .setMessage(message)
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> {

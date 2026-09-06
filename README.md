@@ -85,6 +85,22 @@ Open `http://localhost:3333/dashboard` to see:
 
 ---
 
+## 💎 Pricing
+
+| Feature | Community (Free) | Pro Lifetime ($19 one-time) |
+|---|:---:|:---:|
+| **Physical Volume Key Clicker** | ✅ | ✅ |
+| **Local Wi-Fi & Hotspot Mode** | ✅ | ✅ |
+| **All Software Profiles** (PowerPoint, Keynote, Canva, etc.) | ✅ | ✅ |
+| **🌍 Global Cloud Relay** (Across 5G/LTE, hotel Wi-Fi & different countries) | ❌ | ✅ |
+| **📱 Multi-Presenter Mode** (Connect up to 5 phones simultaneously) | ❌ | ✅ |
+| **⚡ Instant 6-Letter Room Code** (Bypass enterprise firewalls) | ❌ | ✅ |
+| **📳 Stealth Pocket Haptics** (10m, 5m, 1m pace vibrations) | ❌ | ✅ |
+| **Zero Subscriptions** (Pay once, own forever) | ✅ | ✅ |
+| **All Future Updates Included** | ✅ | ✅ |
+
+---
+
 ## 🔧 Configuration
 
 | Setting | Default | Environment Variable |
