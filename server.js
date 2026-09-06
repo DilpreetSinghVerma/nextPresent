@@ -7,6 +7,7 @@ const { WebSocketServer, WebSocket } = require('ws');
 const QRCode  = require('qrcode');
 const { getPrimaryLocalIp, getLocalIpAddresses } = require('./lib/network');
 const keySender = require('./lib/keySender');
+const licenseService = require('./lib/licenseService');
 
 // ─────────────────────────────────────────────────────────────────────
 // Cloud Relay Configuration
@@ -316,6 +317,7 @@ app.get('/api/info', async (req, res) => {
       cloudQrDataUrl,
       sessionState,
       profiles:     SOFTWARE_PROFILES,
+      license:      licenseService.getLicenseStatus(),
       // Cloud relay info (null if relay not connected)
       relay: {
         connected:  relayConnected,
@@ -327,6 +329,31 @@ app.get('/api/info', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// License Key Management Endpoints
+// ─────────────────────────────────────────────────────────────────────
+app.get('/api/license/status', (req, res) => {
+  res.json(licenseService.getLicenseStatus());
+});
+
+app.post('/api/license/activate', async (req, res) => {
+  try {
+    const { key, instanceName } = req.body || {};
+    const result = await licenseService.activateLicense(key, instanceName);
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/license/deactivate', (req, res) => {
+  res.json(licenseService.deactivateLicense());
 });
 
 app.post('/api/profile', (req, res) => {

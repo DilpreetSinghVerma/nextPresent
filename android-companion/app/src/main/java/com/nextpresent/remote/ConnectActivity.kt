@@ -485,12 +485,15 @@ class ConnectActivity : AppCompatActivity() {
                 val key = input.text.toString().trim().uppercase()
                 if (key.length >= 6) {
                     val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
-                    prefs.edit().putBoolean("nxtslide_pro_unlocked", true).apply()
+                    prefs.edit()
+                        .putBoolean("nxtslide_pro_unlocked", true)
+                        .putString("nxtslide_license_key", key)
+                        .apply()
                     updateProBadgeUI()
                     switchMode("cloud")
                     Toast.makeText(this, "✅ Pro Activated! Cloud mode unlocked.", Toast.LENGTH_SHORT).show()
                 } else {
-                    Toast.makeText(this, "Invalid license key", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Invalid license key (min 6 characters)", Toast.LENGTH_SHORT).show()
                 }
             }
             .setNegativeButton("Cancel", null)

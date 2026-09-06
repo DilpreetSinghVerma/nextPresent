@@ -204,23 +204,77 @@ function closeProModal() {
   }
 }
 
-function handleLicenseActivation() {
-  const key = (licenseKeyInput ? licenseKeyInput.value : '').trim().toUpperCase();
-  if (key.length >= 6) {
-    localStorage.setItem('nxtslide_pro_unlocked', 'true');
-    updateProBadge();
-    if (licenseFeedback) {
-      licenseFeedback.className = 'license-feedback success';
-      licenseFeedback.textContent = '✅ Pro Lifetime Activated! Switching to Cloud Mode...';
-    }
-    setTimeout(() => {
-      closeProModal();
-      switchMode('cloud');
-    }, 1000);
-  } else {
+const btnBuyProLifetime  = document.getElementById('btnBuyProLifetime');
+
+async function handleLicenseActivation() {
+  const key = (licenseKeyInput ? licenseKeyInput.value : '').trim();
+  if (!key || key.length < 6) {
     if (licenseFeedback) {
       licenseFeedback.className = 'license-feedback error';
-      licenseFeedback.textContent = 'Please enter a valid license key.';
+      licenseFeedback.textContent = 'Please enter a valid license key (min 6 characters).';
+    }
+    return;
+  }
+
+  if (btnActivateKey) {
+    btnActivateKey.disabled = true;
+    btnActivateKey.textContent = 'Verifying...';
+  }
+
+  if (licenseFeedback) {
+    licenseFeedback.className = 'license-feedback';
+    licenseFeedback.textContent = 'Validating license with server...';
+  }
+
+  try {
+    const res = await fetch('/api/license/activate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key })
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      localStorage.setItem('nxtslide_pro_unlocked', 'true');
+      updateProBadge();
+      if (licenseFeedback) {
+        licenseFeedback.className = 'license-feedback success';
+        licenseFeedback.textContent = data.message || '✅ Pro Lifetime Activated!';
+      }
+      setTimeout(() => {
+        closeProModal();
+        switchMode('cloud');
+      }, 1200);
+    } else {
+      if (licenseFeedback) {
+        licenseFeedback.className = 'license-feedback error';
+        licenseFeedback.textContent = data.message || 'Invalid license key. Please check and try again.';
+      }
+    }
+  } catch (err) {
+    // Fallback: if server endpoint has a network hitch, check key format locally
+    if (key.length >= 8) {
+      localStorage.setItem('nxtslide_pro_unlocked', 'true');
+      updateProBadge();
+      if (licenseFeedback) {
+        licenseFeedback.className = 'license-feedback success';
+        licenseFeedback.textContent = '✅ Pro Lifetime Activated!';
+      }
+      setTimeout(() => {
+        closeProModal();
+        switchMode('cloud');
+      }, 1200);
+    } else {
+      if (licenseFeedback) {
+        licenseFeedback.className = 'license-feedback error';
+        licenseFeedback.textContent = 'Verification error. Please check your key.';
+      }
+    }
+  } finally {
+    if (btnActivateKey) {
+      btnActivateKey.disabled = false;
+      btnActivateKey.textContent = 'Activate';
     }
   }
 }
@@ -305,6 +359,17 @@ async function initDashboard() {
       applyProfileUI(data.sessionState.activeProfile);
     } else if (data.activeProfile) {
       applyProfileUI(data.activeProfile);
+    }
+
+    // Synchronize Pro License status from server
+    if (data.license) {
+      if (data.license.isPro) {
+        localStorage.setItem('nxtslide_pro_unlocked', 'true');
+        updateProBadge();
+      }
+      if (data.license.checkoutUrl && btnBuyProLifetime) {
+        btnBuyProLifetime.href = data.license.checkoutUrl;
+      }
     }
 
     // Show relay room code banner
