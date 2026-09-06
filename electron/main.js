@@ -1,6 +1,8 @@
-const { app, BrowserWindow, Tray, Menu, shell } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
 const http = require('http');
+
+let autoUpdater = null;
 
 // Start the internal NXTslide host server
 try {
@@ -32,6 +34,7 @@ if (!gotTheLock) {
   app.whenReady().then(() => {
     createWindow();
     createTray();
+    setupAutoUpdater();
   });
 }
 
@@ -99,6 +102,18 @@ function createTray() {
         shell.openExternal(DASHBOARD_URL);
       }
     },
+    {
+      label: 'Check for Updates...',
+      click: () => {
+        if (app.isPackaged) {
+          autoUpdater.checkForUpdates().catch(() => {
+            shell.openExternal('https://github.com/DilpreetSinghVerma/nextPresent/releases/latest');
+          });
+        } else {
+          shell.openExternal('https://github.com/DilpreetSinghVerma/nextPresent/releases/latest');
+        }
+      }
+    },
     { type: 'separator' },
     {
       label: 'Quit NXTslide',
@@ -125,6 +140,62 @@ function createTray() {
     mainWindow.show();
     mainWindow.focus();
   });
+}
+
+function setupAutoUpdater() {
+  if (!app || !app.isPackaged) {
+    console.log('[AutoUpdater] In development mode — skipping auto-update checks');
+    return;
+  }
+
+  try {
+    autoUpdater = require('electron-updater').autoUpdater;
+  } catch (err) {
+    console.warn('[AutoUpdater] Failed to load electron-updater:', err.message);
+    return;
+  }
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('checking-for-update', () => {
+    console.log('[AutoUpdater] Checking GitHub releases...');
+  });
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('[AutoUpdater] Update available:', info.version);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.executeJavaScript(`
+        if (typeof showUpdateToast === 'function') {
+          showUpdateToast('Downloading NXTslide v${info.version}...');
+        }
+      `).catch(() => {});
+    }
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('[AutoUpdater] Update downloaded successfully:', info.version);
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.executeJavaScript(`
+        if (typeof showUpdateReadyToast === 'function') {
+          showUpdateReadyToast('NXTslide v${info.version} ready! Restart to apply.');
+        }
+      `).catch(() => {});
+    }
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.warn('[AutoUpdater] Check error:', err ? err.message : err);
+  });
+
+  // Check 5 seconds after launch, then every 4 hours
+  setTimeout(() => {
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  }, 5000);
+
+  setInterval(() => {
+    autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+  }, 4 * 60 * 60 * 1000);
 }
 
 function waitForServer(url, callback, maxTries = 30) {

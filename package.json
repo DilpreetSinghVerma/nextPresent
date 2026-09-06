@@ -19,6 +19,13 @@
     "directories": {
       "output": "dist"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "DilpreetSinghVerma",
+        "repo": "nextPresent"
+      }
+    ],
     "win": {
       "icon": "assets/icon.ico",
       "target": [
@@ -80,6 +87,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "qrcode": "^1.5.4",
     "ws": "^8.21.3"

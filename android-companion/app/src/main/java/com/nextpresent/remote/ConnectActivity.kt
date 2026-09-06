@@ -88,6 +88,7 @@ class ConnectActivity : AppCompatActivity() {
         cameraExecutor = Executors.newSingleThreadExecutor()
 
         requestCameraOrStart()
+        checkForAppUpdate()
 
         // Auto-format as user types (insert dash after 3 chars)
         etRoomCode.addTextChangedListener(object : TextWatcher {
@@ -304,6 +305,75 @@ class ConnectActivity : AppCompatActivity() {
                 finish()
             }
         })
+    }
+
+    // ─── App Update Check ──────────────────────────────────────────────────
+    private fun checkForAppUpdate() {
+        val request = Request.Builder()
+            .url("$RELAY_BASE/api/version")
+            .build()
+
+        httpClient.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                // Silently ignore network failures on startup
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (!response.isSuccessful) {
+                    response.close()
+                    return
+                }
+                val body = response.body?.string() ?: return
+                response.close()
+
+                try {
+                    val json = JSONObject(body)
+                    val androidObj = json.optJSONObject("android") ?: return
+                    val latestVersionName = androidObj.optString("versionName", "")
+                    val apkUrl = androidObj.optString("apkUrl", "")
+
+                    val currentVersion = try {
+                        packageManager.getPackageInfo(packageName, 0).versionName
+                    } catch (e: Exception) {
+                        "1.0.0"
+                    }
+
+                    if (latestVersionName.isNotBlank() && isVersionNewer(latestVersionName, currentVersion)) {
+                        runOnUiThread {
+                            showUpdateDialog(latestVersionName, apkUrl)
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Ignore JSON parse errors
+                }
+            }
+        })
+    }
+
+    private fun isVersionNewer(latest: String, current: String): Boolean {
+        val lParts = latest.trimStart('v').split(".").mapNotNull { it.toIntOrNull() }
+        val cParts = current.trimStart('v').split(".").mapNotNull { it.toIntOrNull() }
+        for (i in 0 until maxOf(lParts.size, cParts.size)) {
+            val l = lParts.getOrElse(i) { 0 }
+            val c = cParts.getOrElse(i) { 0 }
+            if (l > c) return true
+            if (l < c) return false
+        }
+        return false
+    }
+
+    private fun showUpdateDialog(latestVersion: String, downloadUrl: String) {
+        if (isFinishing || isDestroyed) return
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("✨ Update Available")
+            .setMessage("NXTslide v$latestVersion is available. Would you like to update now?")
+            .setPositiveButton("Update Now") { _, _ ->
+                val targetUrl = if (downloadUrl.isNotBlank()) downloadUrl else "$RELAY_BASE/downloads/NXTslide.apk"
+                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(targetUrl))
+                startActivity(intent)
+            }
+            .setNegativeButton("Later", null)
+            .show()
     }
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────

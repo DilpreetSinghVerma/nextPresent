@@ -403,3 +403,28 @@ btnEsc.addEventListener('click', () => sendCommand('ESC'));
 
 // Start
 initDashboard();
+
+// ─────────────────────────────────────────────────────────────────────
+// Auto-Updater Notifications
+// ─────────────────────────────────────────────────────────────────────
+window.showUpdateToast = function(msg) {
+  let toast = document.getElementById('autoUpdateToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'autoUpdateToast';
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111111;border:1px solid rgba(34,197,94,0.4);color:#ededed;padding:12px 20px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.6);z-index:9999;font-size:0.875rem;display:flex;align-items:center;gap:12px;';
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = `<span style="color:#22c55e;">✨</span> <span>${msg}</span>`;
+};
+
+window.showUpdateReadyToast = function(msg) {
+  let toast = document.getElementById('autoUpdateToast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'autoUpdateToast';
+    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#111111;border:1px solid #22c55e;color:#ededed;padding:12px 20px;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,0.6);z-index:9999;font-size:0.875rem;display:flex;align-items:center;gap:12px;';
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = `<span style="color:#22c55e;">🎉</span> <span>${msg}</span> <button onclick="window.close()" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;margin-left:8px;">Restart</button>`;
+};
