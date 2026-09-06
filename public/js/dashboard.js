@@ -135,8 +135,20 @@ if (shareRelayBtn) {
 
 // Initialize Dashboard
 async function initDashboard() {
+  // Detect if we're running on the cloud (Render) vs locally
+  const isCloud = location.hostname.includes('onrender.com') ||
+                  location.hostname.includes('netlify.app') ||
+                  location.hostname.includes('vercel.app') ||
+                  location.hostname.includes('github.io');
+
+  if (isCloud) {
+    showNoServerOverlay();
+    return;
+  }
+
   try {
     const res = await fetch('/api/info');
+    if (!res.ok) throw new Error('Server not running');
     const data = await res.json();
 
     currentPort = data.port;
@@ -167,7 +179,54 @@ async function initDashboard() {
     connectWebSocket();
   } catch (err) {
     console.error('Failed to load server info:', err);
+    showNoServerOverlay();
   }
+}
+
+function showNoServerOverlay() {
+  // Update header status pill to show offline
+  if (wsStatusPill) {
+    wsStatusPill.style.borderColor = 'rgba(245,158,11,0.4)';
+    wsStatusPill.style.background  = 'rgba(245,158,11,0.1)';
+    wsStatusPill.style.color       = '#fbbf24';
+  }
+  if (wsStatusText) wsStatusText.textContent = 'Desktop App Not Running';
+
+  // Replace the relay connecting spinner with a clear message
+  const relayConnecting = document.getElementById('relayConnecting');
+  if (relayConnecting) {
+    relayConnecting.innerHTML = `
+      <div style="padding:4px 0 2px;font-size:1rem;">🖥️</div>
+      <div style="font-weight:700;color:#fbbf24;margin-bottom:4px;">Desktop App Required</div>
+      <div style="font-size:0.75rem;color:#94a3b8;line-height:1.5;">
+        The dashboard only works when the NXTslide desktop app (or <code style="color:#a5b4fc">node server.js</code>) is running on your PC.<br><br>
+        <a href="https://github.com/DilpreetSinghVerma/nextPresent/releases/latest"
+           target="_blank" rel="noopener"
+           style="color:#818cf8;text-decoration:underline;">Download NXTslide for Windows →</a>
+      </div>
+    `;
+    relayConnecting.style.padding = '16px';
+    relayConnecting.style.borderColor = 'rgba(245,158,11,0.3)';
+  }
+
+  // Replace QR image with placeholder message
+  if (qrCodeImg) {
+    qrCodeImg.style.display = 'none';
+    const qrParent = qrCodeImg.parentElement;
+    if (qrParent) {
+      const placeholder = document.createElement('div');
+      placeholder.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;width:160px;height:160px;background:rgba(255,255,255,0.03);border:2px dashed rgba(99,102,241,0.3);border-radius:12px;color:#475569;font-size:0.72rem;text-align:center;gap:8px;padding:12px;';
+      placeholder.innerHTML = '<span style="font-size:2rem;">🖥️</span><span>Open the desktop app to generate QR code</span>';
+      qrParent.appendChild(placeholder);
+    }
+  }
+
+  // Replace IP dropdown
+  if (ipSelect) {
+    ipSelect.innerHTML = '<option>— App not running —</option>';
+    ipSelect.disabled = true;
+  }
+  if (remoteUrlDisplay) remoteUrlDisplay.textContent = 'http://...';
 }
 
 // IP Switcher
