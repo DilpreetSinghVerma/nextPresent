@@ -1,15 +1,53 @@
 const { app, BrowserWindow, Tray, Menu, shell, ipcMain } = require('electron');
 const path = require('path');
 const http = require('http');
+const { execSync } = require('child_process');
 
 let autoUpdater = null;
 
-// Start the internal NXTslide host server
-try {
-  require('../server.js');
-} catch (err) {
-  console.error('[Electron] Server start error:', err);
+/**
+ * Frees port 3333 (or any port) by finding and killing the process occupying it.
+ * Works on Windows using netstat + taskkill.
+ */
+function freePort(port) {
+  try {
+    // netstat output has the PID in the last column of lines matching the port
+    const output = execSync(
+      `netstat -ano | findstr :${port}`,
+      { encoding: 'utf8', windowsHide: true }
+    );
+    const lines = output.split('\n').filter(l =>
+      l.includes(`:${port} `) && l.includes('LISTENING')
+    );
+    const pids = new Set();
+    lines.forEach(line => {
+      const parts = line.trim().split(/\s+/);
+      const pid = parseInt(parts[parts.length - 1], 10);
+      if (pid && pid > 0) pids.add(pid);
+    });
+
+    pids.forEach(pid => {
+      try {
+        execSync(`taskkill /PID ${pid} /F`, { windowsHide: true });
+        console.log(`[Electron] Freed port ${port} — killed PID ${pid}`);
+      } catch (_) {}
+    });
+  } catch (_) {
+    // Port was already free — no output from netstat, that's fine
+  }
 }
+
+// Free port 3333 before starting the internal server so we never get EADDRINUSE
+freePort(3333);
+
+// Small delay to let the OS reclaim the port socket
+setTimeout(() => {
+  try {
+    require('../server.js');
+  } catch (err) {
+    console.error('[Electron] Server start error:', err);
+  }
+}, 250);
 
 let mainWindow = null;
 let tray = null;
