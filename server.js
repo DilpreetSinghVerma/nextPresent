@@ -536,6 +536,26 @@ server.listen(PORT, '0.0.0.0', async () => {
   console.log('========================================================\n');
 });
 
+// ─────────────────────────────────────────────────────────────────────
+// Stop Server Endpoint (called by dashboard Stop button)
+// ─────────────────────────────────────────────────────────────────────
+app.post('/api/server/stop', (req, res) => {
+  res.json({ success: true, message: 'Server shutting down...' });
+  console.log('[NXTslide] Stop requested from dashboard.');
+  keySender.destroy();
+  // Close WebSocket connections gracefully
+  wss.clients.forEach(client => {
+    try { client.close(1001, 'Server stopping'); } catch (_) {}
+  });
+  // Give response time to send before closing HTTP server
+  setTimeout(() => {
+    server.close(() => {
+      console.log('[NXTslide] Server stopped.');
+      process.exit(0);
+    });
+  }, 300);
+});
+
 process.on('SIGINT', () => {
   console.log('\nStopping NXTslide server...');
   keySender.destroy();

@@ -9,6 +9,7 @@ const remoteUrlDisplay = document.getElementById('remoteUrlDisplay');
 const copyUrlBtn = document.getElementById('copyUrlBtn');
 const wsStatusPill = document.getElementById('wsStatusPill');
 const wsStatusText = document.getElementById('wsStatusText');
+const btnStopServer = document.getElementById('btnStopServer');
 
 const connectedClientsVal = document.getElementById('connectedClientsVal');
 const slideNumberVal = document.getElementById('slideNumberVal');
@@ -130,6 +131,42 @@ if (shareRelayBtn) {
         url: relayPhoneUrl,
       });
     } catch (_) {}
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Stop Server Button
+// ─────────────────────────────────────────────────────────────────────
+if (btnStopServer) {
+  btnStopServer.addEventListener('click', async () => {
+    const confirmed = confirm(
+      'Stop the NXTslide server?\n\n' +
+      'All connected phones will lose their connection. ' +
+      'You can restart the app to resume hosting.'
+    );
+    if (!confirmed) return;
+
+    btnStopServer.classList.add('stopping');
+    btnStopServer.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+      Stopping...`;
+
+    try {
+      await fetch('/api/server/stop', { method: 'POST' });
+    } catch (_) {
+      // Server closed — connection will drop, that's expected
+    }
+
+    if (ws) { try { ws.close(); } catch (_) {} }
+    if (wsStatusPill) {
+      wsStatusPill.style.background = 'rgba(239,68,68,0.1)';
+      wsStatusPill.style.borderColor = 'rgba(239,68,68,0.3)';
+      wsStatusPill.style.color = '#f87171';
+    }
+    if (wsStatusText) wsStatusText.textContent = 'Server Stopped';
+    btnStopServer.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+      Stopped`;
   });
 }
 

@@ -113,7 +113,38 @@ body {
 .header-status {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+}
+
+.stop-server-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  border-radius: 30px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  letter-spacing: 0.01em;
+}
+.stop-server-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #fca5a5;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.2);
+}
+.stop-server-btn:active {
+  transform: scale(0.97);
+}
+.stop-server-btn.stopping {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .status-pill {
