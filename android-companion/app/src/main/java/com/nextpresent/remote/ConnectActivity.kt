@@ -6,6 +6,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.text.Editable
+import android.text.InputFilter
+import android.text.InputType
 import android.text.TextWatcher
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
@@ -50,6 +52,10 @@ class ConnectActivity : AppCompatActivity() {
 
         /** Key used to pass validated room code back to caller */
         const val EXTRA_ROOM_CODE = "room_code"
+        /** Key used to pass validated local IP back to caller */
+        const val EXTRA_LAN_IP    = "lan_ip"
+        /** Key used to pass validated local port back to caller */
+        const val EXTRA_LAN_PORT  = "lan_port"
     }
 
     private lateinit var cameraPreview: PreviewView
@@ -108,13 +114,13 @@ class ConnectActivity : AppCompatActivity() {
         requestCameraOrStart()
         checkForAppUpdate()
 
-        // Auto-format as user types (insert dash after 3 chars)
+        // Auto-format as user types in cloud mode (insert dash after 3 chars)
         etRoomCode.addTextChangedListener(object : TextWatcher {
             private var editing = false
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
             override fun afterTextChanged(e: Editable?) {
-                if (editing) return
+                if (editing || currentMode != "cloud") return
                 editing = true
                 val raw = e.toString().uppercase().replace("-", "").take(6)
                 val formatted = if (raw.length > 3) "${raw.take(3)}-${raw.drop(3)}" else raw
@@ -132,10 +138,11 @@ class ConnectActivity : AppCompatActivity() {
         btnConnect.setOnClickListener { attemptConnect() }
 
         btnLanMode.setOnClickListener {
-            // Return without a relay code — MainActivity will use LAN mode
-            setResult(RESULT_CANCELED)
-            finish()
+            switchMode("local")
         }
+
+        // Initialize default mode to Local (Free)
+        switchMode("local")
     }
 
     // ─── Camera permission ────────────────────────────────────────────────────
@@ -216,20 +223,39 @@ class ConnectActivity : AppCompatActivity() {
             .addOnSuccessListener { barcodes ->
                 for (barcode in barcodes) {
                     if (barcode.format == Barcode.FORMAT_QR_CODE) {
-                        val raw = barcode.rawValue ?: continue
-                        // Accept two formats:
-                        // 1. https://.../r/ABCDEF  (relay phone URL)
-                        // 2. nextpresent://connect?code=ABCDEF  (deep link)
+                        val raw = barcode.rawValue?.trim() ?: continue
+
+                        // 1. Check if it's a Local LAN URL (e.g. http://172.16.54.48:3333/remote)
+                        val lanPattern = Regex("""https?://([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})(?::([0-9]+))?(?:/.*)?""", RegexOption.IGNORE_CASE)
+                        val lanMatch = lanPattern.find(raw)
+                        if (lanMatch != null) {
+                            val ip = lanMatch.groupValues[1]
+                            val port = lanMatch.groupValues[2].toIntOrNull() ?: 3333
+                            if (ip != scannedCode) {
+                                scannedCode = ip
+                                runOnUiThread {
+                                    switchMode("local")
+                                    etRoomCode.setText(ip)
+                                    tvStatus.text = "📸 Local Wi-Fi QR scanned! Connecting…"
+                                    connectWithLanIp(ip, port)
+                                }
+                            }
+                            return@addOnSuccessListener
+                        }
+
+                        // 2. Check if it's a Cloud Relay room URL or 6-letter room code
                         val code = extractCode(raw)
                         if (!code.isNullOrBlank() && code != scannedCode) {
                             scannedCode = code
                             runOnUiThread {
+                                switchMode("cloud")
                                 val formatted = if (code.length == 6)
                                     "${code.take(3)}-${code.drop(3)}" else code
                                 etRoomCode.setText(formatted)
-                                tvStatus.text = "📸 QR scanned! Connecting…"
+                                tvStatus.text = "📸 Cloud QR scanned! Connecting…"
                                 connectWithCode(code)
                             }
+                            return@addOnSuccessListener
                         }
                     }
                 }
@@ -252,12 +278,87 @@ class ConnectActivity : AppCompatActivity() {
 
     // ─── Connect logic ────────────────────────────────────────────────────────
     private fun attemptConnect() {
-        val raw = etRoomCode.text.toString().uppercase().replace("-", "").trim()
-        if (raw.length != 6) {
-            tvStatus.text = "⚠ Enter a 6-character code (e.g. ABC-123)"
-            return
+        val input = etRoomCode.text.toString().trim()
+        if (currentMode == "local") {
+            val clean = input.replace("http://", "").replace("https://", "").split("/")[0]
+            val parts = clean.split(":")
+            val ip = parts[0].trim()
+            val port = if (parts.size > 1) parts[1].toIntOrNull() ?: 3333 else 3333
+
+            val ipRegex = Regex("""^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$""")
+            if (!ipRegex.matches(ip)) {
+                tvStatus.text = "⚠ Enter a valid PC IP address (e.g. 172.16.54.48)"
+                return
+            }
+            connectWithLanIp(ip, port)
+        } else {
+            val raw = input.uppercase().replace("-", "").trim()
+            if (raw.length != 6) {
+                tvStatus.text = "⚠ Enter a 6-character code (e.g. ABC-123)"
+                return
+            }
+            connectWithCode(raw)
         }
-        connectWithCode(raw)
+    }
+
+    private fun connectWithLanIp(ip: String, port: Int) {
+        if (connecting) return
+        connecting = true
+
+        runOnUiThread {
+            btnConnect.isEnabled = false
+            tvStatus.text = "⏳ Connecting to PC at $ip:$port…"
+        }
+
+        val request = Request.Builder()
+            .url("http://$ip:$port/health")
+            .build()
+
+        httpClient.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                connecting = false
+                runOnUiThread {
+                    btnConnect.isEnabled = true
+                    val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+                    prefs.edit()
+                        .putString("server_ip", ip)
+                        .putInt("server_port", port)
+                        .remove("relay_room_code")
+                        .apply()
+
+                    Toast.makeText(this@ConnectActivity, "Connecting to $ip:$port…", Toast.LENGTH_SHORT).show()
+                    val result = Intent().apply {
+                        putExtra(EXTRA_LAN_IP, ip)
+                        putExtra(EXTRA_LAN_PORT, port)
+                    }
+                    setResult(RESULT_OK, result)
+                    finish()
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                connecting = false
+                response.close()
+
+                val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+                prefs.edit()
+                    .putString("server_ip", ip)
+                    .putInt("server_port", port)
+                    .remove("relay_room_code")
+                    .apply()
+
+                runOnUiThread {
+                    Toast.makeText(this@ConnectActivity, "✅ Connected to PC at $ip!", Toast.LENGTH_SHORT).show()
+                }
+
+                val result = Intent().apply {
+                    putExtra(EXTRA_LAN_IP, ip)
+                    putExtra(EXTRA_LAN_PORT, port)
+                }
+                setResult(RESULT_OK, result)
+                finish()
+            }
+        })
     }
 
     private fun connectWithCode(code: String) {
@@ -407,18 +508,56 @@ class ConnectActivity : AppCompatActivity() {
 
     private fun switchMode(mode: String) {
         currentMode = mode
+        val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
         if (mode == "local") {
             btnTabLocal.setBackgroundColor(android.graphics.Color.parseColor("#16A34A"))
             btnTabLocal.setTextColor(android.graphics.Color.WHITE)
             btnTabCloud.setBackgroundColor(android.graphics.Color.TRANSPARENT)
             btnTabCloud.setTextColor(android.graphics.Color.parseColor("#94A3B8"))
-            findViewById<TextView>(R.id.tvScanHint).text = "Point camera at Local QR on PC (Same Wi-Fi/Hotspot)"
+
+            findViewById<TextView>(R.id.tvScanHint).text = "Point camera at Local Wi-Fi QR on PC"
+            findViewById<TextView>(R.id.tvOr).text = "— or enter PC IP address manually —"
+
+            etRoomCode.hint = "e.g. 172.16.54.48"
+            etRoomCode.letterSpacing = 0.04f
+            etRoomCode.inputType = InputType.TYPE_CLASS_PHONE
+            etRoomCode.filters = arrayOf(InputFilter.LengthFilter(30))
+
+            val savedIp = prefs.getString("server_ip", "") ?: ""
+            if (savedIp.isNotEmpty()) {
+                etRoomCode.setText(savedIp)
+                etRoomCode.setSelection(savedIp.length)
+            } else {
+                etRoomCode.setText("")
+            }
+
+            btnConnect.text = "Connect via Wi-Fi"
+            tvStatus.text = ""
         } else {
             btnTabCloud.setBackgroundColor(android.graphics.Color.parseColor("#16A34A"))
             btnTabCloud.setTextColor(android.graphics.Color.WHITE)
             btnTabLocal.setBackgroundColor(android.graphics.Color.TRANSPARENT)
             btnTabLocal.setTextColor(android.graphics.Color.parseColor("#94A3B8"))
-            findViewById<TextView>(R.id.tvScanHint).text = "Scan Cloud QR or type 6-letter Room Code"
+
+            findViewById<TextView>(R.id.tvScanHint).text = "Point camera at Cloud QR on PC"
+            findViewById<TextView>(R.id.tvOr).text = "— or enter 6-letter room code —"
+
+            etRoomCode.hint = "e.g. ABC-123"
+            etRoomCode.letterSpacing = 0.15f
+            etRoomCode.inputType = InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+            etRoomCode.filters = arrayOf(InputFilter.LengthFilter(7))
+
+            val savedCode = prefs.getString("relay_room_code", "") ?: ""
+            if (savedCode.isNotEmpty()) {
+                val formatted = if (savedCode.length == 6) "${savedCode.take(3)}-${savedCode.drop(3)}" else savedCode
+                etRoomCode.setText(formatted)
+                etRoomCode.setSelection(formatted.length)
+            } else {
+                etRoomCode.setText("")
+            }
+
+            btnConnect.text = "Connect via Cloud"
+            tvStatus.text = ""
         }
     }
 

@@ -160,7 +160,6 @@
             android:background="@drawable/rounded_input_bg"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
-            android:maxLength="7"
             app:layout_constraintTop_toBottomOf="@id/tvOr"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />

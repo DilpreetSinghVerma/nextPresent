@@ -166,6 +166,8 @@ class MainActivity : AppCompatActivity() {
         if (requestCode == REQ_CONNECT) {
             if (resultCode == Activity.RESULT_OK) {
                 val code = data?.getStringExtra(ConnectActivity.EXTRA_ROOM_CODE)
+                val lanIp = data?.getStringExtra(ConnectActivity.EXTRA_LAN_IP)
+                val lanPort = data?.getIntExtra(ConnectActivity.EXTRA_LAN_PORT, 3333) ?: 3333
                 if (!code.isNullOrBlank()) {
                     relayRoomCode = code
                     // prefs already saved inside ConnectActivity
@@ -173,9 +175,20 @@ class MainActivity : AppCompatActivity() {
                     syncConnectionToService()
                     startPresenterService()
                     Toast.makeText(this, "☁️ Connected via cloud relay: $code", Toast.LENGTH_SHORT).show()
+                } else if (!lanIp.isNullOrBlank()) {
+                    relayRoomCode = null
+                    getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+                        .edit().remove("relay_room_code").apply()
+                    updateServerIp(lanIp, lanPort)
+                    syncConnectionToService()
+                    startPresenterService()
+                    Toast.makeText(this, "🏠 Connected via Wi-Fi: $lanIp:$lanPort", Toast.LENGTH_SHORT).show()
                 }
             } else {
                 // User chose LAN mode or cancelled
+                val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+                serverIp = prefs.getString("server_ip", serverIp) ?: serverIp
+                serverPort = prefs.getInt("server_port", serverPort)
                 relayRoomCode = null
                 connectWebSocket()   // LAN fallback
                 syncConnectionToService()
