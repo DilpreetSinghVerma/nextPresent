@@ -57,6 +57,7 @@ setTimeout(() => {
   }
 }, 600);
 
+const licenseService = require('../lib/licenseService');
 let mainWindow = null;
 let tray = null;
 let isQuitting = false;
@@ -78,21 +79,35 @@ if (process.defaultApp) {
 
 /**
  * Handles an incoming nxtslide:// deep-link URL.
- * Expected: nxtslide://auth?user=<base64-encoded-user-json>
+ * Expected: nxtslide://auth?token=<token>&user=<base64-encoded-user-json>
  */
 function handleDeepLink(url) {
   try {
     const parsed = new URL(url);
-    if (parsed.hostname === 'auth') {
+    if (parsed.hostname === 'auth' || parsed.pathname.includes('auth')) {
       const userBase64 = parsed.searchParams.get('user');
-      if (userBase64 && mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.show();
-        mainWindow.focus();
-        // Inject user data into the dashboard WebView
-        mainWindow.webContents.executeJavaScript(
-          `if (typeof window.nxtslideHandleAuthCallback === 'function') { window.nxtslideHandleAuthCallback(${JSON.stringify(userBase64)}); }`
-        ).catch(() => {});
-        console.log('[Auth] Deep-link auth callback handled.');
+      const token      = parsed.searchParams.get('token');
+      if (userBase64) {
+        let userData = null;
+        try {
+          userData = JSON.parse(Buffer.from(userBase64, 'base64').toString('utf8'));
+        } catch (_) {}
+
+        if (userData) {
+          if (token) userData.token = token;
+          licenseService.saveCachedUser(userData);
+          console.log('[Auth] User profile and token saved for:', userData.email);
+        }
+
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.show();
+          mainWindow.focus();
+          // Inject user data into the dashboard WebView
+          mainWindow.webContents.executeJavaScript(
+            `if (typeof window.nxtslideHandleAuthCallback === 'function') { window.nxtslideHandleAuthCallback(${JSON.stringify(userBase64)}, ${JSON.stringify(token || '')}); }`
+          ).catch(() => {});
+          console.log('[Auth] Deep-link auth callback handled.');
+        }
       }
     }
   } catch (e) {
@@ -128,6 +143,12 @@ if (!gotTheLock) {
     createWindow();
     createTray();
     setupAutoUpdater();
+
+    // Check if launched directly via deep link
+    const deepLink = process.argv.find(arg => arg.startsWith('nxtslide://'));
+    if (deepLink) {
+      setTimeout(() => handleDeepLink(deepLink), 1500);
+    }
   });
 }
 

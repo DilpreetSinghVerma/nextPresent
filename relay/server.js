@@ -90,6 +90,14 @@ function setupDatabase() {
         razorpayCustomerId     TEXT,
         createdAt              TEXT NOT NULL DEFAULT (datetime('now'))
       );
+
+      CREATE TABLE IF NOT EXISTS auth_tokens (
+        token     TEXT PRIMARY KEY,
+        userId    TEXT NOT NULL,
+        expiresAt TEXT NOT NULL,
+        createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY(userId) REFERENCES users(id) ON DELETE CASCADE
+      );
     `);
 
     console.log('[DB] SQLite database ready at:', dbPath);
@@ -100,9 +108,57 @@ function setupDatabase() {
   }
 }
 
-// ─── User DB helpers ─────────────────────────────────────────────────────────
+// ─── User DB & Token helpers ──────────────────────────────────────────────────
 function generateId() {
   return randomBytes(8).toString('hex');
+}
+
+function createAuthToken(userId) {
+  if (!db || !userId) return null;
+  const token = randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(); // 90 days
+  try {
+    db.prepare('INSERT INTO auth_tokens (token, userId, expiresAt) VALUES (?, ?, ?)').run(token, userId, expiresAt);
+    return token;
+  } catch (err) {
+    console.error('[DB] Failed to create auth token:', err.message);
+    return null;
+  }
+}
+
+function getUserByToken(token) {
+  if (!db || !token) return null;
+  try {
+    const user = db.prepare(`
+      SELECT u.* FROM users u
+      JOIN auth_tokens t ON t.userId = u.id
+      WHERE t.token = ? AND datetime(t.expiresAt) > datetime('now')
+    `).get(token);
+    return user || null;
+  } catch (err) {
+    console.error('[DB] Failed to get user by token:', err.message);
+    return null;
+  }
+}
+
+function resolveUser(req) {
+  // 1. Bearer token in Authorization header
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.slice(7).trim();
+    const user = getUserByToken(token);
+    if (user) return user;
+  }
+  // 2. Query param ?token=
+  if (req.query && req.query.token) {
+    const user = getUserByToken(req.query.token);
+    if (user) return user;
+  }
+  // 3. Cookie session (passport)
+  if (req.isAuthenticated && req.isAuthenticated()) {
+    return req.user;
+  }
+  return null;
 }
 
 function getUserById(id) {
@@ -335,58 +391,288 @@ app.get(['/downloads/NXTslide.apk', '/NXTslide.apk'], (_req, res) => {
   res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/raw/main/public/NXTslide.apk');
 });
 
-// ─── Auth Routes ──────────────────────────────────────────────────────────────
+// ─── Cloud-Synced UI Routes ────────────────────────────────────────────────────
+// The Android app and (optionally) Electron load these routes instead of local
+// static files. Pushing new HTML/JS/CSS here updates all clients instantly.
+
+app.get('/mobile', (_req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NXTslide Remote</title>
+<meta name="theme-color" content="#05070d">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#05070d;--card:#0f172a;--border:rgba(255,255,255,0.08);--accent:#6366f1;--green:#22c55e;--ink:#e2e8f0;--ink2:#94a3b8;--ink3:#475569}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0;min-height:100vh}
+
+/* Header */
+.hdr{width:100%;padding:14px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:fixed;top:0;left:0;z-index:10;background:rgba(5,7,13,0.96);backdrop-filter:blur(12px)}
+.logo{font-size:1.15rem;font-weight:800;letter-spacing:-0.04em;color:#fff}
+.logo span{color:var(--green)}
+.conn-status{display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--ink2)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse2 2s ease infinite}
+@keyframes pulse2{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Main area */
+.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:80px 20px 100px;width:100%;max-width:380px;margin:0 auto}
+
+/* Connection card */
+.info-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px 24px;width:100%;text-align:center}
+.info-card .label{font-size:0.75rem;font-weight:600;letter-spacing:0.08em;color:var(--ink3);text-transform:uppercase;margin-bottom:8px}
+.info-card .code{font-size:2.8rem;font-weight:800;letter-spacing:0.3rem;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.1}
+.info-card .hint{font-size:0.8rem;color:var(--ink2);margin-top:8px}
+
+/* Control buttons */
+.controls{display:flex;flex-direction:column;gap:12px;width:100%}
+.ctrl-btn{width:100%;display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-radius:16px;border:1px solid var(--border);background:var(--card);cursor:pointer;transition:transform 0.12s,background 0.12s,border-color 0.12s;-webkit-user-select:none;user-select:none;color:var(--ink);font-family:inherit}
+.ctrl-btn:active{transform:scale(0.97);background:rgba(99,102,241,0.1);border-color:var(--accent)}
+.ctrl-btn.next:active{background:rgba(34,197,94,0.1);border-color:var(--green)}
+.ctrl-label{display:flex;flex-direction:column;gap:3px;text-align:left}
+.ctrl-name{font-size:1.05rem;font-weight:700;color:var(--ink)}
+.ctrl-key{font-size:0.75rem;color:var(--ink3);font-family:monospace}
+.ctrl-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.4rem}
+.ctrl-icon.next-icon{background:rgba(34,197,94,0.12);color:var(--green)}
+.ctrl-icon.prev-icon{background:rgba(99,102,241,0.12);color:#818cf8}
+
+/* Pocket mode banner */
+.pocket-banner{width:100%;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:12px}
+.pocket-icon{font-size:1.3rem;flex-shrink:0}
+.pocket-text{font-size:0.82rem;color:var(--ink2);line-height:1.5}
+.pocket-text strong{color:var(--ink)}
+
+/* Bottom bar */
+.foot{position:fixed;bottom:0;left:0;width:100%;padding:12px 20px 20px;background:rgba(5,7,13,0.96);border-top:1px solid var(--border);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.latency{font-size:0.75rem;color:var(--ink3)}
+.latency span{color:var(--green);font-weight:600}
+.sign-in-btn{font-size:0.78rem;font-weight:600;color:#818cf8;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);padding:7px 14px;border-radius:8px;cursor:pointer;font-family:inherit}
+.sign-in-btn:active{background:rgba(99,102,241,0.2)}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="logo">NXT<span>slide</span></div>
+  <div class="conn-status" id="connStatus">
+    <div class="dot"></div>
+    <span id="connLabel">Connecting…</span>
+  </div>
+</header>
+
+<main class="main" id="mainContent">
+  <div class="info-card" id="codeCard" style="display:none">
+    <div class="label">Room Code</div>
+    <div class="code" id="roomCodeDisplay">—</div>
+    <div class="hint">Awaiting PC connection</div>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn next" id="btnNext" onclick="sendCmd('NEXT')">
+      <div class="ctrl-label">
+        <span class="ctrl-name">Next Slide</span>
+        <span class="ctrl-key">Vol ▲ · →</span>
+      </div>
+      <div class="ctrl-icon next-icon">›</div>
+    </button>
+    <button class="ctrl-btn" id="btnPrev" onclick="sendCmd('PREV')">
+      <div class="ctrl-label">
+        <span class="ctrl-name">Previous Slide</span>
+        <span class="ctrl-key">Vol ▼ · ←</span>
+      </div>
+      <div class="ctrl-icon prev-icon">‹</div>
+    </button>
+  </div>
+
+  <div class="pocket-banner">
+    <span class="pocket-icon">🔒</span>
+    <div class="pocket-text">
+      <strong>Pocket Mode active.</strong> Lock your screen and put it away —
+      volume keys still advance slides silently.
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="latency">Latency: <span id="latencyVal">—</span></div>
+  <button class="sign-in-btn" id="footerSignInBtn" onclick="handleSignIn()">My Account</button>
+</footer>
+
+<script>
+'use strict';
+// ── AndroidBridge interop ───────────────────────────────────────────
+// When loaded inside the APK WebView, AndroidApp is injected natively.
+// When previewed in a browser, we create a stub so nothing throws.
+if (!window.AndroidApp) {
+  window.AndroidApp = {
+    sendCommand: (cmd) => console.log('[Stub] sendCommand:', cmd),
+    getConnectionState: () => '{"connected":false}',
+    onAuthSuccess: (json) => console.log('[Stub] onAuthSuccess:', json),
+  };
+}
+
+// ── Send command via native bridge or WebSocket fallback ─────────────
+function sendCmd(action) {
+  const t0 = Date.now();
+  try {
+    window.AndroidApp.sendCommand(action);
+    document.getElementById('latencyVal').textContent = (Date.now() - t0) + ' ms';
+    haptic();
+  } catch(e) {
+    console.warn('[Remote] sendCommand failed:', e);
+  }
+}
+
+// ── Haptic feedback ─────────────────────────────────────────────────
+function haptic() {
+  if (navigator.vibrate) navigator.vibrate(18);
+}
+
+// ── Auth handler ─────────────────────────────────────────────────────
+function handleSignIn() {
+  // Trigger Google Sign-In via AndroidBridge if available
+  if (window.AndroidApp && window.AndroidApp.openGoogleSignIn) {
+    window.AndroidApp.openGoogleSignIn();
+  } else {
+    // Fallback: open Google sign-in in external browser
+    const signInUrl = 'https://nextpresent-relay.onrender.com/auth/google?redirect=nxtslide://auth';
+    window.open(signInUrl, '_blank');
+  }
+}
+
+// ── Receive connection state from AndroidBridge ──────────────────────
+window.nxtslideSetConnectionState = function(stateJson) {
+  try {
+    const state = JSON.parse(stateJson);
+    const connLabel = document.getElementById('connLabel');
+    const codeCard  = document.getElementById('codeCard');
+    const codeEl    = document.getElementById('roomCodeDisplay');
+
+    if (state.connected) {
+      connLabel.textContent = 'Connected';
+    } else {
+      connLabel.textContent = state.code ? 'Paired (' + state.code + ')' : 'Connecting…';
+    }
+    if (state.code) {
+      codeCard.style.display = 'block';
+      codeEl.textContent = state.code;
+    }
+  } catch(e) {}
+};
+
+// ── Receive auth update from AndroidBridge ───────────────────────────
+window.nxtslideOnAuthSuccess = function(userJson) {
+  try {
+    const user = JSON.parse(userJson);
+    const btn = document.getElementById('footerSignInBtn');
+    if (btn && user && user.name) {
+      btn.textContent = user.isPro ? '✦ Pro · ' + user.name.split(' ')[0] : user.name.split(' ')[0];
+    }
+  } catch(e) {}
+};
+</script>
+</body>
+</html>`);
+});
+
+// ─── Auth Routes ───────────────────────────────────────────────────────────────
+
 
 // Initiate Google Sign-In (handles both /auth/google and /api/auth/google)
 app.get(['/auth/google', '/api/auth/google'], (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID) {
     return res.status(503).json({ error: 'Google Sign-In is not configured on this server yet.' });
   }
-  // Store redirect URL for post-login (Electron passes ?redirect=nxtslide://auth)
-  if (req.query.redirect) {
-    req.session.postLoginRedirect = req.query.redirect;
-  }
-  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+  const redirect = req.query.redirect || 'nxtslide://auth';
+  req.session.postLoginRedirect = redirect;
+  passport.authenticate('google', {
+    scope: ['profile', 'email'],
+    state: redirect, // Google preserves state through the OAuth redirect
+  })(req, res, next);
 });
 
 // Google OAuth Callback (handles both /auth/google/callback and /api/auth/google/callback)
 app.get(['/auth/google/callback', '/api/auth/google/callback'],
   passport.authenticate('google', { failureRedirect: '/api/auth/failed' }),
   (req, res) => {
-    const redirect = req.session.postLoginRedirect;
+    const user = req.user;
+    const token = createAuthToken(user.id);
+    const redirect = req.session.postLoginRedirect || req.query.state || '';
     delete req.session.postLoginRedirect;
 
+    const safeUser = {
+      id:                    user.id,
+      email:                 user.email,
+      name:                  user.name,
+      avatar:                user.avatar,
+      plan:                  user.plan,
+      isPro:                 isUserPro(user),
+      subscriptionExpiresAt: user.subscriptionExpiresAt,
+      token,
+    };
+    const data = Buffer.from(JSON.stringify(safeUser)).toString('base64');
+
     if (redirect && redirect.startsWith('nxtslide://')) {
-      // Electron deep-link: encode user data in query param for the app to read
-      const user = req.user;
-      const data = Buffer.from(JSON.stringify({
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        avatar: user.avatar,
-        plan: user.plan,
-        isPro: isUserPro(user),
-      })).toString('base64');
-      return res.redirect(`nxtslide://auth?user=${data}`);
+      return res.redirect(`nxtslide://auth?token=${token}&user=${data}`);
     }
 
-    // Web / Android redirect: send to a success page
+    // Web / Android redirect: send to a success page with deep link button & local storage token
     res.send(`<!DOCTYPE html><html><head>
 <meta charset="UTF-8"><title>NXTslide - Signed In</title>
-<style>body{background:#05070d;color:#fff;font-family:system-ui;display:flex;align-items:center;
-justify-content:center;min-height:100vh;flex-direction:column;text-align:center}
-h2{color:#818cf8;margin-bottom:1rem}.avatar{width:64px;height:64px;border-radius:50%;margin-bottom:1rem}
-p{color:#94a3b8}</style></head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body { background:#05070d; color:#fff; font-family:system-ui,-apple-system,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; flex-direction:column; text-align:center; padding:20px; margin:0; }
+.card { background:#0f172a; border:1px solid #1e293b; border-radius:18px; padding:32px; max-width:440px; width:100%; box-shadow:0 10px 40px rgba(0,0,0,0.5); box-sizing:border-box; }
+.avatar { width:72px; height:72px; border-radius:50%; border:3px solid #6366f1; margin-bottom:1rem; object-fit:cover; }
+h2 { color:#fff; margin:0 0 8px; font-size:1.4rem; }
+.plan-badge { display:inline-block; padding:4px 12px; border-radius:999px; font-size:0.8rem; font-weight:700; margin-bottom:1.5rem; }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:12px 18px; border-radius:10px; font-weight:600; text-decoration:none; margin-bottom:10px; cursor:pointer; font-size:0.95rem; box-sizing:border-box; }
+.btn-primary { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border:none; box-shadow:0 4px 14px rgba(99,102,241,0.4); }
+.btn-secondary { background:rgba(255,255,255,0.06); color:#cbd5e1; border:1px solid rgba(255,255,255,0.12); }
+</style></head>
 <body>
-${req.user.avatar ? `<img src="${req.user.avatar}" class="avatar" alt="avatar">` : ''}
-<h2>Welcome, ${req.user.name || req.user.email}!</h2>
-<p>Plan: <strong style="color:${isUserPro(req.user) ? '#4ade80' : '#94a3b8'}">${isUserPro(req.user) ? '✅ Pro' : 'Free'}</strong></p>
-<p style="margin-top:1rem;font-size:0.85rem;color:#64748b">You can close this window and return to NXTslide.</p>
+<div class="card">
+${safeUser.avatar ? `<img src="${safeUser.avatar}" class="avatar" alt="avatar">` : ''}
+<h2>Welcome, ${safeUser.name || safeUser.email}!</h2>
+<p style="color:#94a3b8;font-size:0.9rem;margin-bottom:1rem;">${safeUser.email}</p>
+<div>
+  <span class="plan-badge" style="background:${safeUser.isPro ? 'rgba(34,197,94,0.15)' : 'rgba(148,163,184,0.15)'}; color:${safeUser.isPro ? '#4ade80' : '#94a3b8'}; border:1px solid ${safeUser.isPro ? 'rgba(34,197,94,0.3)' : 'rgba(148,163,184,0.3)'};">
+    ${safeUser.isPro ? '✦ Pro Active' : 'Free Plan'}
+  </span>
+</div>
+
+<a href="nxtslide://auth?token=${token}&user=${data}" class="btn btn-primary" id="openAppBtn">
+  ✦ Return to NXTslide Desktop App
+</a>
+<a href="/" class="btn btn-secondary">
+  Go to Website
+</a>
+
+<p style="margin-top:1.5rem;font-size:0.8rem;color:#64748b">Your account is connected. You can close this tab anytime.</p>
+</div>
+
 <script>
-  // Try to notify the parent Electron window
-  if (window.opener) { window.opener.postMessage({ type: 'NXTSLIDE_AUTH_SUCCESS' }, '*'); setTimeout(() => window.close(), 1500); }
-  // Try Android WebView callback
-  if (window.AndroidApp && window.AndroidApp.onAuthSuccess) { window.AndroidApp.onAuthSuccess(JSON.stringify(${JSON.stringify({ email: req.user.email, name: req.user.name, plan: req.user.plan, isPro: isUserPro(req.user) })})); }
+  // Store token and user locally in browser
+  localStorage.setItem('nxtslide_auth_token', '${token}');
+  localStorage.setItem('nxtslide_user', JSON.stringify(${JSON.stringify(safeUser)}));
+
+  // Auto-attempt deep-link if requested
+  if (window.location.search.includes('launch=app')) {
+    window.location.href = "nxtslide://auth?token=${token}&user=${data}";
+  }
+
+  // Notify parent window if opened as popup
+  if (window.opener) {
+    window.opener.postMessage({ type: 'NXTSLIDE_AUTH_SUCCESS', token: '${token}', user: ${JSON.stringify(safeUser)} }, '*');
+    setTimeout(() => window.close(), 1200);
+  }
+
+  // Notify Android WebView bridge if present
+  if (window.AndroidApp && window.AndroidApp.onAuthSuccess) {
+    window.AndroidApp.onAuthSuccess(JSON.stringify(${JSON.stringify(safeUser)}));
+  }
 </script>
 </body></html>`);
   }
@@ -396,10 +682,10 @@ app.get(['/auth/failed', '/api/auth/failed'], (_req, res) => {
   res.status(401).send('<h2 style="font-family:sans-serif;color:#ef4444">Sign-in failed. Please try again.</h2>');
 });
 
-// Get current user
+// Get current user (accepts session cookie or Bearer token)
 app.get(['/auth/me', '/api/auth/me'], (req, res) => {
-  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not authenticated' });
-  const user = req.user;
+  const user = resolveUser(req);
+  if (!user) return res.status(401).json({ error: 'Not authenticated' });
   res.json({
     id:                   user.id,
     email:                user.email,
@@ -414,6 +700,11 @@ app.get(['/auth/me', '/api/auth/me'], (req, res) => {
 
 // Logout
 app.post(['/auth/logout', '/api/auth/logout'], (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ') && db) {
+    const token = authHeader.slice(7).trim();
+    try { db.prepare('DELETE FROM auth_tokens WHERE token = ?').run(token); } catch (_) {}
+  }
   req.logout((err) => {
     if (err) return next(err);
     res.json({ success: true });
@@ -424,8 +715,8 @@ app.post(['/auth/logout', '/api/auth/logout'], (req, res, next) => {
 
 // Get subscription status (works with both session auth and token auth)
 app.get('/api/billing/status', async (req, res) => {
-  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not authenticated' });
-  const user = req.user;
+  const user = resolveUser(req);
+  if (!user) return res.status(401).json({ error: 'Not authenticated' });
   res.json({
     plan:                 user.plan,
     isPro:                isUserPro(user),
@@ -436,10 +727,9 @@ app.get('/api/billing/status', async (req, res) => {
 
 // Create Razorpay order for Pro Monthly subscription
 app.post('/api/billing/subscribe', async (req, res) => {
-  if (!req.isAuthenticated()) return res.status(401).json({ error: 'Not authenticated' });
+  const user = resolveUser(req);
+  if (!user) return res.status(401).json({ error: 'Not authenticated' });
   if (!razorpay) return res.status(503).json({ error: 'Payment system not configured' });
-
-  const user = req.user;
 
   try {
     const receipt = `nxt_pro_${user.id}_${Date.now()}`;

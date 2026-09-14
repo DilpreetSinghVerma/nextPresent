@@ -106,7 +106,19 @@ class MainActivity : AppCompatActivity() {
             setBackgroundColor(0xFF05070D.toInt())
 
             addJavascriptInterface(AndroidBridge(this@MainActivity), "AndroidApp")
-            webViewClient = object : WebViewClient() {}
+            webViewClient = object : WebViewClient() {
+                override fun onReceivedError(
+                    view: android.webkit.WebView?,
+                    request: android.webkit.WebResourceRequest?,
+                    error: android.webkit.WebResourceError?
+                ) {
+                    // If the cloud URL fails, fall back to local bundled asset
+                    if (request?.isForMainFrame == true) {
+                        android.util.Log.w("NXTslide", "[CloudUI] Remote load failed, falling back to local asset")
+                        view?.loadUrl("file:///android_asset/web/mobile.html")
+                    }
+                }
+            }
         }
         setContentView(webView)
 
@@ -119,8 +131,10 @@ class MainActivity : AppCompatActivity() {
             or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         )
 
-        // Load bundled asset (0 ms startup, no blank screen)
-        webView.loadUrl("file:///android_asset/web/mobile.html")
+        // ── Cloud-Synced UI: load live UI from relay, fallback to local ──────────
+        // This lets us push UI updates without requiring users to re-download the APK.
+        // Native features (volume keys, haptics, AndroidBridge) still work with both URLs.
+        loadCloudOrLocalUI()
 
         // If no relay code saved → launch ConnectActivity
         if (relayRoomCode == null) {
@@ -133,6 +147,37 @@ class MainActivity : AppCompatActivity() {
         startPresenterService()
         requestBatteryOptimizationExemption()
     }
+
+    /**
+     * Attempts to load the remote controller UI from the relay server.
+     * Falls back to the bundled asset immediately if no internet is available,
+     * or if the remote load fails (handled by WebViewClient.onReceivedError).
+     */
+    private fun loadCloudOrLocalUI() {
+        val localUrl = "file:///android_asset/web/mobile.html"
+
+        // Check connectivity before trying the remote URL
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+        val isOnline = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            cm?.activeNetwork != null && cm.getNetworkCapabilities(cm.activeNetwork)
+                ?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        } else {
+            @Suppress("DEPRECATION")
+            cm?.activeNetworkInfo?.isConnected == true
+        }
+
+        if (isOnline) {
+            // Load live UI from relay — any push to the server takes effect immediately
+            val remoteUrl = "$relayBaseUrl/mobile"
+            android.util.Log.i("NXTslide", "[CloudUI] Loading remote UI from $remoteUrl")
+            webView.loadUrl(remoteUrl)
+        } else {
+            // No internet — use bundled asset for instant load
+            android.util.Log.i("NXTslide", "[CloudUI] Offline — loading bundled local UI")
+            webView.loadUrl(localUrl)
+        }
+    }
+
 
     private fun requestBatteryOptimizationExemption() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -231,10 +276,13 @@ class MainActivity : AppCompatActivity() {
                     val label = if (relayRoomCode != null) "relay (${relayRoomCode})" else serverIp
                     Toast.makeText(this@MainActivity, "Connected to $label", Toast.LENGTH_SHORT).show()
                 }
-                // Notify WebView
+                // Notify WebView — works for both local mobile.html and cloud /mobile UI
+                val stateJson = """{"connected":true,"code":${if (relayRoomCode != null) "\"$relayRoomCode\"" else "null"}}"""
                 webView.post {
                     webView.evaluateJavascript(
                         "if(typeof window.onServerConnected==='function') window.onServerConnected();", null)
+                    webView.evaluateJavascript(
+                        "if(typeof window.nxtslideSetConnectionState==='function') window.nxtslideSetConnectionState('${stateJson.replace("'", "\\'")}');", null)
                 }
             }
             override fun onMessage(webSocket: WebSocket, text: String) {
@@ -453,8 +501,18 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun isNativeApp(): Boolean = true
 
+        /** Original method used by local mobile.html */
         @JavascriptInterface
         fun sendAction(action: String) {
+            activity.sendSlideAction(action)
+        }
+
+        /**
+         * Alias used by the cloud-synced /mobile UI.
+         * Both sendCommand and sendAction map to the same native function.
+         */
+        @JavascriptInterface
+        fun sendCommand(action: String) {
             activity.sendSlideAction(action)
         }
 
@@ -463,6 +521,13 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun isRelayMode(): Boolean = activity.relayRoomCode != null
+
+        /** Opens Google Sign-In — called by the cloud remote UI's "My Account" button */
+        @JavascriptInterface
+        fun openGoogleSignIn() {
+            activity.runOnUiThread { activity.launchConnectActivity() }
+        }
     }
+
 }
 

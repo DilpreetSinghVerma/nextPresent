@@ -15,26 +15,53 @@
   // ─── DOM Helpers ────────────────────────────────────────────────────────────
   function $(id) { return document.getElementById(id); }
 
-  // ─── Session Persistence (Electron localStorage) ─────────────────────────
+  // ─── Session Persistence (localStorage + Bearer Token) ──────────────────────
   function saveUserLocally(user) {
-    try { localStorage.setItem('nxtslide_user', JSON.stringify(user)); } catch (e) {}
+    if (!user) return;
+    try {
+      localStorage.setItem('nxtslide_user', JSON.stringify(user));
+      if (user.token) localStorage.setItem('nxtslide_auth_token', user.token);
+    } catch (e) {}
   }
 
   function loadUserLocally() {
-    try { return JSON.parse(localStorage.getItem('nxtslide_user') || 'null'); } catch (e) { return null; }
+    try {
+      const u = JSON.parse(localStorage.getItem('nxtslide_user') || 'null');
+      if (u && !u.token) {
+        u.token = localStorage.getItem('nxtslide_auth_token') || null;
+      }
+      return u;
+    } catch (e) { return null; }
+  }
+
+  function loadTokenLocally() {
+    try {
+      return localStorage.getItem('nxtslide_auth_token') || (loadUserLocally()?.token) || null;
+    } catch (e) { return null; }
   }
 
   function clearUserLocally() {
-    try { localStorage.removeItem('nxtslide_user'); } catch (e) {}
+    try {
+      localStorage.removeItem('nxtslide_user');
+      localStorage.removeItem('nxtslide_auth_token');
+    } catch (e) {}
   }
 
-  // ─── Fetch current user from relay ─────────────────────────────────────────
+  // ─── Fetch current user from relay (supports Bearer token) ──────────────────
   async function fetchMe() {
+    const token = loadTokenLocally();
     try {
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       const res = await fetch(`${RELAY_BASE}/api/auth/me`, {
         credentials: 'include',
+        headers,
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (token) data.token = token;
+        return data;
+      }
     } catch (e) {}
     return null;
   }
@@ -73,59 +100,63 @@
     }
   }
 
-  // ─── Google Sign-In — opens a browser popup ────────────────────────────────
+  // ─── Google Sign-In — desktop or web ────────────────────────────────────────
   function openGoogleSignIn() {
-    const signInUrl = `${RELAY_BASE}/api/auth/google?redirect=nxtslide://auth`;
+    const isDesktop = !!(window.electronAPI && window.electronAPI.openExternal);
+    const signInUrl = isDesktop
+      ? `${RELAY_BASE}/api/auth/google?redirect=nxtslide://auth`
+      : `${RELAY_BASE}/api/auth/google?redirect=${encodeURIComponent(window.location.href)}`;
 
-    // In Electron, use shell.openExternal to open the user's default browser
-    if (window.electronAPI && window.electronAPI.openExternal) {
+    if (isDesktop) {
       window.electronAPI.openExternal(signInUrl);
     } else {
-      // Web fallback: open popup window
-      const popup = window.open(signInUrl, 'nxtslide_auth',
-        'width=480,height=600,scrollbars=yes,status=yes');
-
-      // Listen for popup message
-      const listener = async (event) => {
-        if (event.data && event.data.type === 'NXTSLIDE_AUTH_SUCCESS') {
-          window.removeEventListener('message', listener);
-          if (popup && !popup.closed) popup.close();
-          await refreshAuthState();
-        }
-      };
-      window.addEventListener('message', listener);
+      // In web browser: navigate to Google OAuth
+      window.location.href = signInUrl;
     }
   }
 
   // ─── Logout ────────────────────────────────────────────────────────────────
   async function logout() {
+    const token = loadTokenLocally();
     try {
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
       await fetch(`${RELAY_BASE}/api/auth/logout`, {
         method: 'POST',
         credentials: 'include',
+        headers,
       });
     } catch (e) {}
     currentUser = null;
     clearUserLocally();
     renderAuthUI(null);
-    // Also clear legacy license display
     updateLegacyLicenseUI(null);
   }
 
   // ─── Refresh auth state from relay ────────────────────────────────────────
   async function refreshAuthState() {
+    const cached = loadUserLocally();
+    if (cached) {
+      currentUser = cached;
+      renderAuthUI(cached);
+      updateLegacyLicenseUI(cached);
+    }
+
     const user = await fetchMe();
-    currentUser = user;
     if (user) {
+      currentUser = user;
       saveUserLocally(user);
       renderAuthUI(user);
       updateLegacyLicenseUI(user);
-    } else {
-      clearUserLocally();
+      return user;
+    }
+
+    // Do NOT wipe cached user if offline or network hiccup
+    if (!cached) {
       renderAuthUI(null);
       updateLegacyLicenseUI(null);
     }
-    return user;
+    return currentUser;
   }
 
   // ─── Razorpay Checkout ────────────────────────────────────────────────────
@@ -136,11 +167,15 @@
     }
 
     try {
+      const token = loadTokenLocally();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       // 1. Create order on relay server
       const res = await fetch(`${RELAY_BASE}/api/billing/subscribe`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
       });
 
       if (!res.ok) {
@@ -225,15 +260,16 @@
     }
   }
 
-  // ─── Handle Electron deep-link callback (nxtslide://auth?user=...) ────────
-  // The main process should call this after intercepting the deep-link URL.
-  window.nxtslideHandleAuthCallback = async function (userDataBase64) {
+  // ─── Handle Electron deep-link callback (nxtslide://auth?token=...&user=...) ───
+  window.nxtslideHandleAuthCallback = async function (userDataBase64, directToken) {
     try {
       const userData = JSON.parse(atob(userDataBase64));
+      if (directToken) userData.token = directToken;
       currentUser = userData;
       saveUserLocally(userData);
       renderAuthUI(userData);
       updateLegacyLicenseUI(userData);
+      console.log('[Auth] Logged in successfully:', userData.email, 'Pro:', userData.isPro);
     } catch (e) {
       console.error('[Auth] Failed to parse auth callback:', e);
     }
