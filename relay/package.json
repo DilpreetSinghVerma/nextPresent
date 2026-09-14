@@ -7,10 +7,18 @@
     "start": "node server.js",
     "dev": "node server.js"
   },
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "license": "ISC",
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "cookie-session": "^2.1.1",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "razorpay": "^2.9.8",
     "ws": "^8.21.3"
   }
 }

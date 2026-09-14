@@ -63,18 +63,65 @@ let isQuitting = false;
 
 const PORT = process.env.PORT || 3333;
 const DASHBOARD_URL = `http://localhost:${PORT}/dashboard`;
+const RELAY_BASE = 'https://nextpresent-relay.onrender.com';
+
+// ─── Register nxtslide:// deep-link protocol ──────────────────────────────────
+// This lets Google OAuth redirect back to the desktop app after sign-in.
+if (process.defaultApp) {
+  // Dev mode: register with executable + args
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('nxtslide', process.execPath, [path.resolve(process.argv[1])]);
+  }
+} else {
+  app.setAsDefaultProtocolClient('nxtslide');
+}
+
+/**
+ * Handles an incoming nxtslide:// deep-link URL.
+ * Expected: nxtslide://auth?user=<base64-encoded-user-json>
+ */
+function handleDeepLink(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === 'auth') {
+      const userBase64 = parsed.searchParams.get('user');
+      if (userBase64 && mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        mainWindow.focus();
+        // Inject user data into the dashboard WebView
+        mainWindow.webContents.executeJavaScript(
+          `if (typeof window.nxtslideHandleAuthCallback === 'function') { window.nxtslideHandleAuthCallback(${JSON.stringify(userBase64)}); }`
+        ).catch(() => {});
+        console.log('[Auth] Deep-link auth callback handled.');
+      }
+    }
+  } catch (e) {
+    console.error('[Auth] Failed to parse deep-link:', e.message);
+  }
+}
 
 // Single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (_event, commandLine) => {
+    // On Windows, the deep-link URL comes as the last command-line argument
+    const deepLink = commandLine.find(arg => arg.startsWith('nxtslide://'));
+    if (deepLink) {
+      handleDeepLink(deepLink);
+    }
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
       mainWindow.focus();
     }
+  });
+
+  // macOS / Linux: deep-link via open-url event
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    handleDeepLink(url);
   });
 
   app.whenReady().then(() => {
@@ -100,6 +147,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      preload: path.join(__dirname, 'preload.js'),
     },
   });
 
@@ -122,6 +170,11 @@ function createWindow() {
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  // IPC: open Google Sign-In in system browser (called by auth.js)
+  ipcMain.handle('open-external', (_event, url) => {
+    shell.openExternal(url);
   });
 }
 

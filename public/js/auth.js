@@ -1,0 +1,320 @@
+/**
+ * NXTslide Auth & Billing Client
+ * Handles Google Sign-In, session persistence, and Razorpay checkout
+ * for the Electron PC dashboard.
+ */
+
+(function () {
+  'use strict';
+
+  const RELAY_BASE = 'https://nextpresent-relay.onrender.com';
+
+  // ─── State ──────────────────────────────────────────────────────────────────
+  let currentUser = null;
+
+  // ─── DOM Helpers ────────────────────────────────────────────────────────────
+  function $(id) { return document.getElementById(id); }
+
+  // ─── Session Persistence (Electron localStorage) ─────────────────────────
+  function saveUserLocally(user) {
+    try { localStorage.setItem('nxtslide_user', JSON.stringify(user)); } catch (e) {}
+  }
+
+  function loadUserLocally() {
+    try { return JSON.parse(localStorage.getItem('nxtslide_user') || 'null'); } catch (e) { return null; }
+  }
+
+  function clearUserLocally() {
+    try { localStorage.removeItem('nxtslide_user'); } catch (e) {}
+  }
+
+  // ─── Fetch current user from relay ─────────────────────────────────────────
+  async function fetchMe() {
+    try {
+      const res = await fetch(`${RELAY_BASE}/api/auth/me`, {
+        credentials: 'include',
+      });
+      if (res.ok) return await res.json();
+    } catch (e) {}
+    return null;
+  }
+
+  // ─── Update the UI based on auth state ────────────────────────────────────
+  function renderAuthUI(user) {
+    const signedInEl  = $('auth-signed-in');
+    const signedOutEl = $('auth-signed-out');
+    const userNameEl  = $('auth-user-name');
+    const userEmailEl = $('auth-user-email');
+    const userAvatarEl = $('auth-user-avatar');
+    const proBadgeEl  = $('auth-pro-badge');
+    const upgradeBtn  = $('auth-upgrade-btn');
+
+    if (!signedInEl || !signedOutEl) return; // elements not on this page
+
+    if (user) {
+      signedOutEl.style.display = 'none';
+      signedInEl.style.display  = 'flex';
+
+      if (userNameEl)  userNameEl.textContent  = user.name || user.email;
+      if (userEmailEl) userEmailEl.textContent = user.email;
+      if (userAvatarEl) {
+        if (user.avatar) {
+          userAvatarEl.src   = user.avatar;
+          userAvatarEl.style.display = 'block';
+        } else {
+          userAvatarEl.style.display = 'none';
+        }
+      }
+      if (proBadgeEl)  proBadgeEl.style.display = user.isPro ? 'inline-flex' : 'none';
+      if (upgradeBtn)  upgradeBtn.style.display  = user.isPro ? 'none' : 'inline-flex';
+    } else {
+      signedInEl.style.display  = 'none';
+      signedOutEl.style.display = 'flex';
+    }
+  }
+
+  // ─── Google Sign-In — opens a browser popup ────────────────────────────────
+  function openGoogleSignIn() {
+    const signInUrl = `${RELAY_BASE}/api/auth/google?redirect=nxtslide://auth`;
+
+    // In Electron, use shell.openExternal to open the user's default browser
+    if (window.electronAPI && window.electronAPI.openExternal) {
+      window.electronAPI.openExternal(signInUrl);
+    } else {
+      // Web fallback: open popup window
+      const popup = window.open(signInUrl, 'nxtslide_auth',
+        'width=480,height=600,scrollbars=yes,status=yes');
+
+      // Listen for popup message
+      const listener = async (event) => {
+        if (event.data && event.data.type === 'NXTSLIDE_AUTH_SUCCESS') {
+          window.removeEventListener('message', listener);
+          if (popup && !popup.closed) popup.close();
+          await refreshAuthState();
+        }
+      };
+      window.addEventListener('message', listener);
+    }
+  }
+
+  // ─── Logout ────────────────────────────────────────────────────────────────
+  async function logout() {
+    try {
+      await fetch(`${RELAY_BASE}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (e) {}
+    currentUser = null;
+    clearUserLocally();
+    renderAuthUI(null);
+    // Also clear legacy license display
+    updateLegacyLicenseUI(null);
+  }
+
+  // ─── Refresh auth state from relay ────────────────────────────────────────
+  async function refreshAuthState() {
+    const user = await fetchMe();
+    currentUser = user;
+    if (user) {
+      saveUserLocally(user);
+      renderAuthUI(user);
+      updateLegacyLicenseUI(user);
+    } else {
+      clearUserLocally();
+      renderAuthUI(null);
+      updateLegacyLicenseUI(null);
+    }
+    return user;
+  }
+
+  // ─── Razorpay Checkout ────────────────────────────────────────────────────
+  async function startProUpgrade() {
+    if (!currentUser) {
+      alert('Please sign in with Google first.');
+      return;
+    }
+
+    try {
+      // 1. Create order on relay server
+      const res = await fetch(`${RELAY_BASE}/api/billing/subscribe`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert('Could not start payment: ' + (err.error || 'Unknown error'));
+        return;
+      }
+
+      const order = await res.json();
+
+      // 2. Load Razorpay script if not loaded
+      if (!window.Razorpay) {
+        await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+      }
+
+      // 3. Open Razorpay checkout
+      const rzp = new window.Razorpay({
+        key:         order.key,
+        amount:      order.amount,
+        currency:    order.currency || 'INR',
+        name:        'NXTslide',
+        description: 'Pro Plan – 1 Month',
+        order_id:    order.orderId,
+        prefill: {
+          name:  order.user?.name  || '',
+          email: order.user?.email || '',
+        },
+        theme: { color: '#6366f1' },
+        handler: async function (response) {
+          // Payment success — refresh user plan
+          console.log('[Auth] Payment success:', response.razorpay_payment_id);
+          // Wait a moment for webhook to process
+          await new Promise(r => setTimeout(r, 2000));
+          await refreshAuthState();
+          alert('🎉 Welcome to NXTslide Pro!');
+        },
+      });
+
+      rzp.on('payment.failed', function (response) {
+        console.error('[Auth] Payment failed:', response.error);
+        alert('Payment failed: ' + (response.error?.description || 'Unknown error'));
+      });
+
+      rzp.open();
+    } catch (err) {
+      console.error('[Auth] Upgrade error:', err);
+      alert('Error starting payment. Please try again.');
+    }
+  }
+
+  // ─── Script loader ────────────────────────────────────────────────────────
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      if (document.querySelector(`script[src="${src}"]`)) return resolve();
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload  = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  // ─── Legacy License UI bridge ────────────────────────────────────────────
+  // Updates old license-key UI elements if they exist, so the dashboard
+  // shows the correct plan even if it hasn't been fully redesigned yet.
+  function updateLegacyLicenseUI(user) {
+    const licenseSection = $('license-section');
+    const licenseStatus  = $('license-status');
+    const proFeatures    = document.querySelectorAll('.pro-only');
+
+    if (user && user.isPro) {
+      if (licenseSection) licenseSection.style.display = 'none';
+      if (licenseStatus) {
+        licenseStatus.textContent = `✅ Pro Active • ${user.email}`;
+        licenseStatus.style.color = '#4ade80';
+      }
+      proFeatures.forEach(el => el.classList.remove('locked'));
+    } else {
+      if (licenseSection) licenseSection.style.display = 'block';
+      if (licenseStatus)  licenseStatus.textContent = '';
+      proFeatures.forEach(el => el.classList.add('locked'));
+    }
+  }
+
+  // ─── Handle Electron deep-link callback (nxtslide://auth?user=...) ────────
+  // The main process should call this after intercepting the deep-link URL.
+  window.nxtslideHandleAuthCallback = async function (userDataBase64) {
+    try {
+      const userData = JSON.parse(atob(userDataBase64));
+      currentUser = userData;
+      saveUserLocally(userData);
+      renderAuthUI(userData);
+      updateLegacyLicenseUI(userData);
+    } catch (e) {
+      console.error('[Auth] Failed to parse auth callback:', e);
+    }
+  };
+
+  // ─── Public API ──────────────────────────────────────────────────────────
+  window.NXTAuth = {
+    signIn:        openGoogleSignIn,
+    signOut:       logout,
+    upgrade:       startProUpgrade,
+    refresh:       refreshAuthState,
+    getCurrentUser: () => currentUser,
+    isPro:         () => !!(currentUser && currentUser.isPro),
+  };
+
+  // ─── Init ────────────────────────────────────────────────────────────────
+  async function init() {
+    // Try cached user first for instant UI
+    const cached = loadUserLocally();
+    if (cached) {
+      currentUser = cached;
+      renderAuthUI(cached);
+      updateLegacyLicenseUI(cached);
+    }
+
+    // Then verify with server
+    await refreshAuthState();
+
+    // Wire up button events (if elements exist in the HTML)
+    const signInBtn  = $('auth-google-signin-btn');
+    const signOutBtn = $('auth-signout-btn');
+    const upgradeBtn = $('auth-upgrade-btn');
+
+    if (signInBtn)  signInBtn.addEventListener('click',  openGoogleSignIn);
+    if (signOutBtn) signOutBtn.addEventListener('click',  logout);
+    if (upgradeBtn) upgradeBtn.addEventListener('click', startProUpgrade);
+  }
+
+  // Update modal UI based on sign-in state
+  function updateModalCta(user) {
+    const signedOutCta = $('modal-signed-out-cta');
+    const signedInCta  = $('modal-signed-in-cta');
+    const modalEmail   = $('modal-user-email');
+    if (!signedOutCta || !signedInCta) return;
+    if (user) {
+      signedOutCta.style.display = 'none';
+      signedInCta.style.display  = 'block';
+      if (modalEmail) modalEmail.textContent = user.email;
+    } else {
+      signedOutCta.style.display = 'block';
+      signedInCta.style.display  = 'none';
+    }
+  }
+
+  // Run after DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Patch init to also wire modal buttons and update modal CTA
+  const _origRefresh = refreshAuthState;
+  window._authRefreshPatch = async function() {
+    const user = await _origRefresh();
+    updateModalCta(user || null);
+    return user;
+  };
+
+  // Wire modal buttons after DOM load
+  function wireModalButtons() {
+    const modalSignInBtn = $('modal-google-signin-btn');
+    const modalPayBtn    = $('modal-pay-btn');
+    if (modalSignInBtn) modalSignInBtn.addEventListener('click', openGoogleSignIn);
+    if (modalPayBtn)    modalPayBtn.addEventListener('click', startProUpgrade);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', wireModalButtons);
+  } else {
+    wireModalButtons();
+  }
+
+})();

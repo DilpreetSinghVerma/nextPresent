@@ -29,3 +29,15 @@ Thumbs.db
 # Large installer executables (>100MB)
 public/downloads/*.exe
 public/downloads/*.apk
+NXTslide_Installers/
+
+
+# Environment variables & Databases
+.env
+*.env
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+

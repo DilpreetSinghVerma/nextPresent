@@ -10,10 +10,16 @@ import android.text.InputFilter
 import android.text.InputType
 import android.text.TextWatcher
 import android.view.inputmethod.EditorInfo
+import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
@@ -495,12 +501,15 @@ class ConnectActivity : AppCompatActivity() {
             .show()
     }
 
-    // ─── Pro Mode & Paywall ───────────────────────────────────────────────
+    // ─── Pro Mode & Account ────────────────────────────────────────────
     private fun updateProBadgeUI() {
         val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
         val isPro = prefs.getBoolean("nxtslide_pro_unlocked", false)
+        val email = prefs.getString("nxtslide_google_email", "") ?: ""
         if (isPro) {
             btnTabCloud.text = "☁️ Cloud (PRO ✓)"
+        } else if (email.isNotEmpty()) {
+            btnTabCloud.text = "☁️ Cloud (Sign In 🔒)"
         } else {
             btnTabCloud.text = "☁️ Cloud (PRO 🔒)"
         }
@@ -561,79 +570,133 @@ class ConnectActivity : AppCompatActivity() {
         }
     }
 
-    private fun showProPaywallDialog() {
-        val options = arrayOf("⭐ Unlock Pro Lifetime ($19)", "🔑 Enter License Key", "🏠 Stay on Free Local Mode")
-        val message = """
-            🚀 NXTslide Pro Lifetime Features:
+    /**
+     * Shows a Google Sign-In dialog using a WebView that loads the relay's
+     * Google OAuth page. After successful sign-in, the relay's callback page
+     * calls window.AndroidApp.onAuthSuccess(jsonString), which saves the user's
+     * plan to SharedPreferences and unlocks Cloud mode if they are Pro.
+     */
+    private fun showGoogleSignInDialog() {
+        if (isFinishing || isDestroyed) return
 
-            🌍 Present from Anywhere on Earth
-            Control slides across 5G/LTE, hotel Wi-Fi, or across countries without network configuration.
+        val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+        val currentEmail = prefs.getString("nxtslide_google_email", "") ?: ""
 
-            📱 Multi-Presenter Mode (Up to 5 Phones)
-            Connect up to 5 mobile phones simultaneously to pass slide control seamlessly on stage.
+        // Already signed in — show account options
+        if (currentEmail.isNotEmpty()) {
+            val isPro = prefs.getBoolean("nxtslide_pro_unlocked", false)
+            val statusMsg = if (isPro)
+                "Signed in as $currentEmail\nPlan: ✅ Pro (Cloud Relay Unlocked)"
+            else
+                "Signed in as $currentEmail\nPlan: Free \u2014 upgrade to Pro to use Cloud Relay."
 
-            💎 Zero Subscriptions — Pay Once ($19)
-            No monthly fees or recurring charges. Keep forever with all future updates.
-
-            ⚡ Instant 6-Letter Room Code
-            Bypasses hotel, university, and corporate firewalls in 2 seconds.
-
-            📳 Stealth Pocket Haptic Timer
-            Discreet vibration pulses at 10m, 5m, and 1m remaining.
-        """.trimIndent()
-
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("⭐ Unlock Global Cloud Relay (PRO)")
-            .setMessage(message)
-            .setItems(options) { _, which ->
-                when (which) {
-                    0 -> {
-                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/DilpreetSinghVerma/nextPresent#pricing"))
+            AlertDialog.Builder(this)
+                .setTitle("👤 Your NXTslide Account")
+                .setMessage(statusMsg)
+                .setPositiveButton(if (isPro) "Continue" else "Upgrade to Pro ✦") { _, _ ->
+                    if (!isPro) {
+                        // Open Razorpay checkout on relay in browser
+                        val intent = Intent(Intent.ACTION_VIEW,
+                            android.net.Uri.parse("$RELAY_BASE/api/auth/google"))
                         startActivity(intent)
-                    }
-                    1 -> {
-                        showEnterKeyDialog()
+                    } else {
+                        switchMode("cloud")
                     }
                 }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
-
-    private fun showEnterKeyDialog() {
-        val input = EditText(this).apply {
-            hint = "e.g. NXT-PRO-XXXX"
-            setSingleLine()
-            setTextColor(android.graphics.Color.WHITE)
-            setHintTextColor(android.graphics.Color.GRAY)
-        }
-        val container = android.widget.FrameLayout(this).apply {
-            setPadding(60, 20, 60, 20)
-            addView(input)
-        }
-
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Activate Pro License")
-            .setMessage("Enter your NXTslide Pro license key:")
-            .setView(container)
-            .setPositiveButton("Activate") { _, _ ->
-                val key = input.text.toString().trim().uppercase()
-                if (key.length >= 6) {
-                    val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+                .setNegativeButton("Sign Out") { _, _ ->
                     prefs.edit()
-                        .putBoolean("nxtslide_pro_unlocked", true)
-                        .putString("nxtslide_license_key", key)
+                        .remove("nxtslide_google_email")
+                        .remove("nxtslide_google_name")
+                        .remove("nxtslide_pro_unlocked")
                         .apply()
                     updateProBadgeUI()
-                    switchMode("cloud")
-                    Toast.makeText(this, "✅ Pro Activated! Cloud mode unlocked.", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(this, "Invalid license key (min 6 characters)", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Signed out.", Toast.LENGTH_SHORT).show()
+                }
+                .show()
+            return
+        }
+
+        // Not signed in — show Google Sign-In WebView
+        val webView = WebView(this).apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            settings.userAgentString = settings.userAgentString + " NXTslideAndroid/2.2"
+
+            // Bridge: relay callback page calls window.AndroidApp.onAuthSuccess(json)
+            addJavascriptInterface(object {
+                @JavascriptInterface
+                fun onAuthSuccess(jsonStr: String) {
+                    try {
+                        val json = JSONObject(jsonStr)
+                        val email  = json.optString("email", "")
+                        val name   = json.optString("name", "")
+                        val isPro  = json.optBoolean("isPro", false)
+                        val plan   = json.optString("plan", "free")
+
+                        if (email.isNotEmpty()) {
+                            prefs.edit()
+                                .putString("nxtslide_google_email", email)
+                                .putString("nxtslide_google_name", name)
+                                .putBoolean("nxtslide_pro_unlocked", isPro)
+                                .putString("nxtslide_plan", plan)
+                                .apply()
+
+                            runOnUiThread {
+                                updateProBadgeUI()
+                                if (isPro) {
+                                    switchMode("cloud")
+                                    Toast.makeText(
+                                        this@ConnectActivity,
+                                        "✅ Pro Activated! Cloud mode unlocked.",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                } else {
+                                    Toast.makeText(
+                                        this@ConnectActivity,
+                                        "Signed in as $email (Free plan — upgrade to Pro for Cloud Relay)",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Ignore parse errors
+                    }
+                }
+            }, "AndroidApp")
+
+            webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                    val uri = request?.url?.toString() ?: return false
+                    // Keep OAuth flow inside WebView; open external links in browser
+                    return if (uri.startsWith("$RELAY_BASE/api/auth") ||
+                               uri.startsWith("https://accounts.google.com") ||
+                               uri.startsWith("https://oauth2.googleapis.com")) {
+                        false // load inside WebView
+                    } else {
+                        startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(uri)))
+                        true
+                    }
                 }
             }
+
+            webChromeClient = WebChromeClient()
+
+            loadUrl("$RELAY_BASE/api/auth/google")
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("🔑 Sign in with Google for Pro")
+            .setView(webView)
             .setNegativeButton("Cancel", null)
+            .setOnDismissListener { webView.destroy() }
             .show()
     }
+
+    /** Legacy: now redirects to Google Sign-In */
+    private fun showProPaywallDialog() = showGoogleSignInDialog()
+    private fun showEnterKeyDialog()   = showGoogleSignInDialog()
+
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
     override fun onDestroy() {
