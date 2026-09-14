@@ -288,7 +288,20 @@
   // ─── Init ────────────────────────────────────────────────────────────────
   async function init() {
     // Try cached user first for instant UI
-    const cached = loadUserLocally();
+    let cached = loadUserLocally();
+    if (!cached) {
+      try {
+        const res = await fetch('/api/auth/cached-user');
+        if (res.ok) {
+          const d = await res.json();
+          if (d && d.user) {
+            cached = d.user;
+            saveUserLocally(cached);
+          }
+        }
+      } catch (_) {}
+    }
+
     if (cached) {
       currentUser = cached;
       renderAuthUI(cached);
@@ -297,6 +310,7 @@
 
     // Then verify with server
     await refreshAuthState();
+
 
     // Wire up button events (if elements exist in the HTML)
     const signInBtn  = $('auth-google-signin-btn');

@@ -118,6 +118,17 @@ class MainActivity : AppCompatActivity() {
                         view?.loadUrl("file:///android_asset/web/mobile.html")
                     }
                 }
+
+                override fun onPageFinished(view: WebView?, url: String?) {
+                    super.onPageFinished(view, url)
+                    val savedUser = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+                        .getString("auth_user", null)
+                    if (!savedUser.isNullOrEmpty()) {
+                        view?.evaluateJavascript(
+                            "if(typeof window.nxtslideOnAuthSuccess==='function') window.nxtslideOnAuthSuccess(${JSONObject.quote(savedUser)});", null
+                        )
+                    }
+                }
             }
         }
         setContentView(webView)
@@ -130,6 +141,9 @@ class MainActivity : AppCompatActivity() {
             or View.SYSTEM_UI_FLAG_FULLSCREEN
             or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         )
+
+        // Handle deep-link if launched via nxtslide://auth
+        handleAuthDeepLink(intent)
 
         // ── Cloud-Synced UI: load live UI from relay, fallback to local ──────────
         // This lets us push UI updates without requiring users to re-download the APK.
@@ -147,6 +161,54 @@ class MainActivity : AppCompatActivity() {
         startPresenterService()
         requestBatteryOptimizationExemption()
     }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAuthDeepLink(intent)
+    }
+
+    private fun handleAuthDeepLink(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (uri.scheme == "nxtslide" && (uri.host == "auth" || uri.path?.contains("auth") == true)) {
+            val token = uri.getQueryParameter("token")
+            val userBase64 = uri.getQueryParameter("user")
+            if (!token.isNullOrEmpty()) {
+                val userJson = if (!userBase64.isNullOrEmpty()) {
+                    try {
+                        String(android.util.Base64.decode(userBase64, android.util.Base64.DEFAULT), Charsets.UTF_8)
+                    } catch (_: Exception) {
+                        "{}"
+                    }
+                } else "{}"
+
+                // Save to SharedPreferences
+                getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+                    .edit()
+                    .putString("auth_token", token)
+                    .putString("auth_user", userJson)
+                    .apply()
+
+                // Notify WebView
+                webView.post {
+                    webView.evaluateJavascript(
+                        "if(typeof window.nxtslideOnAuthSuccess==='function') window.nxtslideOnAuthSuccess(${JSONObject.quote(userJson)});", null
+                    )
+                }
+
+                try {
+                    val userObj = JSONObject(userJson)
+                    val name = userObj.optString("name", "User")
+                    val isPro = userObj.optBoolean("isPro", false)
+                    val label = if (isPro) "✦ Pro: $name" else name
+                    Toast.makeText(this, "Signed in as $label", Toast.LENGTH_LONG).show()
+                } catch (_: Exception) {
+                    Toast.makeText(this, "Signed in successfully!", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
 
     /**
      * Attempts to load the remote controller UI from the relay server.
@@ -525,9 +587,18 @@ class MainActivity : AppCompatActivity() {
         /** Opens Google Sign-In — called by the cloud remote UI's "My Account" button */
         @JavascriptInterface
         fun openGoogleSignIn() {
-            activity.runOnUiThread { activity.launchConnectActivity() }
+            activity.runOnUiThread {
+                try {
+                    val authUrl = "${activity.relayBaseUrl}/auth/google?redirect=nxtslide://auth"
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
+                    activity.startActivity(intent)
+                } catch (e: Exception) {
+                    android.util.Log.e("NXTslide", "Failed to launch Google Sign In: ${e.message}")
+                }
+            }
         }
     }
+
 
 }
 

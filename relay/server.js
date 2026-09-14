@@ -530,8 +530,14 @@ function haptic() {
   if (navigator.vibrate) navigator.vibrate(18);
 }
 
+let currentAuthUser = null;
+
 // ── Auth handler ─────────────────────────────────────────────────────
 function handleSignIn() {
+  if (currentAuthUser && currentAuthUser.name) {
+    alert('Account: ' + currentAuthUser.name + ' (' + (currentAuthUser.email || '') + ')\nStatus: ' + (currentAuthUser.isPro ? '✦ Pro Subscriber' : 'Free Plan'));
+    return;
+  }
   // Trigger Google Sign-In via AndroidBridge if available
   if (window.AndroidApp && window.AndroidApp.openGoogleSignIn) {
     window.AndroidApp.openGoogleSignIn();
@@ -565,13 +571,15 @@ window.nxtslideSetConnectionState = function(stateJson) {
 // ── Receive auth update from AndroidBridge ───────────────────────────
 window.nxtslideOnAuthSuccess = function(userJson) {
   try {
-    const user = JSON.parse(userJson);
+    const user = typeof userJson === 'string' ? JSON.parse(userJson) : userJson;
+    currentAuthUser = user;
     const btn = document.getElementById('footerSignInBtn');
     if (btn && user && user.name) {
       btn.textContent = user.isPro ? '✦ Pro · ' + user.name.split(' ')[0] : user.name.split(' ')[0];
     }
   } catch(e) {}
 };
+
 </script>
 </body>
 </html>`);

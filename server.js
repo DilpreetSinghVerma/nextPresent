@@ -338,6 +338,11 @@ app.get('/api/license/status', (req, res) => {
   res.json(licenseService.getLicenseStatus());
 });
 
+app.get('/api/auth/cached-user', (req, res) => {
+  res.json({ user: licenseService.readCachedUser() });
+});
+
+
 app.post('/api/license/activate', async (req, res) => {
   try {
     const { key, instanceName } = req.body || {};
