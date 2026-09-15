@@ -146,7 +146,11 @@ app.use((req, res, next) => {
   const relPath = req.path.replace(/^\/+/, '');
   if (relPath && !relPath.startsWith('api/') && !relPath.startsWith('auth/')) {
     const cachedPath = cloudSync.getCachedFilePath(relPath);
-    if (cachedPath) return res.sendFile(cachedPath);
+    if (cachedPath) {
+      return res.sendFile(cachedPath, { dotfiles: 'allow' }, (err) => {
+        if (err) next();
+      });
+    }
   }
   next();
 });
@@ -273,13 +277,21 @@ app.get('/', (req, res) => {
 
 app.get('/dashboard', (req, res) => {
   const cached = cloudSync.getCachedFilePath('dashboard.html');
-  if (cached) return res.sendFile(cached);
+  if (cached) {
+    return res.sendFile(cached, { dotfiles: 'allow' }, (err) => {
+      if (err) res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+    });
+  }
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
 app.get('/remote', (req, res) => {
   const cached = cloudSync.getCachedFilePath('mobile.html');
-  if (cached) return res.sendFile(cached);
+  if (cached) {
+    return res.sendFile(cached, { dotfiles: 'allow' }, (err) => {
+      if (err) res.sendFile(path.join(__dirname, 'public', 'mobile.html'));
+    });
+  }
   res.sendFile(path.join(__dirname, 'public', 'mobile.html'));
 });
 
