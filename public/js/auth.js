@@ -76,28 +76,108 @@
     const proBadgeEl  = $('auth-pro-badge');
     const upgradeBtn  = $('auth-upgrade-btn');
 
-    if (!signedInEl || !signedOutEl) return; // elements not on this page
+    if (signedInEl && signedOutEl) {
+      if (user) {
+        signedOutEl.style.display = 'none';
+        signedInEl.style.display  = 'flex';
+
+        if (userNameEl)  userNameEl.textContent  = user.name || user.email;
+        if (userEmailEl) userEmailEl.textContent = user.email;
+        if (userAvatarEl) {
+          if (user.avatar) {
+            userAvatarEl.src   = user.avatar;
+            userAvatarEl.style.display = 'block';
+          } else {
+            userAvatarEl.style.display = 'none';
+          }
+        }
+        if (proBadgeEl)  proBadgeEl.style.display = user.isPro ? 'inline-flex' : 'none';
+        if (upgradeBtn)  upgradeBtn.style.display  = user.isPro ? 'none' : 'inline-flex';
+      } else {
+        signedInEl.style.display  = 'none';
+        signedOutEl.style.display = 'flex';
+      }
+    }
+
+    // Also update upgrade modal and account modal
+    updateModalCta(user);
+    updateAccountModalUI(user);
+  }
+
+  // ─── Account Modal UI Helpers ─────────────────────────────────────────────
+  function updateAccountModalUI(user) {
+    const avatarEl = $('account-modal-avatar');
+    const nameEl   = $('account-modal-name');
+    const emailEl  = $('account-modal-email');
+    const badgeEl  = $('account-modal-plan-badge');
+    const detailEl = $('account-modal-details');
+    const upBtn    = $('account-modal-upgrade-btn');
+
+    if (!nameEl) return;
 
     if (user) {
-      signedOutEl.style.display = 'none';
-      signedInEl.style.display  = 'flex';
-
-      if (userNameEl)  userNameEl.textContent  = user.name || user.email;
-      if (userEmailEl) userEmailEl.textContent = user.email;
-      if (userAvatarEl) {
+      nameEl.textContent = user.name || user.email || 'My Account';
+      if (emailEl) emailEl.textContent = user.email || '';
+      if (avatarEl) {
         if (user.avatar) {
-          userAvatarEl.src   = user.avatar;
-          userAvatarEl.style.display = 'block';
+          avatarEl.src = user.avatar;
+          avatarEl.style.display = 'block';
         } else {
-          userAvatarEl.style.display = 'none';
+          avatarEl.style.display = 'none';
         }
       }
-      if (proBadgeEl)  proBadgeEl.style.display = user.isPro ? 'inline-flex' : 'none';
-      if (upgradeBtn)  upgradeBtn.style.display  = user.isPro ? 'none' : 'inline-flex';
+      if (badgeEl) {
+        if (user.isPro) {
+          badgeEl.textContent = '✦ PRO ACTIVE';
+          badgeEl.style.background = 'rgba(34,197,94,0.15)';
+          badgeEl.style.color = '#4ade80';
+          badgeEl.style.border = '1px solid rgba(34,197,94,0.35)';
+        } else {
+          badgeEl.textContent = 'Free Plan';
+          badgeEl.style.background = 'rgba(148,163,184,0.15)';
+          badgeEl.style.color = '#94a3b8';
+          badgeEl.style.border = '1px solid rgba(148,163,184,0.3)';
+        }
+      }
+      if (detailEl) {
+        if (user.isPro) {
+          const exp = user.subscriptionExpiresAt
+            ? new Date(user.subscriptionExpiresAt).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' })
+            : 'Active';
+          detailEl.innerHTML = `<strong>Active Pro Subscription</strong> &bull; Valid until: ${exp}<br><span style="color:#94a3b8;font-size:0.75rem;">Global Cloud Relay and multi-presenter enabled.</span>`;
+        } else {
+          detailEl.innerHTML = `Standard local Wi-Fi mode active.<br><span style="color:#94a3b8;font-size:0.75rem;">Upgrade to Pro to present from anywhere via global cloud relay.</span>`;
+        }
+      }
+      if (upBtn) upBtn.style.display = user.isPro ? 'none' : 'block';
     } else {
-      signedInEl.style.display  = 'none';
-      signedOutEl.style.display = 'flex';
+      nameEl.textContent = 'Guest';
+      if (emailEl) emailEl.textContent = 'Not signed in';
+      if (avatarEl) avatarEl.style.display = 'none';
+      if (badgeEl) {
+        badgeEl.textContent = 'Free Plan';
+        badgeEl.style.background = 'rgba(148,163,184,0.15)';
+        badgeEl.style.color = '#94a3b8';
+        badgeEl.style.border = '1px solid rgba(148,163,184,0.3)';
+      }
+      if (detailEl) detailEl.textContent = 'Sign in with Google to view and sync your subscription.';
+      if (upBtn) upBtn.style.display = 'none';
     }
+  }
+
+  function openAccountModal() {
+    if (!currentUser) {
+      openGoogleSignIn();
+      return;
+    }
+    updateAccountModalUI(currentUser);
+    const m = $('accountModalBackdrop');
+    if (m) m.style.display = 'flex';
+  }
+
+  function closeAccountModal() {
+    const m = $('accountModalBackdrop');
+    if (m) m.style.display = 'none';
   }
 
   // ─── Google Sign-In — desktop or web ────────────────────────────────────────
@@ -281,13 +361,33 @@
     signOut:       logout,
     upgrade:       startProUpgrade,
     refresh:       refreshAuthState,
+    openAccount:   openAccountModal,
+    closeAccount:  closeAccountModal,
     getCurrentUser: () => currentUser,
     isPro:         () => !!(currentUser && currentUser.isPro),
   };
 
   // ─── Init ────────────────────────────────────────────────────────────────
   async function init() {
-    // Try cached user first for instant UI
+    // 0. Extract ?token=...&user=... if present in URL (e.g. returned from web Google OAuth)
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const qToken = urlParams.get('token');
+      const qUser  = urlParams.get('user');
+      if (qToken && qUser) {
+        const parsedUser = JSON.parse(atob(qUser));
+        parsedUser.token = qToken;
+        saveUserLocally(parsedUser);
+        currentUser = parsedUser;
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, cleanUrl);
+        console.log('[Auth] Logged in via URL callback:', parsedUser.email);
+      }
+    } catch (e) {
+      console.error('[Auth] Failed to parse URL auth callback:', e);
+    }
+
+    // 1. Try cached user first for instant UI
     let cached = loadUserLocally();
     if (!cached) {
       try {
@@ -308,18 +408,60 @@
       updateLegacyLicenseUI(cached);
     }
 
-    // Then verify with server
+    // 2. Verify with server
     await refreshAuthState();
 
-
-    // Wire up button events (if elements exist in the HTML)
+    // 3. Wire up header buttons
     const signInBtn  = $('auth-google-signin-btn');
     const signOutBtn = $('auth-signout-btn');
     const upgradeBtn = $('auth-upgrade-btn');
+    const accountBtn = $('auth-account-btn');
+    const userPill   = $('auth-user-pill');
 
     if (signInBtn)  signInBtn.addEventListener('click',  openGoogleSignIn);
     if (signOutBtn) signOutBtn.addEventListener('click',  logout);
     if (upgradeBtn) upgradeBtn.addEventListener('click', startProUpgrade);
+    if (accountBtn) accountBtn.addEventListener('click', openAccountModal);
+    if (userPill)   userPill.addEventListener('click',   openAccountModal);
+
+    // 4. Wire up Account Modal buttons
+    const closeAccBtn = $('closeAccountModalBtn');
+    const accModalBackdrop = $('accountModalBackdrop');
+    const accUpgradeBtn = $('account-modal-upgrade-btn');
+    const accRefreshBtn = $('account-modal-refresh-btn');
+    const accSignoutBtn = $('account-modal-signout-btn');
+
+    if (closeAccBtn) closeAccBtn.addEventListener('click', closeAccountModal);
+    if (accModalBackdrop) {
+      accModalBackdrop.addEventListener('click', (e) => {
+        if (e.target === accModalBackdrop) closeAccountModal();
+      });
+    }
+    if (accUpgradeBtn) {
+      accUpgradeBtn.addEventListener('click', () => {
+        closeAccountModal();
+        startProUpgrade();
+      });
+    }
+    if (accRefreshBtn) {
+      accRefreshBtn.addEventListener('click', async () => {
+        accRefreshBtn.disabled = true;
+        accRefreshBtn.innerHTML = '<span>⏳</span> <span>Refreshing...</span>';
+        const u = await refreshAuthState();
+        updateAccountModalUI(u);
+        accRefreshBtn.disabled = false;
+        accRefreshBtn.innerHTML = '<span>✅</span> <span>Account Synced!</span>';
+        setTimeout(() => {
+          accRefreshBtn.innerHTML = '<span>🔄</span> <span>Refresh Account Status</span>';
+        }, 2000);
+      });
+    }
+    if (accSignoutBtn) {
+      accSignoutBtn.addEventListener('click', () => {
+        closeAccountModal();
+        logout();
+      });
+    }
   }
 
   // Update modal UI based on sign-in state
@@ -345,15 +487,7 @@
     init();
   }
 
-  // Patch init to also wire modal buttons and update modal CTA
-  const _origRefresh = refreshAuthState;
-  window._authRefreshPatch = async function() {
-    const user = await _origRefresh();
-    updateModalCta(user || null);
-    return user;
-  };
-
-  // Wire modal buttons after DOM load
+  // Wire upgrade modal buttons after DOM load
   function wireModalButtons() {
     const modalSignInBtn = $('modal-google-signin-btn');
     const modalPayBtn    = $('modal-pay-btn');

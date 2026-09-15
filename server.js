@@ -8,6 +8,7 @@ const QRCode  = require('qrcode');
 const { getPrimaryLocalIp, getLocalIpAddresses } = require('./lib/network');
 const keySender = require('./lib/keySender');
 const licenseService = require('./lib/licenseService');
+const cloudSync = require('./lib/cloudSync');
 
 // ─────────────────────────────────────────────────────────────────────
 // Cloud Relay Configuration
@@ -139,7 +140,18 @@ try {
 }
 
 app.use(express.json());
+
+// ── Cloud-Sync UI Middleware (serves updated files from ~/.nxtslide/ui_cache) ──
+app.use((req, res, next) => {
+  const relPath = req.path.replace(/^\/+/, '');
+  if (relPath && !relPath.startsWith('api/') && !relPath.startsWith('auth/')) {
+    const cachedPath = cloudSync.getCachedFilePath(relPath);
+    if (cachedPath) return res.sendFile(cachedPath);
+  }
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+
 
 // Health check endpoint (required for Railway / Render / Fly.io deployments)
 app.get('/health', (_req, res) => res.json({ status: 'ok', app: 'NXTslide', version: '2.2.0' }));
@@ -260,12 +272,17 @@ app.get('/', (req, res) => {
 });
 
 app.get('/dashboard', (req, res) => {
+  const cached = cloudSync.getCachedFilePath('dashboard.html');
+  if (cached) return res.sendFile(cached);
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
 app.get('/remote', (req, res) => {
+  const cached = cloudSync.getCachedFilePath('mobile.html');
+  if (cached) return res.sendFile(cached);
   res.sendFile(path.join(__dirname, 'public', 'mobile.html'));
 });
+
 
 // Direct Download Convenience Endpoints
 app.get(['/download/windows', '/downloads/NXTslide-Setup.exe', '/downloads/nextPresent-Setup.exe'], (req, res) => {
@@ -341,6 +358,19 @@ app.get('/api/license/status', (req, res) => {
 app.get('/api/auth/cached-user', (req, res) => {
   res.json({ user: licenseService.readCachedUser() });
 });
+
+// Cloud-Sync UI endpoints
+app.post('/api/ui/sync', async (req, res) => {
+  const result = await cloudSync.checkAndUpdate((newSha) => {
+    broadcast({ type: 'UI_SYNC_UPDATED', sha: newSha });
+  });
+  res.json(result);
+});
+
+app.get('/api/ui/version', (req, res) => {
+  res.json(cloudSync.getVersion() || { status: 'bundled' });
+});
+
 
 
 app.post('/api/license/activate', async (req, res) => {
@@ -531,6 +561,12 @@ server.listen(PORT, '0.0.0.0', async () => {
 
   // Connect to cloud relay (non-blocking — LAN still works even if this fails)
   connectToRelay().then(() => {}).catch(() => {});
+
+  // Initialize automatic Cloud-Sync for Desktop UI (checks GitHub for updates)
+  cloudSync.init((newSha) => {
+    broadcast({ type: 'UI_SYNC_UPDATED', sha: newSha });
+  });
+
 
   console.log('📲 Scan QR on the dashboard to connect from any network:');
   try {

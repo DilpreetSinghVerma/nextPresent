@@ -387,8 +387,16 @@ app.get('/api/version', (_req, res) => {
   });
 });
 
-app.get(['/downloads/NXTslide.apk', '/NXTslide.apk'], (_req, res) => {
+app.get(['/downloads/NXTslide.apk', '/NXTslide.apk', '/download/android'], (_req, res) => {
   res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/raw/main/public/NXTslide.apk');
+});
+
+app.get(['/download/windows', '/downloads/NXTslide-Setup.exe', '/downloads/nextPresent-Setup.exe'], (_req, res) => {
+  res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/releases/latest');
+});
+
+app.get(['/download/portable', '/downloads/NXTslide-Portable.exe', '/downloads/nextPresent-Portable.exe'], (_req, res) => {
+  res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/releases/latest');
 });
 
 // ─── Cloud-Synced UI Routes ────────────────────────────────────────────────────
@@ -622,13 +630,20 @@ app.get(['/auth/google/callback', '/api/auth/google/callback'],
     };
     const data = Buffer.from(JSON.stringify(safeUser)).toString('base64');
 
-    if (redirect && redirect.startsWith('nxtslide://')) {
-      return res.redirect(`nxtslide://auth?token=${token}&user=${data}`);
+    // 1. Web browser redirect (e.g. from landing page or web dashboard)
+    if (redirect && (redirect.startsWith('http://') || redirect.startsWith('https://'))) {
+      try {
+        const dest = new URL(redirect);
+        dest.searchParams.set('token', token);
+        dest.searchParams.set('user', data);
+        return res.redirect(dest.toString());
+      } catch (_) {}
     }
 
-    // Web / Android redirect: send to a success page with deep link button & local storage token
+    // 2. Desktop app / Android redirect: render sleek success page that saves token to browser
+    //    localStorage AND automatically launches the desktop app via nxtslide:// deep-link.
     res.send(`<!DOCTYPE html><html><head>
-<meta charset="UTF-8"><title>NXTslide - Signed In</title>
+<meta charset="UTF-8"><title>NXTslide — Signed In</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body { background:#05070d; color:#fff; font-family:system-ui,-apple-system,sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; flex-direction:column; text-align:center; padding:20px; margin:0; }
@@ -636,9 +651,12 @@ body { background:#05070d; color:#fff; font-family:system-ui,-apple-system,sans-
 .avatar { width:72px; height:72px; border-radius:50%; border:3px solid #6366f1; margin-bottom:1rem; object-fit:cover; }
 h2 { color:#fff; margin:0 0 8px; font-size:1.4rem; }
 .plan-badge { display:inline-block; padding:4px 12px; border-radius:999px; font-size:0.8rem; font-weight:700; margin-bottom:1.5rem; }
-.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:12px 18px; border-radius:10px; font-weight:600; text-decoration:none; margin-bottom:10px; cursor:pointer; font-size:0.95rem; box-sizing:border-box; }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:13px 18px; border-radius:10px; font-weight:700; text-decoration:none; margin-bottom:10px; cursor:pointer; font-size:0.95rem; box-sizing:border-box; transition:all 0.2s; }
 .btn-primary { background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff; border:none; box-shadow:0 4px 14px rgba(99,102,241,0.4); }
+.btn-primary:hover { filter:brightness(1.1); transform:translateY(-1px); }
 .btn-secondary { background:rgba(255,255,255,0.06); color:#cbd5e1; border:1px solid rgba(255,255,255,0.12); }
+.btn-secondary:hover { background:rgba(255,255,255,0.1); }
+.hint { margin-top:1.5rem; font-size:0.82rem; color:#94a3b8; line-height:1.45; }
 </style></head>
 <body>
 <div class="card">
@@ -658,23 +676,30 @@ ${safeUser.avatar ? `<img src="${safeUser.avatar}" class="avatar" alt="avatar">`
   Go to Website
 </a>
 
-<p style="margin-top:1.5rem;font-size:0.8rem;color:#64748b">Your account is connected. You can close this tab anytime.</p>
+<p class="hint" id="statusHint">
+  Opening your NXTslide Desktop App... If it didn't open automatically, click the button above.
+</p>
 </div>
 
 <script>
-  // Store token and user locally in browser
-  localStorage.setItem('nxtslide_auth_token', '${token}');
-  localStorage.setItem('nxtslide_user', JSON.stringify(${JSON.stringify(safeUser)}));
+  // Store token and user locally in browser (keeps web browser logged in too)
+  try {
+    localStorage.setItem('nxtslide_auth_token', '${token}');
+    localStorage.setItem('nxtslide_user', JSON.stringify(${JSON.stringify(safeUser)}));
+  } catch(_) {}
 
-  // Auto-attempt deep-link if requested
-  if (window.location.search.includes('launch=app')) {
-    window.location.href = "nxtslide://auth?token=${token}&user=${data}";
-  }
+  // Auto-launch desktop app
+  const deepLinkUrl = "nxtslide://auth?token=${token}&user=${data}";
+  setTimeout(() => {
+    try {
+      window.location.href = deepLinkUrl;
+    } catch(e) {}
+  }, 100);
 
   // Notify parent window if opened as popup
   if (window.opener) {
     window.opener.postMessage({ type: 'NXTSLIDE_AUTH_SUCCESS', token: '${token}', user: ${JSON.stringify(safeUser)} }, '*');
-    setTimeout(() => window.close(), 1200);
+    setTimeout(() => window.close(), 1500);
   }
 
   // Notify Android WebView bridge if present

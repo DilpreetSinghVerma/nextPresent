@@ -81,8 +81,13 @@ if (process.defaultApp) {
  * Handles an incoming nxtslide:// deep-link URL.
  * Expected: nxtslide://auth?token=<token>&user=<base64-encoded-user-json>
  */
-function handleDeepLink(url) {
+function handleDeepLink(rawUrl) {
   try {
+    if (!rawUrl) return;
+    let url = String(rawUrl).trim().replace(/^["']|["']$/g, '');
+    if (url.endsWith('/')) url = url.slice(0, -1);
+    console.log('[Auth] Processing deep-link:', url.substring(0, 55) + '...');
+
     const parsed = new URL(url);
     if (parsed.hostname === 'auth' || parsed.pathname.includes('auth')) {
       const userBase64 = parsed.searchParams.get('user');
@@ -103,10 +108,13 @@ function handleDeepLink(url) {
           mainWindow.show();
           mainWindow.focus();
           // Inject user data into the dashboard WebView
-          mainWindow.webContents.executeJavaScript(
-            `if (typeof window.nxtslideHandleAuthCallback === 'function') { window.nxtslideHandleAuthCallback(${JSON.stringify(userBase64)}, ${JSON.stringify(token || '')}); }`
-          ).catch(() => {});
-          console.log('[Auth] Deep-link auth callback handled.');
+          const injectScript = `if (typeof window.nxtslideHandleAuthCallback === 'function') { window.nxtslideHandleAuthCallback(${JSON.stringify(userBase64)}, ${JSON.stringify(token || '')}); }`;
+          mainWindow.webContents.executeJavaScript(injectScript).catch(() => {});
+          // If page is reloading or hasn't finished, re-execute once loaded
+          mainWindow.webContents.once('did-finish-load', () => {
+            mainWindow.webContents.executeJavaScript(injectScript).catch(() => {});
+          });
+          console.log('[Auth] Deep-link auth callback injected.');
         }
       }
     }
@@ -121,8 +129,11 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.on('second-instance', (_event, commandLine) => {
-    // On Windows, the deep-link URL comes as the last command-line argument
-    const deepLink = commandLine.find(arg => arg.startsWith('nxtslide://'));
+    // On Windows, the deep-link URL comes in commandLine arguments
+    const deepLink = commandLine.find(arg => {
+      const clean = (arg || '').trim().replace(/^["']|["']$/g, '');
+      return clean.startsWith('nxtslide://');
+    });
     if (deepLink) {
       handleDeepLink(deepLink);
     }
@@ -145,7 +156,10 @@ if (!gotTheLock) {
     setupAutoUpdater();
 
     // Check if launched directly via deep link
-    const deepLink = process.argv.find(arg => arg.startsWith('nxtslide://'));
+    const deepLink = process.argv.find(arg => {
+      const clean = (arg || '').trim().replace(/^["']|["']$/g, '');
+      return clean.startsWith('nxtslide://');
+    });
     if (deepLink) {
       setTimeout(() => handleDeepLink(deepLink), 1500);
     }
@@ -205,7 +219,7 @@ function createTray() {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'NXTslide v1.0 — by Dilpreet Singh',
+      label: `NXTslide v${app.getVersion()} — by Dilpreet Singh`,
       enabled: false
     },
     { type: 'separator' },

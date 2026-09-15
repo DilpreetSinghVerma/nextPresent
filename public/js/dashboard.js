@@ -532,6 +532,10 @@ function connectWebSocket() {
         logEvent('Device Disconnected', '', 'special');
       } else if (data.type === 'TIMER_SYNC') {
         updateTimerUI(data.sessionState);
+      } else if (data.type === 'UI_SYNC_UPDATED') {
+        // Cloud-Sync: new UI assets downloaded — show a non-intrusive banner
+        const sha = data.sha ? data.sha.substring(0, 7) : 'latest';
+        showCloudSyncBanner(sha);
       }
     } catch (err) {
       console.error('Error handling WS message:', err);
@@ -640,6 +644,48 @@ btnEsc.addEventListener('click', () => sendCommand('ESC'));
 
 // Start
 initDashboard();
+
+// ─────────────────────────────────────────────────────────────────────
+// Cloud-Sync UI Update Banner
+// ─────────────────────────────────────────────────────────────────────
+function showCloudSyncBanner(sha) {
+  // Remove any existing banner first
+  const existing = document.getElementById('cloudSyncBanner');
+  if (existing) existing.remove();
+
+  const banner = document.createElement('div');
+  banner.id = 'cloudSyncBanner';
+  banner.style.cssText = [
+    'position:fixed;top:70px;right:20px;z-index:9999;',
+    'background:rgba(15,23,42,0.97);border:1px solid rgba(99,102,241,0.5);',
+    'border-radius:14px;padding:14px 18px;box-shadow:0 8px 32px rgba(0,0,0,0.5);',
+    'display:flex;align-items:center;gap:14px;max-width:340px;',
+    'animation:slideInRight 0.3s ease;',
+  ].join('');
+
+  banner.innerHTML = `
+    <style>
+      @keyframes slideInRight {
+        from { opacity:0; transform:translateX(40px); }
+        to   { opacity:1; transform:translateX(0); }
+      }
+    </style>
+    <span style="font-size:1.3rem;flex-shrink:0;">🔄</span>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:0.83rem;font-weight:700;color:#e2e8f0;margin-bottom:3px;">UI Update Ready</div>
+      <div style="font-size:0.73rem;color:#94a3b8;">New UI assets downloaded (${sha}). Reload to apply.</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
+      <button onclick="location.reload()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:7px;font-size:0.75rem;font-weight:700;padding:6px 12px;cursor:pointer;white-space:nowrap;">Reload</button>
+      <button onclick="this.closest('#cloudSyncBanner').remove()" style="background:transparent;color:#64748b;border:1px solid rgba(255,255,255,0.1);border-radius:7px;font-size:0.72rem;padding:4px 8px;cursor:pointer;">Dismiss</button>
+    </div>
+  `;
+
+  document.body.appendChild(banner);
+
+  // Auto-dismiss after 30 seconds
+  setTimeout(() => { if (banner.parentNode) banner.remove(); }, 30000);
+}
 
 // ─────────────────────────────────────────────────────────────────────
 // Auto-Updater Notifications
