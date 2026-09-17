@@ -73,6 +73,8 @@ async function connectToRelay() {
             broadcast({ type:'PROFILE_CHANGED', profile:data.profile,
               profileInfo:SOFTWARE_PROFILES[data.profile], sessionState });
           }
+        } else if (data.type === 'LASER_DOWN' || data.type === 'LASER_MOVE' || data.type === 'LASER_UP' || data.type === 'LASER_STYLE') {
+          broadcast(data);
         } else if (data.type === 'PING') {
           relayWsClient.send(JSON.stringify({ type:'PONG', timestamp:Date.now() }));
         }
@@ -533,6 +535,8 @@ wss.on('connection', (ws, req) => {
       } else if (data.type === 'RESET_COUNTER') {
         sessionState.slideCount = 1;
         broadcast({ type: 'STATE_SYNC', sessionState });
+      } else if (data.type === 'LASER_DOWN' || data.type === 'LASER_MOVE' || data.type === 'LASER_UP' || data.type === 'LASER_STYLE') {
+        broadcast(data);
       } else if (data.type === 'PING') {
         ws.send(JSON.stringify({ type: 'PONG', timestamp: Date.now() }));
       }

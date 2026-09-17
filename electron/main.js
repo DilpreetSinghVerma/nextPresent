@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, shell, ipcMain } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, ipcMain, screen } = require('electron');
 const path = require('path');
 const http = require('http');
 const { execSync } = require('child_process');
@@ -59,6 +59,7 @@ setTimeout(() => {
 
 const licenseService = require('../lib/licenseService');
 let mainWindow = null;
+let laserWindow = null;
 let tray = null;
 let isQuitting = false;
 
@@ -152,6 +153,7 @@ if (!gotTheLock) {
 
   app.whenReady().then(() => {
     createWindow();
+    createLaserOverlayWindow();
     createTray();
     setupAutoUpdater();
 
@@ -211,6 +213,49 @@ function createWindow() {
   ipcMain.handle('open-external', (_event, url) => {
     shell.openExternal(url);
   });
+}
+
+function createLaserOverlayWindow() {
+  try {
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height, x, y } = primaryDisplay.bounds;
+
+    laserWindow = new BrowserWindow({
+      x,
+      y,
+      width,
+      height,
+      transparent: true,
+      frame: false,
+      alwaysOnTop: true,
+      skipTaskbar: true,
+      hasShadow: false,
+      focusable: false,
+      show: false,
+      backgroundColor: '#00000000',
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true
+      }
+    });
+
+    laserWindow.setAlwaysOnTop(true, 'screen-saver');
+    laserWindow.setVisibleOnAllWorkspaces(true);
+    laserWindow.setIgnoreMouseEvents(true, { forward: true });
+
+    const LASER_URL = `http://localhost:${PORT}/laser.html`;
+    waitForServer(LASER_URL, () => {
+      if (laserWindow && !laserWindow.isDestroyed()) {
+        laserWindow.loadURL(LASER_URL);
+        laserWindow.once('ready-to-show', () => {
+          laserWindow.showInactive();
+          console.log('[Electron] Transparent Laser Overlay window active.');
+        });
+      }
+    });
+  } catch (err) {
+    console.error('[Electron] Failed to initialize laser overlay:', err.message);
+  }
 }
 
 function createTray() {

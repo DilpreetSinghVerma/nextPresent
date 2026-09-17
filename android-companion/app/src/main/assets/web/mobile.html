@@ -95,6 +95,14 @@
       <span id="vibrateLabel">Vibrate ON</span>
     </button>
 
+    <button class="tool" id="toolLaser" style="color: #fb7185;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="9"/>
+        <circle cx="12" cy="12" r="3" fill="currentColor"/>
+      </svg>
+      Laser (L)
+    </button>
+
     <button class="tool" id="toolTimer">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M3 2v6h6M21 12A9 9 0 0 0 6 5.3L3 8"/>
@@ -102,6 +110,54 @@
       Reset Timer
     </button>
   </footer>
+</div>
+
+<!-- ───── LASER POINTER MODAL ───── -->
+<div class="overlay" id="laserModal">
+  <div class="sheet laser-sheet">
+    <div class="handle"></div>
+
+    <div class="laser-header">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1.15rem;">🎯</span>
+        <strong style="color:#fff;font-size:0.95rem;">Virtual Laser Pointer</strong>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button id="laserStyleBtn" class="laser-style-pill">🔴 Laser</button>
+        <button id="closeLaserModal" class="laser-close-btn">✕</button>
+      </div>
+    </div>
+
+    <!-- Mode Tabs -->
+    <div class="laser-tabs">
+      <div id="tabLaserGyro" class="laser-tab active">🧭 Flashlight Aiming</div>
+      <div id="tabLaserTouch" class="laser-tab">👆 Touchpad</div>
+    </div>
+
+    <!-- Gyro View -->
+    <div id="viewLaserGyro" class="laser-view active">
+      <div class="clutch-box">
+        <div id="laserClutchBtn" class="laser-clutch">
+          <span style="font-size:2.8rem;pointer-events:none;">🎯</span>
+          <span style="font-weight:800;font-size:1.05rem;letter-spacing:0.04em;pointer-events:none;">HOLD TO AIM</span>
+          <span style="font-size:0.72rem;color:#94a3b8;pointer-events:none;">Point like a flashlight</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;width:100%;max-width:260px;font-size:0.75rem;color:#94a3b8;">
+        <span>Compass Yaw & 1-Euro Filter</span>
+        <button id="laserRecenterBtn" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#cbd5e1;padding:4px 10px;border-radius:6px;font-size:0.72rem;cursor:pointer;">Recenter</button>
+      </div>
+    </div>
+
+    <!-- Touchpad View -->
+    <div id="viewLaserTouch" class="laser-view">
+      <div id="laserTouchpad" class="laser-touchpad">
+        <span style="font-size:2rem;opacity:0.8;">👆</span>
+        <span style="font-size:0.9rem;font-weight:600;color:#cbd5e1;">Drag anywhere to point</span>
+        <span style="font-size:0.72rem;color:#64748b;">Release finger to hide laser</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ───── INFO MODAL ───── -->

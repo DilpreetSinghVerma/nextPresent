@@ -454,3 +454,281 @@ initWS();
 // Auto-activate audio session on first user interaction
 // (browsers require a gesture before AudioContext can start)
 document.addEventListener('pointerdown', activateMediaSession, { once: true });
+
+// ══════════════════════════════════════════════════════════
+//  Virtual Laser Pointer & Compass Yaw Engine
+// ══════════════════════════════════════════════════════════
+const toolLaser        = document.getElementById('toolLaser');
+const laserModal       = document.getElementById('laserModal');
+const closeLaserModal  = document.getElementById('closeLaserModal');
+const laserStyleBtn    = document.getElementById('laserStyleBtn');
+const tabLaserGyro     = document.getElementById('tabLaserGyro');
+const tabLaserTouch    = document.getElementById('tabLaserTouch');
+const viewLaserGyro    = document.getElementById('viewLaserGyro');
+const viewLaserTouch   = document.getElementById('viewLaserTouch');
+const laserClutchBtn   = document.getElementById('laserClutchBtn');
+const laserTouchpad    = document.getElementById('laserTouchpad');
+const laserRecenterBtn = document.getElementById('laserRecenterBtn');
+
+let laserActiveMode = 'gyro'; // 'gyro' | 'touch'
+let laserStyle      = 'laser'; // 'laser' | 'spotlight'
+let isLaserPointing = false;
+let laserPointerX   = 0.5;
+let laserPointerY   = 0.5;
+let laserPhonePitch = 45;
+
+// 1-Euro Adaptive Filter for Silky Human Steering
+class LaserOneEuroFilter {
+  constructor(freq = 60, mincutoff = 0.45, beta = 0.002, dcutoff = 1.0) {
+    this.freq = freq;
+    this.mincutoff = mincutoff;
+    this.beta = beta;
+    this.dcutoff = dcutoff;
+    this.x = null;
+    this.dx = 0;
+    this.lastTime = null;
+  }
+
+  alpha(cutoff, dt) {
+    const tau = 1.0 / (2 * Math.PI * cutoff);
+    return 1.0 / (1.0 + tau / dt);
+  }
+
+  filter(val, timestamp) {
+    if (this.lastTime === null) {
+      this.x = val;
+      this.dx = 0;
+      this.lastTime = timestamp;
+      return val;
+    }
+    const dt = Math.max((timestamp - this.lastTime) / 1000, 0.001);
+    this.lastTime = timestamp;
+
+    const dval = (val - this.x) / dt;
+    const edx = this.dx + this.alpha(this.dcutoff, dt) * (dval - this.dx);
+    this.dx = edx;
+
+    const cutoff = this.mincutoff + this.beta * Math.abs(edx);
+    const a = this.alpha(cutoff, dt);
+    this.x = this.x + a * (val - this.x);
+    return this.x;
+  }
+
+  reset(val) {
+    this.x = val;
+    this.dx = 0;
+    this.lastTime = null;
+  }
+}
+
+const laserFilterX = new LaserOneEuroFilter(60, 0.45, 0.002, 1.0);
+const laserFilterY = new LaserOneEuroFilter(60, 0.45, 0.002, 1.0);
+
+function sendLaserWs(data) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(data));
+  }
+}
+
+// Modal open / close
+if (toolLaser) {
+  toolLaser.addEventListener('click', () => {
+    if (laserModal) laserModal.classList.add('open');
+  });
+}
+
+if (closeLaserModal) {
+  closeLaserModal.addEventListener('click', () => {
+    if (laserModal) laserModal.classList.remove('open');
+    if (isLaserPointing) {
+      isLaserPointing = false;
+      sendLaserWs({ type: 'LASER_UP' });
+    }
+  });
+}
+
+if (laserStyleBtn) {
+  laserStyleBtn.addEventListener('click', () => {
+    if (laserStyle === 'laser') {
+      laserStyle = 'spotlight';
+      laserStyleBtn.textContent = '🔦 Spotlight';
+      laserStyleBtn.style.color = '#fef08a';
+      laserStyleBtn.style.background = 'rgba(234,179,8,0.18)';
+      laserStyleBtn.style.borderColor = 'rgba(234,179,8,0.35)';
+    } else {
+      laserStyle = 'laser';
+      laserStyleBtn.textContent = '🔴 Laser';
+      laserStyleBtn.style.color = '#fda4af';
+      laserStyleBtn.style.background = 'rgba(244,63,94,0.15)';
+      laserStyleBtn.style.borderColor = 'rgba(244,63,94,0.3)';
+    }
+    sendLaserWs({ type: 'LASER_STYLE', style: laserStyle });
+  });
+}
+
+// Tabs: Gyro vs Touchpad
+if (tabLaserGyro && tabLaserTouch) {
+  tabLaserGyro.addEventListener('click', () => {
+    laserActiveMode = 'gyro';
+    tabLaserGyro.classList.add('active');
+    tabLaserTouch.classList.remove('active');
+    if (viewLaserGyro) viewLaserGyro.classList.add('active');
+    if (viewLaserTouch) viewLaserTouch.classList.remove('active');
+  });
+
+  tabLaserTouch.addEventListener('click', () => {
+    laserActiveMode = 'touch';
+    tabLaserTouch.classList.add('active');
+    tabLaserGyro.classList.remove('active');
+    if (viewLaserTouch) viewLaserTouch.classList.add('active');
+    if (viewLaserGyro) viewLaserGyro.classList.remove('active');
+  });
+}
+
+// Read phone pitch for 6-DOF projection
+window.addEventListener('deviceorientation', (e) => {
+  if (e.beta !== null) laserPhonePitch = e.beta;
+});
+
+// Gyro Aiming Engine
+let laserLastTime = performance.now();
+
+window.addEventListener('devicemotion', (e) => {
+  if (!isLaserPointing || laserActiveMode !== 'gyro' || !e.rotationRate) return;
+
+  const now = performance.now();
+  const dt = Math.min((now - laserLastTime) / 1000, 0.04);
+  laserLastTime = now;
+
+  const rr = e.rotationRate;
+  const pitchRad = (Math.max(10, Math.min(85, laserPhonePitch)) * Math.PI) / 180;
+  const sinP = Math.sin(pitchRad);
+  const cosP = Math.cos(pitchRad);
+
+  // Projected horizontal yaw
+  const rawYaw = (rr.alpha * sinP + rr.gamma * cosP);
+  const rawPitch = rr.beta;
+
+  const deadzone = 0.5;
+  const sensX = 0.0048;
+  const sensY = 0.0040;
+
+  function filterDeadzone(rate) {
+    const abs = Math.abs(rate);
+    if (abs < deadzone) return 0;
+    const sign = Math.sign(rate);
+    return sign * ((abs - deadzone) * 0.95);
+  }
+
+  let vy = filterDeadzone(rawYaw);
+  let vp = -filterDeadzone(rawPitch);
+
+  let rawTargetX = Math.max(0.01, Math.min(0.99, laserPointerX - vy * dt * sensX * 30));
+  let rawTargetY = Math.max(0.01, Math.min(0.99, laserPointerY - vp * dt * sensY * 30));
+
+  laserPointerX = laserFilterX.filter(rawTargetX, now);
+  laserPointerY = laserFilterY.filter(rawTargetY, now);
+
+  sendLaserWs({
+    type: 'LASER_MOVE',
+    x: laserPointerX,
+    y: laserPointerY
+  });
+});
+
+// Clutch Button (Gyro Aiming)
+if (laserClutchBtn) {
+  laserClutchBtn.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    isLaserPointing = true;
+    laserClutchBtn.classList.add('pressed');
+    buzz('next');
+
+    laserPointerX = 0.5;
+    laserPointerY = 0.5;
+    laserFilterX.reset(0.5);
+    laserFilterY.reset(0.5);
+    laserLastTime = performance.now();
+
+    sendLaserWs({
+      type: 'LASER_DOWN',
+      x: 0.5,
+      y: 0.5,
+      style: laserStyle
+    });
+  });
+
+  const onLaserRelease = (e) => {
+    if (!isLaserPointing) return;
+    isLaserPointing = false;
+    laserClutchBtn.classList.remove('pressed');
+    sendLaserWs({ type: 'LASER_UP' });
+  };
+
+  window.addEventListener('pointerup', onLaserRelease);
+  window.addEventListener('pointercancel', onLaserRelease);
+}
+
+// Touchpad Drag Mode
+if (laserTouchpad) {
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let padBaseX = 0.5;
+  let padBaseY = 0.5;
+
+  laserTouchpad.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    isLaserPointing = true;
+    buzz('next');
+
+    const rect = laserTouchpad.getBoundingClientRect();
+    touchStartX = e.clientX;
+    touchStartY = e.clientY;
+    padBaseX = laserPointerX;
+    padBaseY = laserPointerY;
+
+    sendLaserWs({
+      type: 'LASER_DOWN',
+      x: laserPointerX,
+      y: laserPointerY,
+      style: laserStyle
+    });
+  });
+
+  laserTouchpad.addEventListener('pointermove', (e) => {
+    if (!isLaserPointing || laserActiveMode !== 'touch') return;
+
+    const rect = laserTouchpad.getBoundingClientRect();
+    const sens = 0.85;
+
+    const deltaX = ((e.clientX - touchStartX) / rect.width) * sens;
+    const deltaY = ((e.clientY - touchStartY) / rect.height) * sens;
+
+    laserPointerX = Math.max(0.01, Math.min(0.99, padBaseX + deltaX));
+    laserPointerY = Math.max(0.01, Math.min(0.99, padBaseY + deltaY));
+
+    sendLaserWs({
+      type: 'LASER_MOVE',
+      x: laserPointerX,
+      y: laserPointerY
+    });
+  });
+
+  laserTouchpad.addEventListener('pointerup', () => {
+    if (!isLaserPointing) return;
+    isLaserPointing = false;
+    sendLaserWs({ type: 'LASER_UP' });
+  });
+}
+
+if (laserRecenterBtn) {
+  laserRecenterBtn.addEventListener('click', () => {
+    laserPointerX = 0.5;
+    laserPointerY = 0.5;
+    laserFilterX.reset(0.5);
+    laserFilterY.reset(0.5);
+    sendLaserWs({ type: 'LASER_MOVE', x: 0.5, y: 0.5 });
+    buzz('next');
+  });
+}
+
