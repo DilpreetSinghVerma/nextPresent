@@ -1,4 +1,4 @@
-/**
+﻿/**
  * NXTslide Cloud Relay Server v3.0.0
  * Runs on Railway / Render / Fly.io free tier.
  *
@@ -403,194 +403,35 @@ app.get(['/download/portable', '/downloads/NXTslide-Portable.exe', '/downloads/n
 // The Android app and (optionally) Electron load these routes instead of local
 // static files. Pushing new HTML/JS/CSS here updates all clients instantly.
 
-app.get('/mobile', (_req, res) => {
-  res.send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>NXTslide Remote</title>
-<meta name="theme-color" content="#05070d">
-<style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-:root{--bg:#05070d;--card:#0f172a;--border:rgba(255,255,255,0.08);--accent:#6366f1;--green:#22c55e;--ink:#e2e8f0;--ink2:#94a3b8;--ink3:#475569}
-html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
-body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:0;min-height:100vh}
+const GITHUB_MOBILE_URL = 'https://raw.githubusercontent.com/DilpreetSinghVerma/nextPresent/main/public/mobile.html';
+let _mobileCache = null;
+const MOBILE_CACHE_TTL = 5 * 60 * 1000;
 
-/* Header */
-.hdr{width:100%;padding:14px 20px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:fixed;top:0;left:0;z-index:10;background:rgba(5,7,13,0.96);backdrop-filter:blur(12px)}
-.logo{font-size:1.15rem;font-weight:800;letter-spacing:-0.04em;color:#fff}
-.logo span{color:var(--green)}
-.conn-status{display:flex;align-items:center;gap:6px;font-size:0.78rem;color:var(--ink2)}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex-shrink:0;animation:pulse2 2s ease infinite}
-@keyframes pulse2{0%,100%{opacity:1}50%{opacity:.4}}
-
-/* Main area */
-.main{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:80px 20px 100px;width:100%;max-width:380px;margin:0 auto}
-
-/* Connection card */
-.info-card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:22px 24px;width:100%;text-align:center}
-.info-card .label{font-size:0.75rem;font-weight:600;letter-spacing:0.08em;color:var(--ink3);text-transform:uppercase;margin-bottom:8px}
-.info-card .code{font-size:2.8rem;font-weight:800;letter-spacing:0.3rem;color:var(--accent);font-variant-numeric:tabular-nums;line-height:1.1}
-.info-card .hint{font-size:0.8rem;color:var(--ink2);margin-top:8px}
-
-/* Control buttons */
-.controls{display:flex;flex-direction:column;gap:12px;width:100%}
-.ctrl-btn{width:100%;display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-radius:16px;border:1px solid var(--border);background:var(--card);cursor:pointer;transition:transform 0.12s,background 0.12s,border-color 0.12s;-webkit-user-select:none;user-select:none;color:var(--ink);font-family:inherit}
-.ctrl-btn:active{transform:scale(0.97);background:rgba(99,102,241,0.1);border-color:var(--accent)}
-.ctrl-btn.next:active{background:rgba(34,197,94,0.1);border-color:var(--green)}
-.ctrl-label{display:flex;flex-direction:column;gap:3px;text-align:left}
-.ctrl-name{font-size:1.05rem;font-weight:700;color:var(--ink)}
-.ctrl-key{font-size:0.75rem;color:var(--ink3);font-family:monospace}
-.ctrl-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.4rem}
-.ctrl-icon.next-icon{background:rgba(34,197,94,0.12);color:var(--green)}
-.ctrl-icon.prev-icon{background:rgba(99,102,241,0.12);color:#818cf8}
-
-/* Pocket mode banner */
-.pocket-banner{width:100%;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:12px}
-.pocket-icon{font-size:1.3rem;flex-shrink:0}
-.pocket-text{font-size:0.82rem;color:var(--ink2);line-height:1.5}
-.pocket-text strong{color:var(--ink)}
-
-/* Bottom bar */
-.foot{position:fixed;bottom:0;left:0;width:100%;padding:12px 20px 20px;background:rgba(5,7,13,0.96);border-top:1px solid var(--border);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-between;gap:12px}
-.latency{font-size:0.75rem;color:var(--ink3)}
-.latency span{color:var(--green);font-weight:600}
-.sign-in-btn{font-size:0.78rem;font-weight:600;color:#818cf8;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);padding:7px 14px;border-radius:8px;cursor:pointer;font-family:inherit}
-.sign-in-btn:active{background:rgba(99,102,241,0.2)}
-</style>
-</head>
-<body>
-
-<header class="hdr">
-  <div class="logo">NXT<span>slide</span></div>
-  <div class="conn-status" id="connStatus">
-    <div class="dot"></div>
-    <span id="connLabel">Connecting…</span>
-  </div>
-</header>
-
-<main class="main" id="mainContent">
-  <div class="info-card" id="codeCard" style="display:none">
-    <div class="label">Room Code</div>
-    <div class="code" id="roomCodeDisplay">—</div>
-    <div class="hint">Awaiting PC connection</div>
-  </div>
-
-  <div class="controls">
-    <button class="ctrl-btn next" id="btnNext" onclick="sendCmd('NEXT')">
-      <div class="ctrl-label">
-        <span class="ctrl-name">Next Slide</span>
-        <span class="ctrl-key">Vol ▲ · →</span>
-      </div>
-      <div class="ctrl-icon next-icon">›</div>
-    </button>
-    <button class="ctrl-btn" id="btnPrev" onclick="sendCmd('PREV')">
-      <div class="ctrl-label">
-        <span class="ctrl-name">Previous Slide</span>
-        <span class="ctrl-key">Vol ▼ · ←</span>
-      </div>
-      <div class="ctrl-icon prev-icon">‹</div>
-    </button>
-  </div>
-
-  <div class="pocket-banner">
-    <span class="pocket-icon">🔒</span>
-    <div class="pocket-text">
-      <strong>Pocket Mode active.</strong> Lock your screen and put it away —
-      volume keys still advance slides silently.
-    </div>
-  </div>
-</main>
-
-<footer class="foot">
-  <div class="latency">Latency: <span id="latencyVal">—</span></div>
-  <button class="sign-in-btn" id="footerSignInBtn" onclick="handleSignIn()">My Account</button>
-</footer>
-
-<script>
-'use strict';
-// ── AndroidBridge interop ───────────────────────────────────────────
-// When loaded inside the APK WebView, AndroidApp is injected natively.
-// When previewed in a browser, we create a stub so nothing throws.
-if (!window.AndroidApp) {
-  window.AndroidApp = {
-    sendCommand: (cmd) => console.log('[Stub] sendCommand:', cmd),
-    getConnectionState: () => '{"connected":false}',
-    onAuthSuccess: (json) => console.log('[Stub] onAuthSuccess:', json),
-  };
-}
-
-// ── Send command via native bridge or WebSocket fallback ─────────────
-function sendCmd(action) {
-  const t0 = Date.now();
-  try {
-    window.AndroidApp.sendCommand(action);
-    document.getElementById('latencyVal').textContent = (Date.now() - t0) + ' ms';
-    haptic();
-  } catch(e) {
-    console.warn('[Remote] sendCommand failed:', e);
+app.get('/mobile', async (_req, res) => {
+  if (_mobileCache && (Date.now() - _mobileCache.ts) < MOBILE_CACHE_TTL) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('X-Source', 'cache');
+    return res.send(_mobileCache.html);
   }
-}
-
-// ── Haptic feedback ─────────────────────────────────────────────────
-function haptic() {
-  if (navigator.vibrate) navigator.vibrate(18);
-}
-
-let currentAuthUser = null;
-
-// ── Auth handler ─────────────────────────────────────────────────────
-function handleSignIn() {
-  if (currentAuthUser && currentAuthUser.name) {
-    alert('Account: ' + currentAuthUser.name + ' (' + (currentAuthUser.email || '') + ')\nStatus: ' + (currentAuthUser.isPro ? '✦ Pro Subscriber' : 'Free Plan'));
-    return;
-  }
-  // Trigger Google Sign-In via AndroidBridge if available
-  if (window.AndroidApp && window.AndroidApp.openGoogleSignIn) {
-    window.AndroidApp.openGoogleSignIn();
-  } else {
-    // Fallback: open Google sign-in in external browser
-    const signInUrl = 'https://nextpresent-relay.onrender.com/auth/google?redirect=nxtslide://auth';
-    window.open(signInUrl, '_blank');
-  }
-}
-
-// ── Receive connection state from AndroidBridge ──────────────────────
-window.nxtslideSetConnectionState = function(stateJson) {
   try {
-    const state = JSON.parse(stateJson);
-    const connLabel = document.getElementById('connLabel');
-    const codeCard  = document.getElementById('codeCard');
-    const codeEl    = document.getElementById('roomCodeDisplay');
-
-    if (state.connected) {
-      connLabel.textContent = 'Connected';
-    } else {
-      connLabel.textContent = state.code ? 'Paired (' + state.code + ')' : 'Connecting…';
+    const ghRes = await fetch(GITHUB_MOBILE_URL, {
+      headers: { 'User-Agent': 'NXTslide-Relay/3.0', 'Cache-Control': 'no-cache' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!ghRes.ok) throw new Error('GitHub returned ' + ghRes.status);
+    const html = await ghRes.text();
+    _mobileCache = { html, ts: Date.now() };
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('X-Source', 'github');
+    return res.send(html);
+  } catch (err) {
+    console.warn('[/mobile] GitHub fetch failed:', err.message);
+    if (_mobileCache) {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(_mobileCache.html);
     }
-    if (state.code) {
-      codeCard.style.display = 'block';
-      codeEl.textContent = state.code;
-    }
-  } catch(e) {}
-};
-
-// ── Receive auth update from AndroidBridge ───────────────────────────
-window.nxtslideOnAuthSuccess = function(userJson) {
-  try {
-    const user = typeof userJson === 'string' ? JSON.parse(userJson) : userJson;
-    currentAuthUser = user;
-    const btn = document.getElementById('footerSignInBtn');
-    if (btn && user && user.name) {
-      btn.textContent = user.isPro ? '✦ Pro · ' + user.name.split(' ')[0] : user.name.split(' ')[0];
-    }
-  } catch(e) {}
-};
-
-</script>
-</body>
-</html>`);
+    res.status(503).send('<h1>NXTslide Remote</h1><p>Temporarily unavailable.</p>');
+  }
 });
 
 // ─── Auth Routes ───────────────────────────────────────────────────────────────
