@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Accessibility service configuration for NXTslide VolumeKeyAccessibilityService.
+
+    Key flags:
+      - flagRequestFilterKeyEvents: Allows onKeyEvent() to intercept hardware key events
+        including volume up/down even when screen is off or device is locked.
+      - flagIncludeNotImportantViews: Ensures the service stays active in all window states.
+
+    Note: canRetrieveWindowContent is NOT needed (we don't inspect UI content),
+    keeping the permission footprint minimal and making it easier for users to grant.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeAllMask"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagRequestFilterKeyEvents|flagIncludeNotImportantViews"
+    android:canRequestFilterKeyEvents="true"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/accessibility_description"
+    android:notificationTimeout="0"
+    android:settingsActivity="com.nextpresent.remote.MainActivity" />
