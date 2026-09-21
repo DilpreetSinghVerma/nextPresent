@@ -284,21 +284,21 @@ class PresenterService : Service() {
     //
     // NOTE: This is the FALLBACK path used when VolumeKeyAccessibilityService is NOT
     // available (not granted, not enabled). It relies on volume change broadcasts and
-    // ContentObserver events which carry no ACTION_DOWN/UP distinction, so it uses
-    // a timing heuristic. When the Accessibility Service IS available, it sets
-    // suppressVolumeObserver = true and handles all logic itself (no delay).
+    // ContentObserver events which carry no ACTION_DOWN/UP distinction.
+    //
+    // SCREEN-OFF HOLD DETECTION STRATEGY:
+    // We do NOT reset the volume on the first press event. This lets Android's built-in
+    // key auto-repeat (fires at ~300-500ms on screen-off) trigger another ContentObserver
+    // event, which we detect as a "hold" in the else branch below.
+    // Only after hold/tap decision is made do we reset volume back to midpoint.
     @Synchronized
     private fun handleVolumeTrigger(isUp: Boolean) {
-        // If the accessibility service is handling this event, ignore it here.
-        // This is the primary double-trigger prevention mechanism.
-        if (suppressVolumeObserver) {
-            resetVolumeStream()
-            return
-        }
+        // If accessibility service is actively handling this event, ignore it here
+        if (suppressVolumeObserver) return
 
         val now = System.currentTimeMillis()
 
-        // If laser is ALREADY running, any volume event stops it immediately
+        // If laser is running, any volume event stops it
         if (isLaserActive) {
             stopBackgroundLaser()
             resetVolumeStream()
@@ -307,13 +307,10 @@ class PresenterService : Service() {
             return
         }
 
-        // Deduplicate: ignore if same direction within 80ms (ContentObserver + Broadcast fire together)
-        if (now - lastHandledTs < 80 && isUp == lastWasUp) {
-            resetVolumeStream()
-            return
-        }
+        // Ignore duplicate events: ContentObserver + Broadcast sometimes fire together
+        if (now - lastHandledTs < 80 && isUp == lastWasUp) return
 
-        // Dual / opposite volume button toggle (Vol Up + Vol Down within 300ms) → start laser
+        // Dual-press gesture: opposite direction within 300ms → toggle laser
         if (now - lastHandledTs < 300 && isUp != lastWasUp) {
             evaluateHoldOrTapRunnable?.let { mainHandler.removeCallbacks(it) }
             evaluateHoldOrTapRunnable = null
@@ -331,33 +328,44 @@ class PresenterService : Service() {
         lastWasUp = isUp
 
         if (!isHoldingVolume) {
+            // ── FIRST EVENT: key just pressed ──────────────────────────────────
             isHoldingVolume = true
             hasLaserStartedForHold = false
             volumeEventCount = 1
             val action = if (isUp) "NEXT" else "PREV"
             pendingSlideAction = action
 
-            // Fallback heuristic: wait 200ms to see if this becomes a hold (repeat events arrive)
-            // If no repeat → it was a single tap → change slide
+            // CRITICAL: Do NOT call resetVolumeStream() here.
+            // If we reset immediately, isResettingVolume blocks the auto-repeat
+            // ContentObserver event (at ~300-500ms) that we need to detect holds.
+            // Instead let the volume stay at the changed level.
+
+            // On screen-off: auto-repeat fires at ~300-500ms, so wait 480ms
+            // On screen-on: accessibility service handles this (suppressed), but as
+            // fallback use 200ms since screen-on auto-repeat is much faster.
+            val pm = getSystemService(POWER_SERVICE) as? PowerManager
+            val isInteractive = pm?.isInteractive ?: true
+            val tapTimerMs = if (isInteractive) 200L else 480L
+
             evaluateHoldOrTapRunnable?.let { mainHandler.removeCallbacks(it) }
             val eval = Runnable {
                 if (!hasLaserStartedForHold && isHoldingVolume) {
-                    val act = pendingSlideAction ?: "NEXT"
+                    // No hold detected in time → it was a quick tap → send slide
+                    val act = pendingSlideAction ?: action
                     isHoldingVolume = false
                     pendingSlideAction = null
                     volumeEventCount = 0
                     sendSlideAction(act)
                     vibrateFeedback(40)
+                    resetVolumeStream() // Reset AFTER confirming tap
                 }
             }
             evaluateHoldOrTapRunnable = eval
-            mainHandler.postDelayed(eval, 200L)
+            mainHandler.postDelayed(eval, tapTimerMs)
 
-            resetVolumeStream()
         } else {
-            // Repeated volume event while holding → user is holding the key → start laser
+            // ── SECOND+ EVENT: auto-repeat fired → key is held → start laser! ──
             volumeEventCount++
-
             evaluateHoldOrTapRunnable?.let { mainHandler.removeCallbacks(it) }
             evaluateHoldOrTapRunnable = null
             pendingSlideAction = null
@@ -367,13 +375,14 @@ class PresenterService : Service() {
                 startBackgroundLaser()
             }
 
-            // Refresh the release check timer: 380ms without volume repeats means user released
+            // Now reset volume (detection is done, safe to reset)
+            resetVolumeStream()
+
+            // Release detection: if no more ContentObserver events for 450ms → key released
             laserReleaseCheckRunnable?.let { mainHandler.removeCallbacks(it) }
             val release = Runnable { onVolumeReleasedAfterLaser() }
             laserReleaseCheckRunnable = release
-            mainHandler.postDelayed(release, 380L)
-
-            resetVolumeStream()
+            mainHandler.postDelayed(release, 450L)
         }
     }
 
@@ -401,9 +410,11 @@ class PresenterService : Service() {
             )
         } catch (_: Exception) {}
 
+        // 55ms: long enough to swallow the ContentObserver reset-echo (~5-20ms after setStreamVolume)
+        // but short enough that it does NOT block a legitimate repeat event coming later
         mainHandler.postDelayed({
             isResettingVolume = false
-        }, 120L)
+        }, 55L)
     }
 
     // ─── Volume BroadcastReceiver (System broadcast) ─────────────────────────
