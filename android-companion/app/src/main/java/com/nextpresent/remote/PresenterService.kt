@@ -86,6 +86,7 @@ class PresenterService : Service() {
     private val mainHandler = Handler(Looper.getMainLooper())
 
     // ─── Hold-to-Laser vs Quick-Click State ─────────────────────────────────
+    // (Legacy: kept for fallback path variable names)
     private var isHoldingVolume: Boolean = false
     private var hasLaserStartedForHold: Boolean = false
     private var pendingSlideAction: String? = null
@@ -98,6 +99,14 @@ class PresenterService : Service() {
      * Suppresses the ContentObserver and BroadcastReceiver from double-firing on the same event.
      */
     @Volatile var suppressVolumeObserver: Boolean = false
+
+    // ─── Double-Tap Laser Toggle State ────────────────────────────────────
+    // Single tap → change slide immediately
+    // Double-tap same button within DOUBLE_TAP_WINDOW_MS → toggle laser
+    private val DOUBLE_TAP_WINDOW_MS = 400L  // max time between two taps to count as double-tap
+    private var lastTapTs: Long = 0L
+    private var lastTapIsUp: Boolean = false
+    private var pendingTapRunnable: Runnable? = null
 
     /** Whether the broadcast receiver is registered */
     private var receiverRegistered = false
@@ -282,114 +291,81 @@ class PresenterService : Service() {
 
     // ─── Volume Trigger Core ─────────────────────────────────────────────────
     //
-    // NOTE: This is the FALLBACK path used when VolumeKeyAccessibilityService is NOT
-    // available (not granted, not enabled). It relies on volume change broadcasts and
-    // ContentObserver events which carry no ACTION_DOWN/UP distinction.
+    // GESTURE MODEL (works identically on screen-on AND screen-off):
+    //   Single tap Vol Up   → NEXT slide   (fires after DOUBLE_TAP_WINDOW_MS with no second tap)
+    //   Single tap Vol Down → PREV slide
+    //   Double-tap Vol Up   → Toggle laser  (two Vol Up events within 400ms)
+    //   Double-tap Vol Down → Toggle laser  (two Vol Down events within 400ms)
     //
-    // SCREEN-OFF HOLD DETECTION STRATEGY:
-    // We do NOT reset the volume on the first press event. This lets Android's built-in
-    // key auto-repeat (fires at ~300-500ms on screen-off) trigger another ContentObserver
-    // event, which we detect as a "hold" in the else branch below.
-    // Only after hold/tap decision is made do we reset volume back to midpoint.
+    // This approach is 100% reliable on screen-off because:
+    //   - No hold detection required (no auto-repeat timing dependency)
+    //   - No isResettingVolume race conditions
+    //   - Double-tap is just two ContentObserver events close in time
     @Synchronized
     private fun handleVolumeTrigger(isUp: Boolean) {
-        // If accessibility service is actively handling this event, ignore it here
+        // If accessibility service is handling this, ignore (it calls sendSlideAction/laser directly)
         if (suppressVolumeObserver) return
 
         val now = System.currentTimeMillis()
 
-        // If laser is running, any volume event stops it
-        if (isLaserActive) {
-            stopBackgroundLaser()
-            resetVolumeStream()
-            lastHandledTs = now
-            lastWasUp = isUp
-            return
-        }
-
-        // Ignore duplicate events: ContentObserver + Broadcast sometimes fire together
-        if (now - lastHandledTs < 80 && isUp == lastWasUp) return
-
-        // Dual-press gesture: opposite direction within 300ms → toggle laser
-        if (now - lastHandledTs < 300 && isUp != lastWasUp) {
-            evaluateHoldOrTapRunnable?.let { mainHandler.removeCallbacks(it) }
-            evaluateHoldOrTapRunnable = null
-            pendingSlideAction = null
-            isHoldingVolume = false
-            hasLaserStartedForHold = false
-            startBackgroundLaser()
-            lastHandledTs = now
-            lastWasUp = isUp
+        // ── DEDUP: ContentObserver + Broadcast sometimes both fire for the same physical press ──
+        // 80ms window with same direction = duplicate event, ignore it
+        if (now - lastTapTs < 80 && isUp == lastTapIsUp) {
             resetVolumeStream()
             return
         }
 
-        lastHandledTs = now
-        lastWasUp = isUp
+        resetVolumeStream() // Always reset volume to midpoint after every press
 
-        if (!isHoldingVolume) {
-            // ── FIRST EVENT: key just pressed ──────────────────────────────────
-            isHoldingVolume = true
-            hasLaserStartedForHold = false
-            volumeEventCount = 1
-            val action = if (isUp) "NEXT" else "PREV"
-            pendingSlideAction = action
+        // ── DOUBLE-TAP DETECTION ──────────────────────────────────────────
+        // Same button tapped twice within DOUBLE_TAP_WINDOW_MS = toggle laser
+        if (now - lastTapTs < DOUBLE_TAP_WINDOW_MS && isUp == lastTapIsUp) {
+            // Cancel the pending single-tap slide action (it hasn't fired yet)
+            pendingTapRunnable?.let { mainHandler.removeCallbacks(it) }
+            pendingTapRunnable = null
 
-            // CRITICAL: Do NOT call resetVolumeStream() here.
-            // If we reset immediately, isResettingVolume blocks the auto-repeat
-            // ContentObserver event (at ~300-500ms) that we need to detect holds.
-            // Instead let the volume stay at the changed level.
-
-            // On screen-off: auto-repeat fires at ~300-500ms, so wait 480ms
-            // On screen-on: accessibility service handles this (suppressed), but as
-            // fallback use 200ms since screen-on auto-repeat is much faster.
-            val pm = getSystemService(POWER_SERVICE) as? PowerManager
-            val isInteractive = pm?.isInteractive ?: true
-            val tapTimerMs = if (isInteractive) 200L else 480L
-
-            evaluateHoldOrTapRunnable?.let { mainHandler.removeCallbacks(it) }
-            val eval = Runnable {
-                if (!hasLaserStartedForHold && isHoldingVolume) {
-                    // No hold detected in time → it was a quick tap → send slide
-                    val act = pendingSlideAction ?: action
-                    isHoldingVolume = false
-                    pendingSlideAction = null
-                    volumeEventCount = 0
-                    sendSlideAction(act)
-                    vibrateFeedback(40)
-                    resetVolumeStream() // Reset AFTER confirming tap
-                }
-            }
-            evaluateHoldOrTapRunnable = eval
-            mainHandler.postDelayed(eval, tapTimerMs)
-
-        } else {
-            // ── SECOND+ EVENT: auto-repeat fired → key is held → start laser! ──
-            volumeEventCount++
-            evaluateHoldOrTapRunnable?.let { mainHandler.removeCallbacks(it) }
-            evaluateHoldOrTapRunnable = null
-            pendingSlideAction = null
-
-            if (!hasLaserStartedForHold && !isLaserActive) {
-                hasLaserStartedForHold = true
+            // Toggle laser
+            if (isLaserActive) {
+                stopBackgroundLaser()
+            } else {
                 startBackgroundLaser()
             }
 
-            // Now reset volume (detection is done, safe to reset)
-            resetVolumeStream()
-
-            // Release detection: if no more ContentObserver events for 450ms → key released
-            laserReleaseCheckRunnable?.let { mainHandler.removeCallbacks(it) }
-            val release = Runnable { onVolumeReleasedAfterLaser() }
-            laserReleaseCheckRunnable = release
-            mainHandler.postDelayed(release, 450L)
+            // Reset tap state so next press starts fresh
+            lastTapTs = 0L
+            return
         }
+
+        // ── SINGLE TAP ───────────────────────────────────────────────────
+        // Record this tap. Wait DOUBLE_TAP_WINDOW_MS before acting, in case a second tap arrives.
+        lastTapTs = now
+        lastTapIsUp = isUp
+
+        val slideAction = if (isUp) "NEXT" else "PREV"
+
+        // Cancel any previous pending tap
+        pendingTapRunnable?.let { mainHandler.removeCallbacks(it) }
+
+        val tapRunnable = Runnable {
+            pendingTapRunnable = null
+            lastTapTs = 0L // Reset so next tap is treated as fresh
+
+            if (isLaserActive) {
+                // If laser is on, any single tap stops the laser (acts as laser-off)
+                stopBackgroundLaser()
+            } else {
+                // Normal slide change
+                sendSlideAction(slideAction)
+                vibrateFeedback(35)
+            }
+        }
+        pendingTapRunnable = tapRunnable
+        mainHandler.postDelayed(tapRunnable, DOUBLE_TAP_WINDOW_MS)
     }
 
+    @Suppress("UNUSED")
     private fun onVolumeReleasedAfterLaser() {
-        if (isLaserActive || hasLaserStartedForHold) {
-            stopBackgroundLaser()
-        }
+        // Legacy method kept for compatibility, no longer used in double-tap model
         isHoldingVolume = false
         hasLaserStartedForHold = false
         pendingSlideAction = null
@@ -397,7 +373,6 @@ class PresenterService : Service() {
         evaluateHoldOrTapRunnable?.let { mainHandler.removeCallbacks(it) }
         evaluateHoldOrTapRunnable = null
         laserReleaseCheckRunnable = null
-        resetVolumeStream()
     }
 
     private fun resetVolumeStream() {
