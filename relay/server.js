@@ -28,6 +28,7 @@ require('dotenv').config();
 
 const http         = require('http');
 const path         = require('path');
+const fs           = require('fs');
 const crypto       = require('crypto');
 const express      = require('express');
 const { WebSocketServer, WebSocket } = require('ws');
