@@ -1034,12 +1034,16 @@ app.post('/api/admin/payments/manual', requireAdmin, (req, res) => {
 // Serve Admin Panel UI
 app.get(['/admin', '/admin.html'], async (_req, res) => {
   const localPaths = [
-    path.join(__dirname, 'public', 'admin.html'),
-    path.join(__dirname, '..', 'public', 'admin.html')
+    path.resolve(__dirname, 'public', 'admin.html'),
+    path.resolve(__dirname, '..', 'public', 'admin.html')
   ];
   for (const p of localPaths) {
     if (fs.existsSync(p)) {
-      return res.sendFile(p);
+      try {
+        const html = fs.readFileSync(p, 'utf8');
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+      } catch (_) {}
     }
   }
   try {
