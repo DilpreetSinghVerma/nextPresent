@@ -615,8 +615,17 @@ app.get(['/download/portable', '/downloads/NXTslide-Portable.exe', '/downloads/n
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/DilpreetSinghVerma/nextPresent/main/public';
 const _staticCache = new Map();
 
-app.get(['/css/{*file}', '/js/{*file}', '/logo.png', '/favicon.ico', '/logo-icon.png', '/logo-wordmark.jpg'], async (req, res) => {
+app.get(['/css/{*file}', '/js/{*file}', '/logo.png', '/favicon.ico', '/logo-icon.png', '/logo-icon.jpg', '/logo-wordmark.jpg'], async (req, res) => {
   const filePath = req.path.replace(/^\/+/, '');
+  const localPath = path.resolve(__dirname, 'public', filePath);
+  if (fs.existsSync(localPath)) {
+    if (filePath.endsWith('.css')) res.setHeader('Content-Type', 'text/css; charset=utf-8');
+    if (filePath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    if (filePath.endsWith('.png')) res.setHeader('Content-Type', 'image/png');
+    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) res.setHeader('Content-Type', 'image/jpeg');
+    if (filePath.endsWith('.ico')) res.setHeader('Content-Type', 'image/x-icon');
+    return res.sendFile(localPath);
+  }
   const cached = _staticCache.get(filePath);
   if (cached && (Date.now() - cached.ts) < MOBILE_CACHE_TTL) {
     if (filePath.endsWith('.css')) res.setHeader('Content-Type', 'text/css; charset=utf-8');
@@ -1032,6 +1041,44 @@ app.post('/api/admin/payments/manual', requireAdmin, (req, res) => {
   res.json({ success: true, payment });
 });
 
+// Check Razorpay & Payment Gateway Configuration
+app.get('/api/admin/billing/check', requireAdmin, async (_req, res) => {
+  const isConfigured = !!(razorpay && process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
+  const isWebhookSet = !!process.env.RAZORPAY_WEBHOOK_SECRET;
+  let apiSuccess = false;
+  let message = '';
+  let orderDetails = null;
+
+  if (isConfigured) {
+    try {
+      const order = await razorpay.orders.create({
+        amount: 100, // 1 INR in paise (test order verification)
+        currency: 'INR',
+        receipt: `ping_${Date.now()}`,
+        notes: { ping: true, source: 'admin_check' }
+      });
+      if (order && order.id) {
+        apiSuccess = true;
+        message = 'Razorpay Live API connection verified successfully! Order creation works.';
+        orderDetails = { orderId: order.id, amount: order.amount, currency: order.currency };
+      }
+    } catch (err) {
+      message = err.description || err.error?.description || err.message || 'Razorpay API call failed';
+    }
+  } else {
+    message = 'Razorpay credentials (RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET) not set in environment.';
+  }
+
+  res.json({
+    configured: isConfigured,
+    keyId: process.env.RAZORPAY_KEY_ID ? (process.env.RAZORPAY_KEY_ID.slice(0, 10) + '...') : null,
+    webhookSecretConfigured: isWebhookSet,
+    apiSuccess,
+    message,
+    orderDetails,
+  });
+});
+
 // Serve Admin Panel UI
 app.get(['/admin', '/admin.html'], async (_req, res) => {
   const localPaths = [
@@ -1117,7 +1164,95 @@ border-radius:12px;font-weight:600;font-size:1.1rem;margin-bottom:1rem}
 </body></html>`);
 });
 
-app.get('/', (_req, res) => res.json({ service: 'NXTslide Relay', rooms: rooms.size, version: '3.0.0' }));
+// Serve Landing Page (index.html)
+app.get(['/', '/index.html'], async (req, res) => {
+  if (req.headers.accept && req.headers.accept.includes('application/json') && !req.headers.accept.includes('text/html')) {
+    return res.json({ service: 'NXTslide Relay', rooms: rooms.size, version: '3.0.0' });
+  }
+  const localPaths = [
+    path.resolve(__dirname, 'public', 'index.html'),
+    path.resolve(__dirname, '..', 'public', 'index.html')
+  ];
+  for (const p of localPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        const html = fs.readFileSync(p, 'utf8');
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+      } catch (_) {}
+    }
+  }
+  try {
+    const ghRes = await fetch(`${GITHUB_RAW_BASE}/index.html`, {
+      headers: { 'User-Agent': 'NXTslide-Relay/3.0', 'Cache-Control': 'no-cache' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (ghRes.ok) {
+      const html = await ghRes.text();
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(html);
+    }
+  } catch (_) {}
+  res.json({ service: 'NXTslide Relay', rooms: rooms.size, version: '3.0.0' });
+});
+
+// Serve Dashboard (dashboard.html)
+app.get(['/dashboard', '/dashboard.html'], async (_req, res) => {
+  const localPaths = [
+    path.resolve(__dirname, 'public', 'dashboard.html'),
+    path.resolve(__dirname, '..', 'public', 'dashboard.html')
+  ];
+  for (const p of localPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        const html = fs.readFileSync(p, 'utf8');
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+      } catch (_) {}
+    }
+  }
+  try {
+    const ghRes = await fetch(`${GITHUB_RAW_BASE}/dashboard.html`, {
+      headers: { 'User-Agent': 'NXTslide-Relay/3.0', 'Cache-Control': 'no-cache' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (ghRes.ok) {
+      const html = await ghRes.text();
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(html);
+    }
+  } catch (_) {}
+  res.status(404).send('<h1>Dashboard Not Found</h1>');
+});
+
+// Serve Laser Overlay (laser.html)
+app.get(['/laser', '/laser.html'], async (_req, res) => {
+  const localPaths = [
+    path.resolve(__dirname, 'public', 'laser.html'),
+    path.resolve(__dirname, '..', 'public', 'laser.html')
+  ];
+  for (const p of localPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        const html = fs.readFileSync(p, 'utf8');
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+      } catch (_) {}
+    }
+  }
+  try {
+    const ghRes = await fetch(`${GITHUB_RAW_BASE}/laser.html`, {
+      headers: { 'User-Agent': 'NXTslide-Relay/3.0', 'Cache-Control': 'no-cache' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (ghRes.ok) {
+      const html = await ghRes.text();
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(html);
+    }
+  } catch (_) {}
+  res.status(404).send('<h1>Laser Not Found</h1>');
+});
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  WEBSOCKET
