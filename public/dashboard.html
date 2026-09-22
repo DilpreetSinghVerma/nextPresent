@@ -65,6 +65,10 @@
         <span id="auth-pro-badge" style="display:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);
           color:#fff;font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:999px;
           letter-spacing:0.05em;">PRO ✦</span>
+        <a id="auth-admin-btn" href="/admin" target="_blank" style="display:none;align-items:center;gap:4px;
+          background:rgba(234,179,8,0.14);border:1px solid rgba(234,179,8,0.35);color:#facc15;
+          border-radius:8px;font-size:0.75rem;font-weight:600;padding:5px 11px;text-decoration:none;"
+          title="Open Admin Control Center">👑 Admin</a>
         <button id="auth-account-btn" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);
           color:#e2e8f0;border-radius:8px;font-size:0.75rem;font-weight:600;padding:5px 12px;cursor:pointer;"
           title="Manage Account">Account</button>
@@ -389,15 +393,21 @@
       <div class="pro-cta-box" style="flex-direction:column;gap:14px;padding:20px;">
 
         <!-- Price Row -->
-        <div style="display:flex;align-items:baseline;gap:8px;justify-content:center;">
-          <span class="pro-price-num">₹299</span>
-          <span class="pro-price-term">/month &bull; cancel anytime</span>
+        <div style="display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <span style="font-size:1.1rem;color:#64748b;text-decoration:line-through;font-weight:600;">₹1,499</span>
+          <span class="pro-price-num" style="color:#4ade80;font-size:2rem;font-weight:800;">₹199</span>
+          <span style="background:rgba(234,179,8,0.15);color:#facc15;border:1px solid rgba(234,179,8,0.3);padding:3px 10px;border-radius:999px;font-size:0.75rem;font-weight:700;">
+            🔥 Early Bird • Lifetime Deal
+          </span>
+        </div>
+        <div style="text-align:center;color:#94a3b8;font-size:0.8rem;margin-top:-6px;">
+          Pay once, keep forever &bull; Zero monthly subscriptions
         </div>
 
         <!-- Signed-out: Show Google Sign-In first -->
         <div id="modal-signed-out-cta">
           <p style="color:#94a3b8;font-size:0.82rem;margin-bottom:12px;text-align:center;">
-            Sign in with Google to activate Pro — no license key needed.
+            Sign in with Google to activate Lifetime Pro — no license key needed.
           </p>
           <button id="modal-google-signin-btn" style="
             display:flex;align-items:center;gap:10px;justify-content:center;width:100%;
@@ -420,13 +430,13 @@
           <p style="color:#94a3b8;font-size:0.82rem;margin-bottom:12px;text-align:center;">
             Signed in as <strong id="modal-user-email" style="color:#a5b4fc;"></strong>
           </p>
-          <button id="modal-pay-btn" class="pro-upgrade-btn" style="width:100%;justify-content:center;">
-            ✦ Unlock Pro — ₹299/mo
+          <button id="modal-pay-btn" class="pro-upgrade-btn" style="width:100%;justify-content:center;font-size:1rem;padding:14px;">
+            ✦ Unlock Lifetime Pro — ₹199 Only
           </button>
         </div>
 
         <p style="color:#475569;font-size:0.72rem;text-align:center;margin-top:4px;">
-          Secure payment by Razorpay &bull; Your plan is tied to your Google account
+          Secure 1-time payment by Razorpay &bull; Lifetime Pro tied to your Google account
         </p>
       </div>
     </div>
@@ -458,8 +468,11 @@
 
       <!-- Actions -->
       <div style="display:flex;flex-direction:column;gap:10px;">
+        <a id="account-modal-admin-btn" href="/admin" target="_blank" style="display:none;width:100%;padding:10px;border-radius:10px;border:1px solid rgba(234,179,8,0.4);background:rgba(234,179,8,0.14);color:#fde047;font-weight:700;font-size:0.85rem;text-align:center;text-decoration:none;box-sizing:border-box;">
+          👑 Admin Control Center
+        </a>
         <button id="account-modal-upgrade-btn" style="display:none;width:100%;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:700;font-size:0.88rem;cursor:pointer;box-shadow:0 4px 12px rgba(99,102,241,0.3);">
-          ✦ Upgrade to Pro (₹299/mo)
+          ✦ Upgrade to Lifetime Pro (₹199 Only)
         </button>
         <button id="account-modal-refresh-btn" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:#cbd5e1;font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
           <span>🔄</span> <span>Refresh Account Status</span>

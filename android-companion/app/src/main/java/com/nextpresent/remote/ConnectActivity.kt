@@ -82,7 +82,10 @@ class ConnectActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // If launched from deep link (nextpresent://connect?code=ABC123)
+        // 1. Handle deep link if launched via nxtslide://auth?token=...
+        handleAuthDeepLink(intent)
+
+        // 2. If launched from room deep link (nextpresent://connect?code=ABC123)
         val deepCode = intent?.data?.getQueryParameter("code")
             ?: intent?.getStringExtra(EXTRA_ROOM_CODE)
 
@@ -570,11 +573,71 @@ class ConnectActivity : AppCompatActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleAuthDeepLink(intent)
+    }
+
+    private fun handleAuthDeepLink(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (uri.scheme == "nxtslide" && (uri.host == "auth" || uri.path?.contains("auth") == true)) {
+            val token = uri.getQueryParameter("token")
+            val userBase64 = uri.getQueryParameter("user")
+            if (!token.isNullOrEmpty()) {
+                val userJson = if (!userBase64.isNullOrEmpty()) {
+                    try {
+                        String(android.util.Base64.decode(userBase64, android.util.Base64.DEFAULT), Charsets.UTF_8)
+                    } catch (_: Exception) {
+                        "{}"
+                    }
+                } else "{}"
+
+                val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+                val editor = prefs.edit()
+                    .putString("auth_token", token)
+                    .putString("auth_user", userJson)
+
+                var isPro = false
+                var email = ""
+                var name = ""
+                try {
+                    val json = JSONObject(userJson)
+                    email = json.optString("email", "")
+                    name = json.optString("name", "")
+                    isPro = json.optBoolean("isPro", false)
+                    val plan = json.optString("plan", "free")
+
+                    if (email.isNotEmpty()) {
+                        editor.putString("nxtslide_google_email", email)
+                        editor.putString("nxtslide_google_name", name)
+                        editor.putBoolean("nxtslide_pro_unlocked", isPro)
+                        editor.putString("nxtslide_plan", plan)
+                    }
+                } catch (_: Exception) {}
+
+                editor.apply()
+
+                runOnUiThread {
+                    updateProBadgeUI()
+                    if (isPro) {
+                        switchMode("cloud")
+                        val greeting = if (name.isNotEmpty()) name else email
+                        Toast.makeText(this, "✅ Pro Activated! Welcome, $greeting.", Toast.LENGTH_LONG).show()
+                    } else if (email.isNotEmpty()) {
+                        Toast.makeText(this, "Signed in as $email (Free plan — upgrade to Pro for Cloud Relay)", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(this, "Signed in successfully!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
     /**
-     * Shows a Google Sign-In dialog using a WebView that loads the relay's
-     * Google OAuth page. After successful sign-in, the relay's callback page
-     * calls window.AndroidApp.onAuthSuccess(jsonString), which saves the user's
-     * plan to SharedPreferences and unlocks Cloud mode if they are Pro.
+     * Launches external system browser (Chrome/etc.) for Google Sign-In.
+     * This ensures the user's saved Google credentials, autofill, and passwords
+     * work seamlessly and securely without WebView restrictions.
      */
     private fun showGoogleSignInDialog() {
         if (isFinishing || isDestroyed) return
@@ -582,7 +645,7 @@ class ConnectActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
         val currentEmail = prefs.getString("nxtslide_google_email", "") ?: ""
 
-        // Already signed in — show account options
+        // Already signed in — show account status options
         if (currentEmail.isNotEmpty()) {
             val isPro = prefs.getBoolean("nxtslide_pro_unlocked", false)
             val statusMsg = if (isPro)
@@ -595,10 +658,7 @@ class ConnectActivity : AppCompatActivity() {
                 .setMessage(statusMsg)
                 .setPositiveButton(if (isPro) "Continue" else "Upgrade to Pro ✦") { _, _ ->
                     if (!isPro) {
-                        // Open Razorpay checkout on relay in browser
-                        val intent = Intent(Intent.ACTION_VIEW,
-                            android.net.Uri.parse("$RELAY_BASE/api/auth/google"))
-                        startActivity(intent)
+                        openExternalGoogleSignIn()
                     } else {
                         switchMode("cloud")
                     }
@@ -608,6 +668,9 @@ class ConnectActivity : AppCompatActivity() {
                         .remove("nxtslide_google_email")
                         .remove("nxtslide_google_name")
                         .remove("nxtslide_pro_unlocked")
+                        .remove("nxtslide_plan")
+                        .remove("auth_token")
+                        .remove("auth_user")
                         .apply()
                     updateProBadgeUI()
                     Toast.makeText(this, "Signed out.", Toast.LENGTH_SHORT).show()
@@ -616,81 +679,19 @@ class ConnectActivity : AppCompatActivity() {
             return
         }
 
-        // Not signed in — show Google Sign-In WebView
-        val webView = WebView(this).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.userAgentString = settings.userAgentString + " NXTslideAndroid/2.2"
+        // Not signed in — launch external browser directly
+        openExternalGoogleSignIn()
+    }
 
-            // Bridge: relay callback page calls window.AndroidApp.onAuthSuccess(json)
-            addJavascriptInterface(object {
-                @JavascriptInterface
-                fun onAuthSuccess(jsonStr: String) {
-                    try {
-                        val json = JSONObject(jsonStr)
-                        val email  = json.optString("email", "")
-                        val name   = json.optString("name", "")
-                        val isPro  = json.optBoolean("isPro", false)
-                        val plan   = json.optString("plan", "free")
-
-                        if (email.isNotEmpty()) {
-                            prefs.edit()
-                                .putString("nxtslide_google_email", email)
-                                .putString("nxtslide_google_name", name)
-                                .putBoolean("nxtslide_pro_unlocked", isPro)
-                                .putString("nxtslide_plan", plan)
-                                .apply()
-
-                            runOnUiThread {
-                                updateProBadgeUI()
-                                if (isPro) {
-                                    switchMode("cloud")
-                                    Toast.makeText(
-                                        this@ConnectActivity,
-                                        "✅ Pro Activated! Cloud mode unlocked.",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                } else {
-                                    Toast.makeText(
-                                        this@ConnectActivity,
-                                        "Signed in as $email (Free plan — upgrade to Pro for Cloud Relay)",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        // Ignore parse errors
-                    }
-                }
-            }, "AndroidApp")
-
-            webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                    val uri = request?.url?.toString() ?: return false
-                    // Keep OAuth flow inside WebView; open external links in browser
-                    return if (uri.startsWith("$RELAY_BASE/api/auth") ||
-                               uri.startsWith("https://accounts.google.com") ||
-                               uri.startsWith("https://oauth2.googleapis.com")) {
-                        false // load inside WebView
-                    } else {
-                        startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(uri)))
-                        true
-                    }
-                }
-            }
-
-            webChromeClient = WebChromeClient()
-
-            loadUrl("$RELAY_BASE/api/auth/google")
+    private fun openExternalGoogleSignIn() {
+        try {
+            val authUrl = "$RELAY_BASE/api/auth/google?redirect=nxtslide://auth"
+            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(authUrl))
+            startActivity(intent)
+            Toast.makeText(this, "🌐 Opening Google Sign-In in your browser...", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Could not open browser: ${e.message}", Toast.LENGTH_LONG).show()
         }
-
-        AlertDialog.Builder(this)
-            .setTitle("🔑 Sign in with Google for Pro")
-            .setView(webView)
-            .setNegativeButton("Cancel", null)
-            .setOnDismissListener { webView.destroy() }
-            .show()
     }
 
     /** Legacy: now redirects to Google Sign-In */

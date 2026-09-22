@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NXTslide — Admin Control Center</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #07090e;
+      --bg-surface: rgba(15, 23, 42, 0.72);
+      --bg-surface-elevated: rgba(30, 41, 59, 0.85);
+      --bg-surface-hover: rgba(51, 65, 85, 0.6);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-glow: rgba(99, 102, 241, 0.35);
+
+      --accent-primary: #6366f1;
+      --accent-violet: #8b5cf6;
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+
+      --radius-lg: 20px;
+      --radius-md: 12px;
+      --radius-sm: 8px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(circle at 10% 15%, rgba(99, 102, 241, 0.14) 0%, transparent 45%),
+        radial-gradient(circle at 90% 85%, rgba(236, 72, 153, 0.1) 0%, transparent 45%),
+        radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.05) 0%, transparent 60%);
+      background-attachment: fixed;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation Header */
+    .admin-header {
+      padding: 18px 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-color);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(7, 9, 14, 0.75);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand-area {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.4);
+    }
+
+    .brand-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-title span {
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .admin-pill {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(236, 72, 153, 0.15);
+      color: #f472b6;
+      border: 1px solid rgba(236, 72, 153, 0.35);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      border: none;
+      font-family: inherit;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--accent-gradient);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    }
+    .btn-primary:hover {
+      filter: brightness(1.12);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .btn-danger {
+      background: rgba(244, 63, 94, 0.15);
+      color: #fda4af;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+    .btn-danger:hover {
+      background: rgba(244, 63, 94, 0.25);
+    }
+
+    .btn-sm {
+      padding: 6px 11px;
+      font-size: 0.78rem;
+      border-radius: 6px;
+    }
+
+    /* Container */
+    .container {
+      max-width: 1300px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 32px 24px;
+      flex: 1;
+    }
+
+    /* Auth Gate Screen */
+    #authGate {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 65vh;
+    }
+
+    .login-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 40px;
+      width: 100%;
+      max-width: 440px;
+      text-align: center;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    .input-field {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.92rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 12px;
+    }
+    .input-field:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+    }
+
+    /* KPI Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 18px;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 22px 24px;
+      backdrop-filter: blur(14px);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.16);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--accent-gradient);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .stat-card:hover::before {
+      opacity: 1;
+    }
+
+    .stat-label {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.03em;
+    }
+
+    .stat-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* Tabs & Content */
+    .tabs-nav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 12px;
+    }
+
+    .tab-btn {
+      padding: 10px 20px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tab-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .tab-btn.active {
+      color: #fff;
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.35);
+    }
+
+    /* Tables & Controls */
+    .table-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .table-toolbar {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,0,0,0.35);
+      border: 1px solid var(--border-color);
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      width: 320px;
+      max-width: 100%;
+    }
+    .search-box input {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 0.86rem;
+      outline: none;
+      width: 100%;
+      font-family: inherit;
+    }
+
+    .filter-pills {
+      display: flex;
+      gap: 6px;
+    }
+
+    .pill-btn {
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .pill-btn:hover {
+      color: #fff;
+    }
+    .pill-btn.active {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: #fff;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+    }
+
+    .data-table th {
+      padding: 12px 18px;
+      background: rgba(0, 0, 0, 0.25);
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 0.76rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .data-table td {
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+      vertical-align: middle;
+    }
+
+    .data-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .user-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .user-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: #a5b4fc;
+      object-fit: cover;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .badge-pro {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.35);
+      box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+    }
+
+    .badge-free {
+      background: rgba(148, 163, 184, 0.12);
+      color: #94a3b8;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .badge-admin {
+      background: rgba(236, 72, 153, 0.18);
+      color: #f472b6;
+      border: 1px solid rgba(236, 72, 153, 0.4);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-box {
+      background: var(--bg-surface-elevated);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 480px;
+      padding: 28px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+      transform: scale(0.96);
+      transition: transform 0.2s ease;
+    }
+    .modal-overlay.open .modal-box {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .modal-header h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+    }
+
+    /* Toast Notification */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 0.88rem;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="admin-header">
+    <a href="/dashboard" class="brand-area">
+      <img src="/logo.png" alt="NXTslide" class="brand-logo" onerror="this.src='/favicon.ico'">
+      <div class="brand-title">NXT<span>slide</span></div>
+      <span class="admin-pill">Admin Center</span>
+    </a>
+
+    <div class="header-actions">
+      <div id="adminUserPill" style="display:none;align-items:center;gap:10px;padding:5px 12px;background:rgba(255,255,255,0.06);border:1px solid var(--border-color);border-radius:999px;">
+        <img id="adminAvatar" src="" style="width:24px;height:24px;border-radius:50%;object-fit:cover;display:none;">
+        <span id="adminEmailText" style="font-size:0.82rem;font-weight:600;color:#cbd5e1;"></span>
+      </div>
+
+      <button id="refreshBtn" class="btn btn-secondary btn-sm" style="display:none;" title="Refresh Data">
+        🔄 Refresh
+      </button>
+
+      <a href="/dashboard" class="btn btn-secondary btn-sm">
+        💻 PC Dashboard
+      </a>
+
+      <button id="logoutBtn" class="btn btn-danger btn-sm" style="display:none;">
+        Logout
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+
+    <!-- Auth Gate / Login Screen -->
+    <div id="authGate">
+      <div class="login-card">
+        <div style="font-size:2.4rem;margin-bottom:12px;">🛡️</div>
+        <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:8px;">Admin Control Center</h2>
+        <p style="color:var(--text-secondary);font-size:0.88rem;margin-bottom:28px;">
+          Authenticate with an authorized Google account or enter your Master Admin Key.
+        </p>
+
+        <!-- Method 1: Google Sign In -->
+        <button type="button" onclick="loginWithGoogle()" class="btn btn-primary" style="width:100%;margin-bottom:20px;padding:12px;display:flex;align-items:center;justify-content:center;gap:10px;">
+          <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#fff" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#fff" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#fff" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#fff" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+          Sign in with Google
+        </button>
+
+        <div style="display:flex;align-items:center;gap:12px;margin:16px 0;color:var(--text-muted);font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;">
+          <div style="flex:1;height:1px;background:var(--border-color);"></div>
+          <span>Or Master Key</span>
+          <div style="flex:1;height:1px;background:var(--border-color);"></div>
+        </div>
+
+        <!-- Method 2: Master Admin Key -->
+        <form id="keyLoginForm" onsubmit="handleKeyLogin(event)">
+          <input type="password" id="adminSecretKeyInput" class="input-field" placeholder="Enter Admin Secret Key" required>
+          <button type="submit" class="btn btn-secondary" style="width:100%;padding:11px;">
+            🔑 Verify Master Key
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Admin Dashboard View -->
+    <div id="adminDashboard" style="display:none;">
+
+      <!-- KPI Stat Cards -->
+      <section class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">👥 Total Accounts</div>
+          <div class="stat-value" id="kpiTotalUsers">-</div>
+          <div class="stat-sub" id="kpiRecentSignups">Loading...</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">💎 Pro Subscribers</div>
+          <div class="stat-value" style="color:#4ade80;" id="kpiProUsers">-</div>
+          <div class="stat-sub" id="kpiConversionRate">0% conversion</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">💰 Total Revenue</div>
+          <div class="stat-value" style="color:#fbcfe8;" id="kpiTotalRevenue">₹0</div>
+          <div class="stat-sub">Lifetime & subscriptions</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">📡 Active Cloud Rooms</div>
+          <div class="stat-value" style="color:#a5b4fc;" id="kpiActiveRooms">-</div>
+          <div class="stat-sub">Live presentations connected</div>
+        </div>
+      </section>
+
+      <!-- Navigation Tabs -->
+      <div class="tabs-nav">
+        <button class="tab-btn active" onclick="switchTab('users')">
+          <span>👥</span> User Accounts (<span id="userCountBadge">0</span>)
+        </button>
+        <button class="tab-btn" onclick="switchTab('payments')">
+          <span>💳</span> Payments & Revenue (<span id="paymentCountBadge">0</span>)
+        </button>
+      </div>
+
+      <!-- Tab 1: Users Management -->
+      <div id="tabUsers" class="tab-content">
+        <div class="table-container">
+          <div class="table-toolbar">
+            <div class="search-box">
+              <span>🔍</span>
+              <input type="text" id="userSearchInput" placeholder="Search by name or email..." oninput="handleUserSearch(this.value)">
+            </div>
+
+            <div class="filter-pills">
+              <button class="pill-btn active" onclick="setUserFilter('all', this)">All</button>
+              <button class="pill-btn" onclick="setUserFilter('pro', this)">✦ Pro</button>
+              <button class="pill-btn" onclick="setUserFilter('free', this)">Free</button>
+            </div>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Current Plan</th>
+                  <th>Subscription Expiry</th>
+                  <th>Joined Date</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-muted);">Loading user records...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Payments Ledger -->
+      <div id="tabPayments" class="tab-content" style="display:none;">
+        <div class="table-container">
+          <div class="table-toolbar">
+            <div style="font-weight:700;font-size:0.95rem;">Transaction Ledger</div>
+            <button class="btn btn-primary btn-sm" onclick="openManualPaymentModal()">
+              ➕ Record Manual Payment
+            </button>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Amount</th>
+                  <th>Payment / Order ID</th>
+                  <th>Source</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="paymentsTableBody">
+                <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">Loading payment transactions...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Modal: Custom Expiry / Plan Edit -->
+  <div class="modal-overlay" id="planModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="planModalTitle">Edit User Subscription</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closePlanModal()">✕</button>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:4px;">Target User:</div>
+        <strong id="planModalUserEmail" style="color:#fff;">-</strong>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">Select Plan:</label>
+        <select id="planModalSelect" class="input-field" style="margin-bottom:0;">
+          <option value="pro">✦ Pro (Lifetime or Custom Date)</option>
+          <option value="free">Free Plan (Revoke Pro)</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:16px;" id="expiryDateContainer">
+        <label style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">Expiration Date:</label>
+        <input type="date" id="planModalDate" class="input-field" style="margin-bottom:0;">
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="setPresetDate(30)">+30 Days</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="setPresetDate(365)">+1 Year</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="setPresetDate('lifetime')">✦ Lifetime (2099)</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <label style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">Admin Notes (Optional):</label>
+        <input type="text" id="planModalNotes" class="input-field" placeholder="e.g. VIP speaker pass, offline wire transfer">
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button class="btn btn-secondary" onclick="closePlanModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitPlanChange()">Save Plan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Record Manual Payment -->
+  <div class="modal-overlay" id="manualPaymentModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Record Manual Payment</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeManualPaymentModal()">✕</button>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">Customer Email:</label>
+        <input type="email" id="manPayEmail" class="input-field" placeholder="user@gmail.com" required>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">Amount (INR ₹):</label>
+        <input type="number" id="manPayAmount" class="input-field" value="199" min="0" required>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:0.85rem;color:var(--text-secondary);margin-bottom:6px;">Notes / Reference:</label>
+        <input type="text" id="manPayNotes" class="input-field" placeholder="e.g. GPay UPI ref #827361">
+      </div>
+
+      <div style="margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+        <input type="checkbox" id="manPayUpgrade" checked style="width:16px;height:16px;">
+        <label for="manPayUpgrade" style="font-size:0.88rem;color:#cbd5e1;cursor:pointer;">
+          Automatically upgrade user to Lifetime Pro
+        </label>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button class="btn btn-secondary" onclick="closeManualPaymentModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitManualPayment()">Save Transaction</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Element -->
+  <div id="toast"></div>
+
+  <!-- Application Logic -->
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const relayOverride = urlParams.get('relay') || localStorage.getItem('nxtslide_relay_base');
+    const isLocalRelay = window.location.port === '4000';
+    const defaultRelay = isLocalRelay
+      ? window.location.origin
+      : (window.location.origin.includes('render.com') ? window.location.origin : 'https://nextpresent-relay.onrender.com');
+    const RELAY_BASE = relayOverride || defaultRelay;
+
+    // Check if admin key or auth token passed in query parameters
+    if (urlParams.get('admin_key')) {
+      localStorage.setItem('nxtslide_admin_token', urlParams.get('admin_key'));
+    }
+    if (urlParams.get('token')) {
+      localStorage.setItem('nxtslide_auth_token', urlParams.get('token'));
+    }
+
+    let adminToken = localStorage.getItem('nxtslide_admin_token') || '';
+    let currentEditingUserId = null;
+    let cachedUsers = [];
+    let currentPlanFilter = 'all';
+    let userSearchTimer = null;
+
+    function loginWithGoogle() {
+      window.location.href = `${RELAY_BASE}/api/auth/google?redirect=${encodeURIComponent(window.location.href)}`;
+    }
+
+    // Toast Helper
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = (isError ? '⚠️ ' : '✅ ') + msg;
+      t.style.borderColor = isError ? '#f43f5e' : '#10b981';
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    // Helper: Auth Fetch with Master Key Header and Bearer Token
+    async function adminFetch(endpoint, options = {}) {
+      const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+      if (adminToken) {
+        headers['x-admin-key'] = adminToken;
+      }
+      const userToken = localStorage.getItem('nxtslide_auth_token');
+      if (userToken) {
+        headers['Authorization'] = `Bearer ${userToken}`;
+      }
+      const res = await fetch(`${RELAY_BASE}${endpoint}`, { credentials: 'include', ...options, headers });
+      if (res.status === 401 || res.status === 403) {
+        // Unauthorized -> Show Auth Gate
+        document.getElementById('authGate').style.display = 'flex';
+        document.getElementById('adminDashboard').style.display = 'none';
+        document.getElementById('adminUserPill').style.display = 'none';
+        document.getElementById('refreshBtn').style.display = 'none';
+        document.getElementById('logoutBtn').style.display = 'none';
+        throw new Error('Unauthorized');
+      }
+      return res;
+    }
+
+    // Verification on Page Load
+    async function checkAuth() {
+      try {
+        const res = await adminFetch('/api/admin/auth/verify');
+        const data = await res.json();
+        if (data.authorized) {
+          onAuthSuccess(data);
+        }
+      } catch (_) {
+        // Stays on login gate
+      }
+    }
+
+    function onAuthSuccess(adminInfo) {
+      document.getElementById('authGate').style.display = 'none';
+      document.getElementById('adminDashboard').style.display = 'block';
+      document.getElementById('adminUserPill').style.display = 'flex';
+      document.getElementById('refreshBtn').style.display = 'inline-flex';
+      document.getElementById('logoutBtn').style.display = 'inline-flex';
+      document.getElementById('adminEmailText').textContent = adminInfo.adminEmail || 'Admin';
+      if (adminInfo.avatar) {
+        const av = document.getElementById('adminAvatar');
+        av.src = adminInfo.avatar;
+        av.style.display = 'block';
+      }
+      loadDashboardData();
+    }
+
+    // Key Login
+    async function handleKeyLogin(e) {
+      e.preventDefault();
+      const key = document.getElementById('adminSecretKeyInput').value.trim();
+      if (!key) return;
+
+      try {
+        const res = await fetch(`${RELAY_BASE}/api/admin/auth/key-login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key })
+        });
+        const data = await res.json();
+        if (data.success) {
+          adminToken = key;
+          localStorage.setItem('nxtslide_admin_token', key);
+          showToast('Welcome back, Admin!');
+          checkAuth();
+        } else {
+          showToast(data.error || 'Invalid Admin Key', true);
+        }
+      } catch (err) {
+        showToast('Login connection failed', true);
+      }
+    }
+
+    // Logout
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      adminToken = '';
+      localStorage.removeItem('nxtslide_admin_token');
+      try { await fetch(`${RELAY_BASE}/api/auth/logout`, { method: 'POST' }); } catch (_) {}
+      window.location.reload();
+    });
+
+    // Refresh Button
+    document.getElementById('refreshBtn').addEventListener('click', () => {
+      loadDashboardData();
+      showToast('Data refreshed');
+    });
+
+    // Load All Dashboard Data
+    async function loadDashboardData() {
+      loadStats();
+      loadUsers();
+      loadPayments();
+    }
+
+    // ─── 1. Stats ────────────────────────────────────────────────────────────
+    async function loadStats() {
+      try {
+        const res = await adminFetch('/api/admin/stats');
+        const s = await res.json();
+        document.getElementById('kpiTotalUsers').textContent = s.totalUsers.toLocaleString();
+        document.getElementById('kpiProUsers').textContent = s.proUsers.toLocaleString();
+        document.getElementById('kpiTotalRevenue').textContent = '₹' + s.totalRevenue.toLocaleString();
+        document.getElementById('kpiActiveRooms').textContent = s.activeRooms || 0;
+        document.getElementById('kpiRecentSignups').textContent = `+${s.recentSignups} signups this week`;
+        document.getElementById('kpiConversionRate').textContent = `${s.conversionRate}% conversion rate`;
+      } catch (_) {}
+    }
+
+    // ─── 2. Users Table ──────────────────────────────────────────────────────
+    async function loadUsers(search = '', plan = currentPlanFilter) {
+      try {
+        const queryParams = new URLSearchParams({ q: search, plan, limit: 100 });
+        const res = await adminFetch(`/api/admin/users?${queryParams}`);
+        const data = await res.json();
+        cachedUsers = data.users || [];
+        document.getElementById('userCountBadge').textContent = data.total || cachedUsers.length;
+        renderUsersTable(cachedUsers);
+      } catch (err) {
+        console.error('Failed to load users:', err);
+      }
+    }
+
+    function renderUsersTable(users) {
+      const tbody = document.getElementById('usersTableBody');
+      if (!users || users.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:36px;color:var(--text-muted);">No users found matching filter.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = users.map(u => {
+        const initial = (u.name || u.email || '?')[0].toUpperCase();
+        const avatarHtml = u.avatar 
+          ? `<img src="${u.avatar}" class="user-avatar" onerror="this.outerHTML='<div class=\\'user-avatar\\'>${initial}</div>'">`
+          : `<div class="user-avatar">${initial}</div>`;
+
+        const isPro = u.isPro;
+        const planBadge = isPro 
+          ? `<span class="badge badge-pro">✦ Pro Active</span>`
+          : `<span class="badge badge-free">Free Plan</span>`;
+
+        let expiryText = '—';
+        if (isPro) {
+          if (u.subscriptionExpiresAt && u.subscriptionExpiresAt.startsWith('2099')) {
+            expiryText = '<span style="color:#4ade80;font-weight:600;">Lifetime (2099)</span>';
+          } else if (u.subscriptionExpiresAt) {
+            const expDate = new Date(u.subscriptionExpiresAt).toLocaleDateString();
+            expiryText = `<span style="color:#cbd5e1;">${expDate}</span>`;
+          }
+        }
+
+        const joinedDate = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—';
+
+        return `
+          <tr>
+            <td>
+              <div class="user-cell">
+                ${avatarHtml}
+                <div>
+                  <div style="font-weight:600;color:#fff;">${escapeHtml(u.name || 'Anonymous')}</div>
+                  <div style="font-size:0.78rem;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;">${escapeHtml(u.email)}</div>
+                </div>
+              </div>
+            </td>
+            <td>${planBadge}</td>
+            <td>${expiryText}</td>
+            <td style="color:var(--text-secondary);font-size:0.82rem;">${joinedDate}</td>
+            <td style="text-align:right;">
+              <div style="display:inline-flex;gap:6px;">
+                ${!isPro ? `
+                  <button class="btn btn-secondary btn-sm" style="color:#4ade80;border-color:rgba(34,197,94,0.3);" onclick="quickGrantPro('${u.id}', '${escapeHtml(u.email)}')">
+                    ✦ Grant Pro
+                  </button>
+                ` : `
+                  <button class="btn btn-secondary btn-sm" style="color:#fda4af;border-color:rgba(244,63,94,0.3);" onclick="quickRevokePro('${u.id}', '${escapeHtml(u.email)}')">
+                    Revoke
+                  </button>
+                `}
+                <button class="btn btn-secondary btn-sm" onclick="openPlanModal('${u.id}', '${escapeHtml(u.email)}', '${u.plan}', '${u.subscriptionExpiresAt || ''}')">
+                  ⚙️ Edit
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}', '${escapeHtml(u.email)}')">
+                  🗑️
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function handleUserSearch(val) {
+      clearTimeout(userSearchTimer);
+      userSearchTimer = setTimeout(() => {
+        loadUsers(val.trim(), currentPlanFilter);
+      }, 300);
+    }
+
+    function setUserFilter(plan, btn) {
+      currentPlanFilter = plan;
+      document.querySelectorAll('.filter-pills .pill-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const search = document.getElementById('userSearchInput').value.trim();
+      loadUsers(search, plan);
+    }
+
+    // ─── 3. Quick Actions ───────────────────────────────────────────────────
+    async function quickGrantPro(userId, email) {
+      if (!confirm(`Upgrade ${email} to Lifetime Pro immediately?`)) return;
+      try {
+        const res = await adminFetch(`/api/admin/users/${userId}/plan`, {
+          method: 'POST',
+          body: JSON.stringify({ plan: 'pro', expiresAt: '2099-12-31T23:59:59.999Z', notes: 'Quick Granted Lifetime Pro' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`✦ Upgraded ${email} to Lifetime Pro!`);
+          loadDashboardData();
+        }
+      } catch (err) {
+        showToast('Failed to update plan', true);
+      }
+    }
+
+    async function quickRevokePro(userId, email) {
+      if (!confirm(`Revoke Pro and downgrade ${email} to Free plan?`)) return;
+      try {
+        const res = await adminFetch(`/api/admin/users/${userId}/plan`, {
+          method: 'POST',
+          body: JSON.stringify({ plan: 'free', expiresAt: null, notes: 'Revoked to Free' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Downgraded ${email} to Free plan.`);
+          loadDashboardData();
+        }
+      } catch (err) {
+        showToast('Failed to update plan', true);
+      }
+    }
+
+    async function deleteUser(userId, email) {
+      if (!confirm(`⚠️ PERMANENTLY DELETE user ${email} and all their session tokens? This cannot be undone.`)) return;
+      try {
+        const res = await adminFetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Deleted ${email}.`);
+          loadDashboardData();
+        }
+      } catch (err) {
+        showToast('Failed to delete user', true);
+      }
+    }
+
+    // ─── 4. Plan Modal ───────────────────────────────────────────────────────
+    function openPlanModal(userId, email, plan, expiresAt) {
+      currentEditingUserId = userId;
+      document.getElementById('planModalUserEmail').textContent = email;
+      document.getElementById('planModalSelect').value = plan === 'pro' ? 'pro' : 'free';
+      document.getElementById('planModalNotes').value = '';
+
+      if (expiresAt && !expiresAt.startsWith('2099')) {
+        const d = new Date(expiresAt);
+        document.getElementById('planModalDate').value = d.toISOString().split('T')[0];
+      } else {
+        document.getElementById('planModalDate').value = '2099-12-31';
+      }
+
+      document.getElementById('planModal').classList.add('open');
+    }
+
+    function closePlanModal() {
+      document.getElementById('planModal').classList.remove('open');
+      currentEditingUserId = null;
+    }
+
+    function setPresetDate(days) {
+      if (days === 'lifetime') {
+        document.getElementById('planModalDate').value = '2099-12-31';
+        return;
+      }
+      const d = new Date();
+      d.setDate(d.getDate() + days);
+      document.getElementById('planModalDate').value = d.toISOString().split('T')[0];
+    }
+
+    async function submitPlanChange() {
+      if (!currentEditingUserId) return;
+      const plan = document.getElementById('planModalSelect').value;
+      const dateVal = document.getElementById('planModalDate').value;
+      const notes = document.getElementById('planModalNotes').value.trim();
+
+      let expiresAt = null;
+      if (plan === 'pro') {
+        expiresAt = dateVal ? new Date(dateVal + 'T23:59:59.999Z').toISOString() : '2099-12-31T23:59:59.999Z';
+      }
+
+      try {
+        const res = await adminFetch(`/api/admin/users/${currentEditingUserId}/plan`, {
+          method: 'POST',
+          body: JSON.stringify({ plan, expiresAt, notes })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast('User plan updated successfully!');
+          closePlanModal();
+          loadDashboardData();
+        }
+      } catch (err) {
+        showToast('Failed to update plan', true);
+      }
+    }
+
+    // ─── 5. Payments Table & Manual Entry ────────────────────────────────────
+    async function loadPayments() {
+      try {
+        const res = await adminFetch('/api/admin/payments?limit=100');
+        const data = await res.json();
+        const payments = data.payments || [];
+        document.getElementById('paymentCountBadge').textContent = payments.length;
+        renderPaymentsTable(payments);
+      } catch (err) {
+        console.error('Failed to load payments:', err);
+      }
+    }
+
+    function renderPaymentsTable(payments) {
+      const tbody = document.getElementById('paymentsTableBody');
+      if (!payments || payments.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:36px;color:var(--text-muted);">No payment records found yet.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = payments.map(p => {
+        const amountRs = (p.amount / 100).toLocaleString('en-IN', { style: 'currency', currency: p.currency || 'INR' });
+        const dateStr = p.createdAt ? new Date(p.createdAt).toLocaleString() : '—';
+        const idLabel = p.paymentId || p.orderId || p.id;
+
+        return `
+          <tr>
+            <td>
+              <div style="font-weight:600;color:#fff;">${escapeHtml(p.userName || p.userEmail)}</div>
+              <div style="font-size:0.75rem;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;">${escapeHtml(p.userEmail)}</div>
+            </td>
+            <td style="font-weight:700;color:#fbcfe8;font-family:'JetBrains Mono',monospace;">${amountRs}</td>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:#cbd5e1;">${escapeHtml(idLabel)}</td>
+            <td><span class="badge" style="background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);">${escapeHtml(p.source || 'razorpay')}</span></td>
+            <td><span class="badge badge-pro">${escapeHtml(p.status || 'paid')}</span></td>
+            <td style="color:var(--text-secondary);font-size:0.8rem;">${dateStr}</td>
+            <td style="color:var(--text-muted);font-size:0.8rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(p.notes || '—')}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function openManualPaymentModal() {
+      document.getElementById('manualPaymentModal').classList.add('open');
+    }
+
+    function closeManualPaymentModal() {
+      document.getElementById('manualPaymentModal').classList.remove('open');
+    }
+
+    async function submitManualPayment() {
+      const email = document.getElementById('manPayEmail').value.trim();
+      const amount = document.getElementById('manPayAmount').value;
+      const notes = document.getElementById('manPayNotes').value.trim();
+      const upgradeUser = document.getElementById('manPayUpgrade').checked;
+
+      if (!email || !amount) {
+        showToast('Please fill in email and amount', true);
+        return;
+      }
+
+      try {
+        const res = await adminFetch('/api/admin/payments/manual', {
+          method: 'POST',
+          body: JSON.stringify({ email, amount, notes, upgradeUser })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Recorded payment of ₹${amount} for ${email}!`);
+          closeManualPaymentModal();
+          loadDashboardData();
+        }
+      } catch (err) {
+        showToast('Failed to record manual payment', true);
+      }
+    }
+
+    // Tab Switching
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+
+      if (tab === 'users') {
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.getElementById('tabUsers').style.display = 'block';
+      } else {
+        document.querySelectorAll('.tab-btn')[1].classList.add('active');
+        document.getElementById('tabPayments').style.display = 'block';
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Auto-Run Check Auth
+    checkAuth();
+  </script>
+</body>
+</html>

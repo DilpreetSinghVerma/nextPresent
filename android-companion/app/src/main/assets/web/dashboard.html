@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NXTslide — Presentation Remote Host</title>
+  <link rel="stylesheet" href="/css/dashboard.css">
+  <link rel="icon" href="/logo-icon.jpg" type="image/jpeg">
+  <script>
+    // Redirect to landing page if accessed from cloud (not local desktop app server)
+    (function() {
+      var h = location.hostname;
+      var isCloud = h.includes('onrender.com') || h.includes('netlify.app') ||
+                    h.includes('vercel.app') || h.includes('github.io');
+      if (isCloud) { location.replace('/?from=dashboard'); }
+    })();
+  </script>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="brand">
+      <img src="/logo-icon.jpg" alt="NXTslide" width="44" height="44" style="border-radius:12px;object-fit:cover;flex-shrink:0;box-shadow:0 0 16px rgba(124,58,237,.5);">
+      <div class="brand-text">
+        <h1>NXTslide <span>Host</span> <span class="badge">Active</span></h1>
+        <p>Wireless Mobile Presentation Controller &mdash; Built by <span style="color:#a5b4fc;font-weight:600;">Dilpreet Singh</span> (Founder)</p>
+      </div>
+    </div>
+
+    <div class="header-status">
+      <div class="status-pill" id="wsStatusPill">
+        <span class="pulse-dot"></span>
+        <span id="wsStatusText">Listening on Port 3333</span>
+      </div>
+
+      <!-- Google Account Widget -->
+      <!-- Signed Out State -->
+      <div id="auth-signed-out" style="display:flex;align-items:center;gap:8px;">
+        <button id="auth-google-signin-btn" style="
+          display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.07);
+          border:1px solid rgba(255,255,255,0.15);border-radius:10px;
+          color:#e2e8f0;font-size:0.78rem;font-weight:600;padding:6px 14px;
+          cursor:pointer;transition:all 0.2s;white-space:nowrap;
+        " title="Sign in with Google for Pro features">
+          <svg width="16" height="16" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Sign in
+        </button>
+      </div>
+
+      <!-- Signed In State -->
+      <div id="auth-signed-in" style="display:none;align-items:center;gap:10px;">
+        <div id="auth-user-pill" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:3px 6px;border-radius:8px;transition:background 0.15s;" title="View My Account">
+          <img id="auth-user-avatar" width="30" height="30" alt="avatar"
+            style="border-radius:50%;border:2px solid #6366f1;display:none;object-fit:cover;" />
+          <div style="display:flex;flex-direction:column;line-height:1.2;">
+            <span id="auth-user-name" style="font-size:0.8rem;font-weight:600;color:#e2e8f0;"></span>
+            <span id="auth-user-email" style="font-size:0.7rem;color:#94a3b8;"></span>
+          </div>
+        </div>
+        <span id="auth-pro-badge" style="display:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);
+          color:#fff;font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:999px;
+          letter-spacing:0.05em;">PRO ✦</span>
+        <a id="auth-admin-btn" href="/admin" target="_blank" style="display:none;align-items:center;gap:4px;
+          background:rgba(234,179,8,0.14);border:1px solid rgba(234,179,8,0.35);color:#facc15;
+          border-radius:8px;font-size:0.75rem;font-weight:600;padding:5px 11px;text-decoration:none;"
+          title="Open Admin Control Center">👑 Admin</a>
+        <button id="auth-account-btn" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);
+          color:#e2e8f0;border-radius:8px;font-size:0.75rem;font-weight:600;padding:5px 12px;cursor:pointer;"
+          title="Manage Account">Account</button>
+        <button id="auth-upgrade-btn" style="display:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);
+          color:#fff;border:none;border-radius:8px;font-size:0.75rem;font-weight:600;
+          padding:5px 12px;cursor:pointer;" title="Upgrade to Pro">Upgrade ✦</button>
+        <button id="auth-signout-btn" style="background:transparent;border:1px solid rgba(255,255,255,0.15);
+          color:#94a3b8;border-radius:8px;font-size:0.72rem;padding:4px 10px;cursor:pointer;"
+          title="Sign out">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+    <!-- Left Column: Connect & QR -->
+    <aside class="card connect-card">
+      <h2 class="card-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+          <line x1="12" y1="18" x2="12.01" y2="18"></line>
+        </svg>
+        Connect Your Phone
+      </h2>
+      <p class="card-subtitle" id="connectSubtitle">Scan QR code or open URL on your mobile browser</p>
+
+      <!-- ── Mode Selector Toggle ── -->
+      <div class="mode-toggle-bar">
+        <button type="button" class="mode-toggle-btn active" id="btnModeLocal">
+          <span class="mode-icon">🏠</span>
+          <span class="mode-title">Local Wi-Fi</span>
+          <span class="mode-badge free-badge">Free</span>
+        </button>
+        <button type="button" class="mode-toggle-btn" id="btnModeCloud">
+          <span class="mode-icon">☁️</span>
+          <span class="mode-title">Cloud Relay</span>
+          <span class="mode-badge pro-badge" id="cloudModeBadge">PRO 🔒</span>
+        </button>
+      </div>
+
+      <!-- ── Local Mode Connect View (Default Free) ── -->
+      <div id="localConnectView">
+        <div class="qr-wrapper">
+          <img id="qrCodeImg" class="qr-image" alt="QR Code to connect mobile" src="">
+        </div>
+
+        <div class="ip-selector">
+          <label for="ipSelect">Local IP (Same Wi-Fi or Phone Hotspot):</label>
+          <select id="ipSelect" class="ip-dropdown">
+            <option value="">Detecting local IPs...</option>
+          </select>
+        </div>
+
+        <div class="url-box">
+          <span class="url-text" id="remoteUrlDisplay">http://...</span>
+          <button class="copy-btn" id="copyUrlBtn" title="Copy URL">Copy</button>
+        </div>
+
+        <div class="local-hint-box">
+          💡 <strong>Offline Tip:</strong> Works with zero internet! Just turn on your phone's personal hotspot and connect your laptop.
+        </div>
+      </div>
+
+      <!-- ── Cloud Mode Connect View (Pro) ── -->
+      <div id="cloudConnectView" style="display: none;">
+        <div id="relayBanner" style="
+          width:100%; margin-bottom:16px; padding:14px 16px;
+          background:linear-gradient(135deg,rgba(16,185,129,.15),rgba(5,150,105,.1));
+          border:1px solid rgba(16,185,129,.4); border-radius:12px; text-align:center;
+        ">
+          <div style="font-size:.72rem;color:#34d399;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;font-weight:700;">
+            ☁️ Cloud Room Code
+          </div>
+          <div id="roomCodeDisplay" style="
+            font-size:2.2rem;font-weight:800;letter-spacing:.45rem;color:#6ee7b7;
+            font-family:'JetBrains Mono',monospace;line-height:1.2;
+          ">——————</div>
+          <div style="font-size:.72rem;color:#94a3b8;margin-top:4px;">
+            Works across any network — 5G, LTE, guest Wi-Fi, and firewalls
+          </div>
+          <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;">
+            <button id="copyRelayUrlBtn" style="
+              padding:6px 14px;background:rgba(16,185,129,.2);color:#6ee7b7;
+              border:1px solid rgba(16,185,129,.4);border-radius:8px;
+              font-size:.8rem;cursor:pointer;font-weight:600;
+            ">📋 Copy Link</button>
+          </div>
+        </div>
+
+        <div id="relayConnecting" style="
+          width:100%; margin-bottom:16px; padding:10px 14px;
+          background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25);
+          border-radius:10px; font-size:.78rem; color:#fbbf24; text-align:center; display:none;
+        ">
+          ⏳ Connecting to cloud relay…
+        </div>
+
+        <div class="qr-wrapper">
+          <img id="cloudQrCodeImg" class="qr-image" alt="Cloud QR Code" src="">
+        </div>
+      </div>
+
+      <!-- Software Profile Selector -->
+      <div class="ip-selector" style="margin-top: 20px; width: 100%;">
+        <label for="profileSelect">🎯 Presentation Software:</label>
+        <select id="profileSelect" class="ip-dropdown">
+          <option value="powerpoint">Microsoft PowerPoint (Arrow keys)</option>
+          <option value="google_slides">Google Slides (Arrow keys)</option>
+          <option value="canva">Canva Presentations (Arrow keys)</option>
+          <option value="libreoffice">LibreOffice Impress (Page Up/Down)</option>
+          <option value="pdf">PDF Viewer — Adobe, Edge, Chrome (Page Up/Down)</option>
+          <option value="prezi">Prezi (Space / Backspace)</option>
+          <option value="keynote_mac">Apple Keynote / Mac (Arrow keys)</option>
+        </select>
+      </div>
+
+      <div id="profileKeyHint" style="
+        width: 100%; margin-top: 8px; padding: 10px 12px;
+        background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2);
+        border-radius: 8px; font-size: 0.78rem; color: #a5b4fc;
+        font-family: 'JetBrains Mono', monospace;
+      ">Next → Right Arrow &nbsp;|&nbsp; Prev → Left Arrow</div>
+
+      <!-- ── Stop Server ── -->
+      <button id="btnStopServer" class="stop-server-btn" title="Stop NXTslide Host Server" style="width:100%;margin-top:20px;justify-content:center;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+        Stop Server
+      </button>
+    </aside>
+
+    <!-- Right Column: Control Deck & Telemetry -->
+    <section class="dashboard-main">
+      <!-- Metrics -->
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <span class="metric-label">Connected Phones</span>
+          <div class="metric-value">
+            <span id="connectedClientsVal">0</span>
+            <span class="metric-sub">active</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">Current Slide</span>
+          <div class="metric-value">
+            <span id="slideNumberVal">1</span>
+            <span class="metric-sub">approx.</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">Presentation Timer</span>
+          <div class="metric-value">
+            <span id="presentationTimerVal">00:00</span>
+          </div>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">Total Clicks</span>
+          <div class="metric-value">
+            <span id="totalClicksVal">0</span>
+            <span class="metric-sub" id="clickRatioVal">0 fwd / 0 back</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Test Control Deck -->
+      <div class="card control-deck">
+        <div class="deck-header">
+          <h2 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            Live Controller & Test Pad
+          </h2>
+          <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: #34d399; border-color: rgba(16, 185, 129, 0.3);">Windows Keystroke Injector Ready</span>
+        </div>
+
+        <div class="btn-grid">
+          <button class="big-btn prev" id="btnPrev" title="Previous Slide (Left Arrow / Page Up)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            <span>Previous Slide</span>
+            <kbd>◄</kbd>
+          </button>
+
+          <button class="big-btn next" id="btnNext" title="Next Slide (Right Arrow / Page Down)">
+            <span>Next Slide</span>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+            <kbd>►</kbd>
+          </button>
+        </div>
+
+        <div class="action-row">
+          <button class="tool-btn" id="btnF5" title="Start Slideshow from beginning">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Start Slideshow <kbd>F5</kbd>
+          </button>
+
+          <button class="tool-btn" id="btnShiftF5" title="Start from current slide">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            Current Slide <kbd>⇧ F5</kbd>
+          </button>
+
+          <button class="tool-btn" id="btnBlackout" title="Toggle Black Screen (PowerPoint & Google Slides)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+            </svg>
+            Blackout <kbd>B</kbd>
+          </button>
+
+          <button class="tool-btn" id="btnWhiteout" title="Toggle White Screen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10" stroke-dasharray="2 2"></circle>
+            </svg>
+            Whiteout <kbd>W</kbd>
+          </button>
+
+          <button class="tool-btn" id="btnEsc" title="Exit Presentation">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+            Exit <kbd>Esc</kbd>
+          </button>
+        </div>
+      </div>
+
+      <!-- Real-time Activity Log -->
+      <div class="card event-log-container">
+        <div class="deck-header">
+          <h2 class="card-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            Live Activity Stream
+          </h2>
+          <button class="tool-btn" id="btnClearLog" style="flex: initial; padding: 4px 10px; font-size: 0.75rem;">Clear</button>
+        </div>
+        <div class="log-box" id="eventLogBox">
+          <div class="log-entry">
+            <span class="log-time">[Ready]</span>
+            <span class="log-action special">Server started</span>
+            <span class="log-source">System</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Instructions Banner -->
+      <div class="instructions-banner">
+        <div class="step-item"><span class="step-num">1</span><strong>Same Wi-Fi:</strong> Connect PC and Phone</div>
+        <div class="step-item"><span class="step-num">2</span><strong>Scan QR:</strong> Open remote on phone</div>
+        <div class="step-item"><span class="step-num">3</span><strong>Present:</strong> Press volume keys to change slides!</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Pro Upgrade Modal -->
+  <div class="modal-backdrop" id="proModalBackdrop" style="display:none;">
+    <div class="pro-modal">
+      <button class="modal-close-btn" id="closeProModalBtn" aria-label="Close modal">&times;</button>
+      
+      <div class="pro-modal-badge">NXTslide Pro</div>
+      <h3 class="pro-modal-title">Unlock Global Cloud Relay</h3>
+      <p class="pro-modal-sub">Break free from network boundaries. Present effortlessly from any device, anywhere in the world.</p>
+
+      <div class="pro-features-grid">
+        <div class="pro-feature-row">
+          <span class="pro-feat-icon">🌍</span>
+          <div class="pro-feat-text">
+            <strong>Present from Anywhere on Earth</strong>
+            <span>Control slides across any network, 5G/LTE cellular, hotel Wi-Fi, or even from another country without touching router settings.</span>
+          </div>
+        </div>
+        <div class="pro-feature-row">
+          <span class="pro-feat-icon">📱</span>
+          <div class="pro-feat-text">
+            <strong>Multi-Presenter Mode (Up to 5 Phones)</strong>
+            <span>Connect up to 5 mobile phones simultaneously. Hand off slide control seamlessly between co-presenters on stage without passing a clicker.</span>
+          </div>
+        </div>
+        <div class="pro-feature-row">
+          <span class="pro-feat-icon">💎</span>
+          <div class="pro-feat-text">
+            <strong>Pay Once, Keep Forever — Zero Subscriptions</strong>
+            <span>No monthly fees, no annual renewals, no surprises. One single lifetime license includes every future update.</span>
+          </div>
+        </div>
+        <div class="pro-feature-row">
+          <span class="pro-feat-icon">⚡</span>
+          <div class="pro-feat-text">
+            <strong>Instant 6-Letter Room Code</strong>
+            <span>Bypass restrictive corporate and university Wi-Fi firewalls in 2 seconds. No IP addresses or port setup required.</span>
+          </div>
+        </div>
+        <div class="pro-feature-row">
+          <span class="pro-feat-icon">📳</span>
+          <div class="pro-feat-text">
+            <strong>Stealth Pocket Haptic Pacing</strong>
+            <span>Silent, discreet vibration cues at 10m, 5m, and 1m remaining so you command the stage without ever glancing at a clock.</span>
+          </div>
+        </div>
+        <div class="pro-feature-row">
+          <span class="pro-feat-icon">🔒</span>
+          <div class="pro-feat-text">
+            <strong>100% Private End-to-End WebSocket</strong>
+            <span>Direct encrypted relay with zero cloud data logging and instant room destruction when you finish your talk.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Google Sign-In CTA -->
+      <div class="pro-cta-box" style="flex-direction:column;gap:14px;padding:20px;">
+
+        <!-- Price Row -->
+        <div style="display:flex;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <span style="font-size:1.1rem;color:#64748b;text-decoration:line-through;font-weight:600;">₹1,499</span>
+          <span class="pro-price-num" style="color:#4ade80;font-size:2rem;font-weight:800;">₹199</span>
+          <span style="background:rgba(234,179,8,0.15);color:#facc15;border:1px solid rgba(234,179,8,0.3);padding:3px 10px;border-radius:999px;font-size:0.75rem;font-weight:700;">
+            🔥 Early Bird • Lifetime Deal
+          </span>
+        </div>
+        <div style="text-align:center;color:#94a3b8;font-size:0.8rem;margin-top:-6px;">
+          Pay once, keep forever &bull; Zero monthly subscriptions
+        </div>
+
+        <!-- Signed-out: Show Google Sign-In first -->
+        <div id="modal-signed-out-cta">
+          <p style="color:#94a3b8;font-size:0.82rem;margin-bottom:12px;text-align:center;">
+            Sign in with Google to activate Lifetime Pro — no license key needed.
+          </p>
+          <button id="modal-google-signin-btn" style="
+            display:flex;align-items:center;gap:10px;justify-content:center;width:100%;
+            background:#fff;color:#333;border:none;border-radius:10px;
+            font-size:0.95rem;font-weight:600;padding:12px 20px;cursor:pointer;
+            box-shadow:0 2px 8px rgba(0,0,0,0.3);transition:opacity 0.2s;
+          ">
+            <svg width="20" height="20" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Continue with Google
+          </button>
+        </div>
+
+        <!-- Signed-in: Show Pay button -->
+        <div id="modal-signed-in-cta" style="display:none;">
+          <p style="color:#94a3b8;font-size:0.82rem;margin-bottom:12px;text-align:center;">
+            Signed in as <strong id="modal-user-email" style="color:#a5b4fc;"></strong>
+          </p>
+          <button id="modal-pay-btn" class="pro-upgrade-btn" style="width:100%;justify-content:center;font-size:1rem;padding:14px;">
+            ✦ Unlock Lifetime Pro — ₹199 Only
+          </button>
+        </div>
+
+        <p style="color:#475569;font-size:0.72rem;text-align:center;margin-top:4px;">
+          Secure 1-time payment by Razorpay &bull; Lifetime Pro tied to your Google account
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- My Account Modal -->
+  <div class="modal-backdrop" id="accountModalBackdrop" style="display:none;">
+    <div class="pro-modal" style="border-color:rgba(99,102,241,0.35);box-shadow:0 24px 60px rgba(0,0,0,0.8),0 0 40px rgba(99,102,241,0.15);max-width:460px;">
+      <button class="modal-close-btn" id="closeAccountModalBtn" aria-label="Close modal">&times;</button>
+
+      <div style="display:flex;align-items:center;gap:14px;padding-right:32px;">
+        <img id="account-modal-avatar" src="" alt="avatar" style="width:54px;height:54px;border-radius:50%;border:2px solid #6366f1;object-fit:cover;display:none;">
+        <div style="flex:1;min-width:0;">
+          <h3 id="account-modal-name" style="font-size:1.15rem;font-weight:700;color:#fff;margin:0 0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">My Account</h3>
+          <p id="account-modal-email" style="font-size:0.8rem;color:#94a3b8;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></p>
+        </div>
+      </div>
+
+      <!-- Plan Status Card -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:0.75rem;color:#64748b;text-transform:uppercase;font-weight:700;letter-spacing:0.06em;">Subscription</span>
+          <span id="account-modal-plan-badge" style="padding:3px 10px;border-radius:999px;font-size:0.75rem;font-weight:700;letter-spacing:0.04em;">Free Plan</span>
+        </div>
+        <div id="account-modal-details" style="font-size:0.82rem;color:#cbd5e1;line-height:1.45;">
+          Standard local Wi-Fi mode active.
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <a id="account-modal-admin-btn" href="/admin" target="_blank" style="display:none;width:100%;padding:10px;border-radius:10px;border:1px solid rgba(234,179,8,0.4);background:rgba(234,179,8,0.14);color:#fde047;font-weight:700;font-size:0.85rem;text-align:center;text-decoration:none;box-sizing:border-box;">
+          👑 Admin Control Center
+        </a>
+        <button id="account-modal-upgrade-btn" style="display:none;width:100%;padding:11px;border-radius:10px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-weight:700;font-size:0.88rem;cursor:pointer;box-shadow:0 4px 12px rgba(99,102,241,0.3);">
+          ✦ Upgrade to Lifetime Pro (₹199 Only)
+        </button>
+        <button id="account-modal-refresh-btn" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.04);color:#cbd5e1;font-size:0.82rem;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <span>🔄</span> <span>Refresh Account Status</span>
+        </button>
+        <button id="account-modal-signout-btn" style="width:100%;padding:9px;border-radius:10px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#f87171;font-size:0.8rem;font-weight:600;cursor:pointer;">
+          Sign Out
+        </button>
+      </div>
+
+      <div style="font-size:0.7rem;color:#64748b;text-align:center;margin-top:2px;">
+        Your account is synced across Desktop &amp; Web via Google.
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

@@ -7,87 +7,94 @@ import android.view.KeyEvent
 import android.view.accessibility.AccessibilityEvent
 
 /**
- * VolumeKeyAccessibilityService — intercepts raw hardware volume key events.
+ * VolumeKeyAccessibilityService — intercepts hardware volume keys when active.
  *
- * GESTURE MODEL (screen-on, when accessibility permission is granted):
- *   Single tap Vol Up/Down   → change slide (Next/Prev)
- *   Double-tap Vol Up/Down   → toggle laser ON/OFF
- *
- * The service sets suppressVolumeObserver=true while handling a key to prevent
- * PresenterService's ContentObserver/BroadcastReceiver from double-triggering.
+ * GESTURE MODEL:
+ *   Quick tap Vol Up/Down (< 200ms) → Immediate slide change on ACTION_UP (0 lag!)
+ *   Hold Vol Up/Down      (>= 200ms) → Laser turns ON
+ *   Release button                   → Laser turns OFF, 0 slide change!
  */
 class VolumeKeyAccessibilityService : AccessibilityService() {
 
     private val keyHandler = Handler(Looper.getMainLooper())
-
-    // Double-tap state
-    private val DOUBLE_TAP_WINDOW_MS = 400L
-    private var lastTapTs: Long = 0L
-    private var lastTapIsUp: Boolean = false
-    private var pendingTapRunnable: Runnable? = null
+    private var holdLaserRunnable: Runnable? = null
+    private var isVolUpHeld = false
+    private var isVolDownHeld = false
+    private var hasLaserStarted = false
 
     override fun onKeyEvent(event: KeyEvent): Boolean {
+        android.util.Log.d("NXTslide_A11y", "onKeyEvent: action=${event.action}, keyCode=${event.keyCode}, repeatCount=${event.repeatCount}")
         val keyCode = event.keyCode
         if (keyCode != KeyEvent.KEYCODE_VOLUME_UP && keyCode != KeyEvent.KEYCODE_VOLUME_DOWN) {
             return super.onKeyEvent(event)
         }
 
-        // Only act on ACTION_DOWN (repeatCount == 0) to avoid double-firing on repeat
-        if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount != 0) {
-            return true // consume all volume key events
-        }
+        val isUpKey = (keyCode == KeyEvent.KEYCODE_VOLUME_UP)
+        val service = PresenterService.instance
 
-        val isUp = (keyCode == KeyEvent.KEYCODE_VOLUME_UP)
-        val service = PresenterService.instance ?: return true
+        val sensorManager = getSystemService(android.content.Context.SENSOR_SERVICE) as? android.hardware.SensorManager
+        val hasGyro = (sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE) != null)
 
-        // Suppress ContentObserver/Broadcast path for 700ms
-        service.suppressVolumeObserver = true
-        keyHandler.removeCallbacksAndMessages("suppress_clear")
-        keyHandler.postAtTime({
-            service.suppressVolumeObserver = false
-        }, "suppress_clear", android.os.SystemClock.uptimeMillis() + 700L)
-
-        val now = System.currentTimeMillis()
-
-        // ── DOUBLE-TAP DETECTION ──────────────────────────────────────────────
-        if (now - lastTapTs < DOUBLE_TAP_WINDOW_MS && isUp == lastTapIsUp) {
-            // Cancel the pending single-tap action
-            pendingTapRunnable?.let { keyHandler.removeCallbacks(it) }
-            pendingTapRunnable = null
-
-            // Toggle laser
-            if (service.isLaserRunning()) {
-                service.stopBackgroundLaser()
-            } else {
-                service.startBackgroundLaser()
+        if (!hasGyro) {
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                val action = if (isUpKey) "NEXT" else "PREV"
+                service?.sendSlideAction(action)
+                service?.vibrateFeedback(35)
             }
-
-            lastTapTs = 0L
             return true
         }
 
-        // ── SINGLE TAP ───────────────────────────────────────────────────────
-        lastTapTs = now
-        lastTapIsUp = isUp
-        val slideAction = if (isUp) "NEXT" else "PREV"
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            if (isUpKey) isVolUpHeld = true else isVolDownHeld = true
 
-        pendingTapRunnable?.let { keyHandler.removeCallbacks(it) }
+            if (event.repeatCount == 0) {
+                // Cancel any pending hold runnable
+                holdLaserRunnable?.let { keyHandler.removeCallbacks(it) }
 
-        val tapRunnable = Runnable {
-            pendingTapRunnable = null
-            lastTapTs = 0L
+                // Suppress background volume observer while handling
+                service?.suppressVolumeObserver = true
 
-            if (service.isLaserRunning()) {
-                service.stopBackgroundLaser()
-            } else {
-                service.sendSlideAction(slideAction)
-                service.vibrateFeedback(35)
+                // Schedule hold-to-laser timer (200ms)
+                if (service?.isLaserRunning() != true) {
+                    hasLaserStarted = false
+                    val r = Runnable {
+                        if (isVolUpHeld || isVolDownHeld) {
+                            hasLaserStarted = true
+                            service?.startBackgroundLaser()
+                        }
+                    }
+                    holdLaserRunnable = r
+                    keyHandler.postDelayed(r, 200L)
+                }
             }
-        }
-        pendingTapRunnable = tapRunnable
-        keyHandler.postDelayed(tapRunnable, DOUBLE_TAP_WINDOW_MS)
+            return true // consume key
 
-        return true // consume key event
+        } else if (event.action == KeyEvent.ACTION_UP) {
+            if (isUpKey) isVolUpHeld = false else isVolDownHeld = false
+
+            // Cancel pending hold timer
+            holdLaserRunnable?.let { keyHandler.removeCallbacks(it) }
+            holdLaserRunnable = null
+
+            if (hasLaserStarted || service?.isLaserRunning() == true) {
+                // Held → stop laser, NO slide change!
+                service?.stopBackgroundLaser()
+                hasLaserStarted = false
+            } else {
+                // Quick tap → change slide IMMEDIATELY (zero extra delay)
+                val action = if (isUpKey) "NEXT" else "PREV"
+                service?.sendSlideAction(action)
+                service?.vibrateFeedback(35)
+            }
+
+            keyHandler.postDelayed({
+                service?.suppressVolumeObserver = false
+            }, 300L)
+
+            return true // consume key
+        }
+
+        return super.onKeyEvent(event)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {}

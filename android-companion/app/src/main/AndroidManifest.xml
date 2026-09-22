@@ -8,6 +8,7 @@
 
     <!-- Haptic -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
 
     <!-- Background foreground-service (keep CPU + Wi-Fi alive behind lock screen) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -64,6 +65,14 @@
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:launchMode="singleTop">
 
+            <!-- Custom URI scheme for Google OAuth return: nxtslide://auth?token=...&user=... -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="nxtslide" android:host="auth" />
+            </intent-filter>
+
             <!-- Custom URI scheme: nextpresent://connect?code=ABC123 -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -93,6 +102,19 @@
             android:name=".PresenterService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+
+        <!-- Accessibility Service for 100% precise raw volume key long-press interception on lock screen -->
+        <service
+            android:name=".VolumeKeyAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
 
     </application>
 

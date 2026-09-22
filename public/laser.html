@@ -6,7 +6,8 @@
   <title>NXTslide Laser Overlay</title>
   <style>
     :root {
-      --laser-red: #ff1e56;
+      --laser-red: #ff1244;
+      --laser-glow: rgba(255, 18, 68, 0.85);
     }
 
     * {
@@ -35,30 +36,48 @@
       z-index: 999999;
     }
 
-    /* Glowing Red Laser Dot */
+    /* Ultra-Realistic Presentation Laser Pointer Dot */
     #laserDot {
       position: absolute;
-      width: 18px;
-      height: 18px;
+      width: 22px;
+      height: 22px;
       border-radius: 50%;
       background: #ffffff;
       box-shadow: 
-        0 0 3px #ffffff,
-        0 0 10px var(--laser-red),
-        0 0 24px var(--laser-red),
-        0 0 45px var(--laser-red);
+        0 0 4px 1px #ffffff,
+        0 0 14px 4px var(--laser-red),
+        0 0 32px 10px var(--laser-glow),
+        0 0 65px 22px rgba(255, 18, 68, 0.45);
       transform: translate(-50%, -50%);
       pointer-events: none;
       opacity: 0;
-      transition: opacity 0.12s ease-out;
+      transition: opacity 0.08s ease-out;
       will-change: left, top, opacity;
+    }
+
+    #laserDot::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 80, 110, 0.6);
+      transform: translate(-50%, -50%) scale(0.9);
+      animation: laserPulse 1.2s infinite ease-out;
+      pointer-events: none;
+    }
+
+    @keyframes laserPulse {
+      0% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.9; }
+      50% { transform: translate(-50%, -50%) scale(1.35); opacity: 0.3; }
+      100% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.9; }
     }
 
     #laserDot.visible {
       opacity: 1;
     }
 
-    /* Logitech-Style Spotlight Mask */
+    /* Logitech-Style Flashlight / Spotlight Mask */
     #spotlightMask {
       position: fixed;
       top: 0;
@@ -68,7 +87,7 @@
       pointer-events: none;
       z-index: 999998;
       background: rgba(0, 0, 0, 0.65);
-      clip-path: circle(120px at -500px -500px);
+      clip-path: circle(135px at -500px -500px);
       transition: opacity 0.15s ease-out;
       opacity: 0;
       will-change: clip-path, opacity;
@@ -97,8 +116,8 @@
     let currentX = targetX;
     let currentY = targetY;
 
-    // Smooth fluid glide factor
-    const GLIDE_FACTOR = 0.22;
+    // Fast, responsive tracking (0.55 = instant crisp follow)
+    const GLIDE_FACTOR = 0.55;
 
     function renderLoop() {
       if (isPointing) {
@@ -109,7 +128,7 @@
           laserDot.style.left = `${currentX}px`;
           laserDot.style.top = `${currentY}px`;
         } else {
-          spotlightMask.style.clipPath = `circle(120px at ${currentX}px ${currentY}px)`;
+          spotlightMask.style.clipPath = `circle(135px at ${currentX}px ${currentY}px)`;
         }
       }
       requestAnimationFrame(renderLoop);
@@ -130,7 +149,7 @@
         laserDot.classList.remove('visible');
         if (visible) {
           spotlightMask.classList.add('visible');
-          spotlightMask.style.clipPath = `circle(120px at ${currentX}px ${currentY}px)`;
+          spotlightMask.style.clipPath = `circle(135px at ${currentX}px ${currentY}px)`;
         } else {
           spotlightMask.classList.remove('visible');
         }

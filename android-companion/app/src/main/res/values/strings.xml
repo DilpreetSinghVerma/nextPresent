@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">NXTslide</string>
+    <string name="accessibility_description">Enables instant volume key controls and 3D gyro laser pointer behind the lock screen.</string>
 </resources>

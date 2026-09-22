@@ -1,4 +1,4 @@
-﻿/**
+/**
  * NXTslide Cloud Relay Server v3.0.0
  * Runs on Railway / Render / Fly.io free tier.
  *
@@ -61,9 +61,10 @@ const ROOM_TTL_MS = 8 * 60 * 60 * 1000;
 const BASE_URL    = process.env.RENDER_EXTERNAL_URL || process.env.SELF_URL || `http://localhost:${PORT}`;
 const SESSION_SECRET = process.env.SESSION_SECRET || 'nxtslide-secret-2026';
 const ADMIN_EMAILS   = ['dilpreetsinghverma@gmail.com'];
+const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'nxtslide-admin-2026';
 
-// Pro Plan price in paise (₹299/month = 29900 paise)
-const PRO_MONTHLY_PRICE = 29900;
+// Pro Plan price in paise (₹199 Lifetime Early Bird = 19900 paise)
+const PRO_LIFETIME_PRICE = 19900;
 
 // ─── SQLite Database Setup ────────────────────────────────────────────────────
 let db = null;
@@ -98,6 +99,25 @@ function setupDatabase() {
         createdAt TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY(userId) REFERENCES users(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS payments (
+        id         TEXT PRIMARY KEY,
+        userId     TEXT,
+        userEmail  TEXT NOT NULL,
+        amount     INTEGER NOT NULL,
+        currency   TEXT NOT NULL DEFAULT 'INR',
+        orderId    TEXT,
+        paymentId  TEXT,
+        status     TEXT NOT NULL DEFAULT 'paid',
+        source     TEXT NOT NULL DEFAULT 'razorpay',
+        notes      TEXT,
+        createdAt  TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY(userId) REFERENCES users(id) ON DELETE SET NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_payments_userId ON payments(userId);
+      CREATE INDEX IF NOT EXISTS idx_payments_createdAt ON payments(createdAt);
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
     `);
 
     console.log('[DB] SQLite database ready at:', dbPath);
@@ -203,6 +223,194 @@ function isUserPro(user) {
   if (user.plan === 'free') return false;
   if (!user.subscriptionExpiresAt) return false;
   return new Date(user.subscriptionExpiresAt) > new Date();
+}
+
+// ─── Payments & Admin DB Helpers ──────────────────────────────────────────────
+function recordPayment(data) {
+  if (!db) return null;
+  const id = generateId();
+  try {
+    db.prepare(`
+      INSERT INTO payments (id, userId, userEmail, amount, currency, orderId, paymentId, status, source, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id,
+      data.userId || null,
+      (data.userEmail || '').toLowerCase(),
+      data.amount || 0,
+      data.currency || 'INR',
+      data.orderId || null,
+      data.paymentId || null,
+      data.status || 'paid',
+      data.source || 'razorpay',
+      data.notes ? (typeof data.notes === 'string' ? data.notes : JSON.stringify(data.notes)) : null
+    );
+    return db.prepare('SELECT * FROM payments WHERE id = ?').get(id);
+  } catch (err) {
+    console.error('[DB] Failed to record payment:', err.message);
+    return null;
+  }
+}
+
+function getAllPayments(limit = 100, offset = 0) {
+  if (!db) return [];
+  try {
+    return db.prepare(`
+      SELECT p.*, u.name as userName, u.avatar as userAvatar
+      FROM payments p
+      LEFT JOIN users u ON p.userId = u.id
+      ORDER BY datetime(p.createdAt) DESC
+      LIMIT ? OFFSET ?
+    `).all(limit, offset);
+  } catch (err) {
+    console.error('[DB] Failed to query payments:', err.message);
+    return [];
+  }
+}
+
+function getAllUsers(query = '', planFilter = 'all', limit = 100, offset = 0) {
+  if (!db) return { users: [], total: 0 };
+  try {
+    let sql = 'SELECT * FROM users WHERE 1=1';
+    let countSql = 'SELECT count(*) as total FROM users WHERE 1=1';
+    const params = [];
+    const countParams = [];
+
+    if (query) {
+      const q = `%${query.toLowerCase()}%`;
+      sql += ' AND (LOWER(email) LIKE ? OR LOWER(name) LIKE ?)';
+      countSql += ' AND (LOWER(email) LIKE ? OR LOWER(name) LIKE ?)';
+      params.push(q, q);
+      countParams.push(q, q);
+    }
+
+    if (planFilter === 'pro') {
+      sql += " AND (plan = 'pro' AND datetime(subscriptionExpiresAt) > datetime('now'))";
+      countSql += " AND (plan = 'pro' AND datetime(subscriptionExpiresAt) > datetime('now'))";
+    } else if (planFilter === 'free') {
+      sql += " AND (plan = 'free' OR datetime(subscriptionExpiresAt) <= datetime('now'))";
+      countSql += " AND (plan = 'free' OR datetime(subscriptionExpiresAt) <= datetime('now'))";
+    }
+
+    sql += ' ORDER BY datetime(createdAt) DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
+    const total = db.prepare(countSql).get(...countParams)?.total || 0;
+    const rawUsers = db.prepare(sql).all(...params);
+
+    const users = rawUsers.map(u => ({
+      ...u,
+      isPro: isUserPro(u),
+    }));
+
+    return { users, total };
+  } catch (err) {
+    console.error('[DB] Failed to query users:', err.message);
+    return { users: [], total: 0 };
+  }
+}
+
+function getAdminStats() {
+  if (!db) return { totalUsers: 0, proUsers: 0, freeUsers: 0, totalRevenue: 0, recentSignups: 0, activeRooms: rooms.size, conversionRate: '0' };
+  try {
+    const totalUsers = db.prepare('SELECT count(*) as count FROM users').get()?.count || 0;
+    const proUsers = db.prepare(`
+      SELECT count(*) as count FROM users 
+      WHERE (plan = 'pro' AND datetime(subscriptionExpiresAt) > datetime('now'))
+         OR email IN ('${ADMIN_EMAILS.join("','")}')
+    `).get()?.count || 0;
+    const freeUsers = Math.max(0, totalUsers - proUsers);
+
+    // Sum total successful revenue in INR (amount is in paise)
+    const revRow = db.prepare(`
+      SELECT sum(amount) as totalPaise FROM payments WHERE status = 'paid'
+    `).get();
+    const totalRevenue = Math.round((revRow?.totalPaise || 0) / 100);
+
+    const recentSignups = db.prepare(`
+      SELECT count(*) as count FROM users WHERE datetime(createdAt) >= datetime('now', '-7 days')
+    `).get()?.count || 0;
+
+    return {
+      totalUsers,
+      proUsers,
+      freeUsers,
+      totalRevenue,
+      recentSignups,
+      activeRooms: rooms.size,
+      conversionRate: totalUsers > 0 ? ((proUsers / totalUsers) * 100).toFixed(1) : '0',
+    };
+  } catch (err) {
+    console.error('[DB] Failed to get admin stats:', err.message);
+    return { totalUsers: 0, proUsers: 0, freeUsers: 0, totalRevenue: 0, recentSignups: 0, activeRooms: rooms.size, conversionRate: '0' };
+  }
+}
+
+function deleteUserAccount(userId) {
+  if (!db || !userId) return false;
+  try {
+    db.prepare('DELETE FROM auth_tokens WHERE userId = ?').run(userId);
+    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    return true;
+  } catch (err) {
+    console.error('[DB] Failed to delete user:', err.message);
+    return false;
+  }
+}
+
+function setManualPlan(userId, plan, expiresAt, adminNotes = '') {
+  const user = getUserById(userId);
+  if (!user) return null;
+
+  const now = new Date();
+  let exp = expiresAt;
+  if (!exp) {
+    exp = (plan === 'pro') ? '2099-12-31T23:59:59.999Z' : null;
+  }
+
+  const updated = updateUser(userId, {
+    plan: plan || 'free',
+    subscriptionStartedAt: (plan === 'pro') ? now.toISOString() : null,
+    subscriptionExpiresAt: exp,
+  });
+
+  // Record a payment entry if granting Pro
+  if (plan === 'pro') {
+    recordPayment({
+      userId: user.id,
+      userEmail: user.email,
+      amount: 0,
+      currency: 'INR',
+      status: 'paid',
+      source: 'admin_manual',
+      notes: adminNotes || 'Granted manually by Admin',
+    });
+  }
+
+  return { ...updated, isPro: isUserPro(updated) };
+}
+
+// ─── Admin Security Middleware ────────────────────────────────────────────────
+function requireAdmin(req, res, next) {
+  // 1. Master admin secret key via header or query
+  const keyHeader = req.headers['x-admin-key'];
+  const keyQuery  = req.query.admin_key;
+  if ((keyHeader && keyHeader === ADMIN_SECRET_KEY) || (keyQuery && keyQuery === ADMIN_SECRET_KEY)) {
+    return next();
+  }
+
+  // 2. Cookie session isAdmin flag
+  if (req.session && req.session.isAdmin) {
+    return next();
+  }
+
+  // 3. User Google Email matches ADMIN_EMAILS
+  const user = resolveUser(req);
+  if (user && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
+    return next();
+  }
+
+  return res.status(403).json({ error: 'Forbidden: Admin access required.' });
 }
 
 // ─── Express App ──────────────────────────────────────────────────────────────
@@ -403,11 +611,37 @@ app.get(['/download/portable', '/downloads/NXTslide-Portable.exe', '/downloads/n
 // The Android app and (optionally) Electron load these routes instead of local
 // static files. Pushing new HTML/JS/CSS here updates all clients instantly.
 
-const GITHUB_MOBILE_URL = 'https://raw.githubusercontent.com/DilpreetSinghVerma/nextPresent/main/public/mobile.html';
-let _mobileCache = null;
-const MOBILE_CACHE_TTL = 5 * 60 * 1000;
+const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/DilpreetSinghVerma/nextPresent/main/public';
+const _staticCache = new Map();
 
-app.get('/mobile', async (_req, res) => {
+app.get(['/css/{*file}', '/js/{*file}', '/logo.png', '/favicon.ico', '/logo-icon.png', '/logo-wordmark.jpg'], async (req, res) => {
+  const filePath = req.path.replace(/^\/+/, '');
+  const cached = _staticCache.get(filePath);
+  if (cached && (Date.now() - cached.ts) < MOBILE_CACHE_TTL) {
+    if (filePath.endsWith('.css')) res.setHeader('Content-Type', 'text/css; charset=utf-8');
+    if (filePath.endsWith('.js')) res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+    if (filePath.endsWith('.png')) res.setHeader('Content-Type', 'image/png');
+    if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) res.setHeader('Content-Type', 'image/jpeg');
+    if (filePath.endsWith('.ico')) res.setHeader('Content-Type', 'image/x-icon');
+    return res.send(cached.content);
+  }
+  try {
+    const ghRes = await fetch(`${GITHUB_RAW_BASE}/${filePath}`, {
+      headers: { 'User-Agent': 'NXTslide-Relay/3.0' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!ghRes.ok) return res.sendStatus(404);
+    const contentType = ghRes.headers.get('content-type');
+    const buffer = Buffer.from(await ghRes.arrayBuffer());
+    _staticCache.set(filePath, { content: buffer, ts: Date.now() });
+    if (contentType) res.setHeader('Content-Type', contentType);
+    return res.send(buffer);
+  } catch (err) {
+    return res.sendStatus(404);
+  }
+});
+
+app.get(['/mobile', '/r/:code'], async (req, res) => {
   if (_mobileCache && (Date.now() - _mobileCache.ts) < MOBILE_CACHE_TTL) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('X-Source', 'cache');
@@ -560,6 +794,7 @@ app.get(['/auth/failed', '/api/auth/failed'], (_req, res) => {
 app.get(['/auth/me', '/api/auth/me'], (req, res) => {
   const user = resolveUser(req);
   if (!user) return res.status(401).json({ error: 'Not authenticated' });
+  const isAdmin = !!(user.email && ADMIN_EMAILS.includes(user.email.toLowerCase()));
   res.json({
     id:                   user.id,
     email:                user.email,
@@ -567,6 +802,7 @@ app.get(['/auth/me', '/api/auth/me'], (req, res) => {
     avatar:               user.avatar,
     plan:                 user.plan,
     isPro:                isUserPro(user),
+    isAdmin,
     subscriptionExpiresAt: user.subscriptionExpiresAt,
     createdAt:            user.createdAt,
   });
@@ -599,19 +835,19 @@ app.get('/api/billing/status', async (req, res) => {
   });
 });
 
-// Create Razorpay order for Pro Monthly subscription
+// Create Razorpay order for Lifetime Pro activation
 app.post('/api/billing/subscribe', async (req, res) => {
   const user = resolveUser(req);
   if (!user) return res.status(401).json({ error: 'Not authenticated' });
   if (!razorpay) return res.status(503).json({ error: 'Payment system not configured' });
 
   try {
-    const receipt = `nxt_pro_${user.id}_${Date.now()}`;
+    const receipt = `nxt_ltd_${user.id}_${Date.now()}`;
     const options = {
-      amount:   PRO_MONTHLY_PRICE,
+      amount:   PRO_LIFETIME_PRICE,
       currency: 'INR',
       receipt,
-      notes:    { userId: user.id, type: 'subscription', plan: 'pro', email: user.email }
+      notes:    { userId: user.id, type: 'lifetime', plan: 'pro', email: user.email }
     };
 
     const order = await razorpay.orders.create(options);
@@ -632,7 +868,7 @@ app.post('/api/billing/subscribe', async (req, res) => {
   }
 });
 
-// Razorpay Webhook — verifies signature, updates user plan
+// Razorpay Webhook — verifies signature, updates user plan to Lifetime Pro
 app.post('/api/billing/webhook', (req, res) => {
   const secret    = process.env.RAZORPAY_WEBHOOK_SECRET || '';
   const signature = req.headers['x-razorpay-signature'];
@@ -663,10 +899,9 @@ app.post('/api/billing/webhook', (req, res) => {
         return;
       }
 
-      if (type === 'subscription') {
+      if (type === 'subscription' || type === 'lifetime' || plan === 'pro') {
         const startedAt  = new Date();
-        const expiresAt  = new Date(startedAt);
-        expiresAt.setMonth(expiresAt.getMonth() + 1); // 1 month Pro
+        const expiresAt  = new Date('2099-12-31T23:59:59.999Z'); // Permanent Lifetime Pro
 
         updateUser(userId, {
           plan: 'pro',
@@ -675,12 +910,150 @@ app.post('/api/billing/webhook', (req, res) => {
           subscriptionExpiresAt: expiresAt.toISOString(),
         });
 
-        console.log(`[Webhook] User ${userId} upgraded to Pro until ${expiresAt.toISOString()}`);
+        recordPayment({
+          userId,
+          userEmail: payment?.email || order?.notes?.email || notes?.email || '',
+          amount: payment?.amount || order?.amount || PRO_LIFETIME_PRICE,
+          currency: payment?.currency || order?.currency || 'INR',
+          orderId: order?.id || payment?.order_id || null,
+          paymentId: payment?.id || null,
+          status: 'paid',
+          source: 'razorpay',
+          notes: { paymentMethod: payment?.method, rzpCustomerId: payment?.customer_id },
+        });
+
+        console.log(`[Webhook] User ${userId} upgraded to Lifetime Pro!`);
       }
     }
   } catch (err) {
     console.error('[Webhook] Processing error:', err.message);
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ADMIN MANAGEMENT API ROUTES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Admin Key / Password Login
+app.post('/api/admin/auth/key-login', (req, res) => {
+  const { key } = req.body || {};
+  if (key && key === ADMIN_SECRET_KEY) {
+    req.session.isAdmin = true;
+    return res.json({ success: true, token: ADMIN_SECRET_KEY, message: 'Admin authentication successful.' });
+  }
+  return res.status(401).json({ error: 'Invalid admin secret key.' });
+});
+
+// Admin Status & Key Verification
+app.get('/api/admin/auth/verify', (req, res) => {
+  const keyHeader = req.headers['x-admin-key'];
+  const keyQuery  = req.query.admin_key;
+  const isMasterKey = (keyHeader && keyHeader === ADMIN_SECRET_KEY) || (keyQuery && keyQuery === ADMIN_SECRET_KEY);
+  const isSessionAdmin = req.session && req.session.isAdmin;
+  const user = resolveUser(req);
+  const isEmailAdmin = user && ADMIN_EMAILS.includes(user.email.toLowerCase());
+
+  if (isMasterKey || isSessionAdmin || isEmailAdmin) {
+    return res.json({
+      authorized: true,
+      adminEmail: user?.email || 'admin@nxtslide.master',
+      name: user?.name || 'Administrator',
+      avatar: user?.avatar || null,
+    });
+  }
+  res.status(401).json({ authorized: false });
+});
+
+// KPI & Revenue Stats
+app.get('/api/admin/stats', requireAdmin, (_req, res) => {
+  res.json(getAdminStats());
+});
+
+// Users List (Search, Plan Filter, Pagination)
+app.get('/api/admin/users', requireAdmin, (req, res) => {
+  const q          = (req.query.q || '').trim();
+  const plan       = req.query.plan || 'all';
+  const limit      = Math.min(200, parseInt(req.query.limit, 10) || 50);
+  const offset     = Math.max(0, parseInt(req.query.offset, 10) || 0);
+  res.json(getAllUsers(q, plan, limit, offset));
+});
+
+// Change User Plan (Grant Pro, Revoke to Free, Set Expiration)
+app.post('/api/admin/users/:id/plan', requireAdmin, (req, res) => {
+  const { plan, expiresAt, notes } = req.body || {};
+  const updated = setManualPlan(req.params.id, plan, expiresAt, notes);
+  if (!updated) return res.status(404).json({ error: 'User not found' });
+  res.json({ success: true, user: updated });
+});
+
+// Delete User Account
+app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
+  const success = deleteUserAccount(req.params.id);
+  if (!success) return res.status(404).json({ error: 'User not found' });
+  res.json({ success: true, message: 'User deleted successfully.' });
+});
+
+// Payments & Revenue Ledger
+app.get('/api/admin/payments', requireAdmin, (req, res) => {
+  const limit  = Math.min(200, parseInt(req.query.limit, 10) || 100);
+  const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+  res.json({ payments: getAllPayments(limit, offset) });
+});
+
+// Record Manual / Offline Payment
+app.post('/api/admin/payments/manual', requireAdmin, (req, res) => {
+  const { email, amount, notes, upgradeUser } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Email is required' });
+
+  let user = getUserByEmail(email);
+  if (!user && upgradeUser) {
+    user = createUser({ email: email.toLowerCase(), name: email.split('@')[0] });
+  }
+
+  const payment = recordPayment({
+    userId: user ? user.id : null,
+    userEmail: email.toLowerCase(),
+    amount: Math.round((parseFloat(amount) || 0) * 100), // convert INR to paise
+    currency: 'INR',
+    status: 'paid',
+    source: 'admin_manual',
+    notes: notes || 'Manual payment entry by Admin',
+  });
+
+  if (upgradeUser && user) {
+    updateUser(user.id, {
+      plan: 'pro',
+      subscriptionStartedAt: new Date().toISOString(),
+      subscriptionExpiresAt: '2099-12-31T23:59:59.999Z',
+    });
+  }
+
+  res.json({ success: true, payment });
+});
+
+// Serve Admin Panel UI
+app.get(['/admin', '/admin.html'], async (_req, res) => {
+  const localPaths = [
+    path.join(__dirname, 'public', 'admin.html'),
+    path.join(__dirname, '..', 'public', 'admin.html')
+  ];
+  for (const p of localPaths) {
+    if (fs.existsSync(p)) {
+      return res.sendFile(p);
+    }
+  }
+  try {
+    const ghRes = await fetch(`${GITHUB_RAW_BASE}/admin.html`, {
+      headers: { 'User-Agent': 'NXTslide-Relay/3.0', 'Cache-Control': 'no-cache' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (ghRes.ok) {
+      const html = await ghRes.text();
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.send(html);
+    }
+  } catch (_) {}
+  res.status(404).send('<h1>Admin Panel Not Found</h1>');
 });
 
 // ─── Room Routes ──────────────────────────────────────────────────────────────

@@ -297,6 +297,16 @@ app.get('/remote', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'mobile.html'));
 });
 
+app.get(['/admin', '/admin.html'], (req, res) => {
+  const cached = cloudSync.getCachedFilePath('admin.html');
+  if (cached) {
+    return res.sendFile(cached, { dotfiles: 'allow' }, (err) => {
+      if (err) res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+    });
+  }
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
 
 // Direct Download Convenience Endpoints
 app.get(['/download/windows', '/downloads/NXTslide-Setup.exe', '/downloads/nextPresent-Setup.exe'], (req, res) => {

@@ -93,9 +93,15 @@
         }
         if (proBadgeEl)  proBadgeEl.style.display = user.isPro ? 'inline-flex' : 'none';
         if (upgradeBtn)  upgradeBtn.style.display  = user.isPro ? 'none' : 'inline-flex';
+
+        const adminBtn = $('auth-admin-btn');
+        const isAdmin = !!(user && (user.isAdmin || (user.email && user.email.toLowerCase() === 'dilpreetsinghverma@gmail.com')));
+        if (adminBtn) adminBtn.style.display = isAdmin ? 'inline-flex' : 'none';
       } else {
         signedInEl.style.display  = 'none';
         signedOutEl.style.display = 'flex';
+        const adminBtn = $('auth-admin-btn');
+        if (adminBtn) adminBtn.style.display = 'none';
       }
     }
 
@@ -150,6 +156,10 @@
         }
       }
       if (upBtn) upBtn.style.display = user.isPro ? 'none' : 'block';
+
+      const modalAdminBtn = $('account-modal-admin-btn');
+      const isAdmin = !!(user && (user.isAdmin || (user.email && user.email.toLowerCase() === 'dilpreetsinghverma@gmail.com')));
+      if (modalAdminBtn) modalAdminBtn.style.display = isAdmin ? 'block' : 'none';
     } else {
       nameEl.textContent = 'Guest';
       if (emailEl) emailEl.textContent = 'Not signed in';
@@ -162,6 +172,9 @@
       }
       if (detailEl) detailEl.textContent = 'Sign in with Google to view and sync your subscription.';
       if (upBtn) upBtn.style.display = 'none';
+
+      const modalAdminBtn = $('account-modal-admin-btn');
+      if (modalAdminBtn) modalAdminBtn.style.display = 'none';
     }
   }
 
@@ -277,7 +290,7 @@
         amount:      order.amount,
         currency:    order.currency || 'INR',
         name:        'NXTslide',
-        description: 'Pro Plan – 1 Month',
+        description: 'Lifetime Pro Plan – Early Bird (1-time payment)',
         order_id:    order.orderId,
         prefill: {
           name:  order.user?.name  || '',

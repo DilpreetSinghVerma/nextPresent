@@ -121,6 +121,10 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onPageFinished(view: WebView?, url: String?) {
                     super.onPageFinished(view, url)
+                    val hasGyro = hasHardwareGyro()
+                    view?.evaluateJavascript(
+                        "if(typeof window.nxtslideSetGyroAvailable==='function') window.nxtslideSetGyroAvailable($hasGyro);", null
+                    )
                     val savedUser = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
                         .getString("auth_user", null)
                     if (!savedUser.isNullOrEmpty()) {
@@ -182,12 +186,30 @@ class MainActivity : AppCompatActivity() {
                     }
                 } else "{}"
 
-                // Save to SharedPreferences
-                getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
-                    .edit()
+                val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+                val editor = prefs.edit()
                     .putString("auth_token", token)
                     .putString("auth_user", userJson)
-                    .apply()
+
+                var isPro = false
+                var email = ""
+                var name = ""
+                try {
+                    val json = JSONObject(userJson)
+                    email = json.optString("email", "")
+                    name = json.optString("name", "")
+                    isPro = json.optBoolean("isPro", false)
+                    val plan = json.optString("plan", "free")
+
+                    if (email.isNotEmpty()) {
+                        editor.putString("nxtslide_google_email", email)
+                        editor.putString("nxtslide_google_name", name)
+                        editor.putBoolean("nxtslide_pro_unlocked", isPro)
+                        editor.putString("nxtslide_plan", plan)
+                    }
+                } catch (_: Exception) {}
+
+                editor.apply()
 
                 // Notify WebView
                 webView.post {
@@ -196,48 +218,23 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
 
-                try {
-                    val userObj = JSONObject(userJson)
-                    val name = userObj.optString("name", "User")
-                    val isPro = userObj.optBoolean("isPro", false)
-                    val label = if (isPro) "✦ Pro: $name" else name
-                    Toast.makeText(this, "Signed in as $label", Toast.LENGTH_LONG).show()
-                } catch (_: Exception) {
-                    Toast.makeText(this, "Signed in successfully!", Toast.LENGTH_SHORT).show()
-                }
+                val greeting = if (name.isNotEmpty()) name else email
+                val label = if (isPro) "✦ Pro: $greeting" else greeting
+                Toast.makeText(this, "Signed in as $label", Toast.LENGTH_LONG).show()
             }
         }
     }
 
 
     /**
-     * Attempts to load the remote controller UI from the relay server.
-     * Falls back to the bundled asset immediately if no internet is available,
-     * or if the remote load fails (handled by WebViewClient.onReceivedError).
+     * Loads the remote controller UI directly from the bundled offline assets.
+     * This guarantees 0ms instant startup, full offline capability, and 100% reliable
+     * CSS/JS styling and laser modal controls.
      */
     private fun loadCloudOrLocalUI() {
         val localUrl = "file:///android_asset/web/mobile.html"
-
-        // Check connectivity before trying the remote URL
-        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
-        val isOnline = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            cm?.activeNetwork != null && cm.getNetworkCapabilities(cm.activeNetwork)
-                ?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
-        } else {
-            @Suppress("DEPRECATION")
-            cm?.activeNetworkInfo?.isConnected == true
-        }
-
-        if (isOnline) {
-            // Load live UI from relay — any push to the server takes effect immediately
-            val remoteUrl = "$relayBaseUrl/mobile"
-            android.util.Log.i("NXTslide", "[CloudUI] Loading remote UI from $remoteUrl")
-            webView.loadUrl(remoteUrl)
-        } else {
-            // No internet — use bundled asset for instant load
-            android.util.Log.i("NXTslide", "[CloudUI] Offline — loading bundled local UI")
-            webView.loadUrl(localUrl)
-        }
+        android.util.Log.i("NXTslide", "[UI] Loading local bundled UI from $localUrl")
+        webView.loadUrl(localUrl)
     }
 
 
@@ -419,25 +416,342 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // ─── Hardware Laser Pointer Engine (Rotation Vector) ─────────────────────
+    private var sensorManager: android.hardware.SensorManager? = null
+    private var rotationSensor: android.hardware.Sensor? = null
+    private var isLaserActive: Boolean = false
+    private var isVolUpHeld: Boolean = false
+    private var isVolDownHeld: Boolean = false
+    private var hasLaserStarted: Boolean = false
+    private val keyHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var holdLaserRunnable: Runnable? = null
+
+    private val currentMatrix = FloatArray(9)
+    private var isAccelerometerFallback = false
+    private var prevAccelX = 0f
+    private var prevAccelY = 0f
+    private var prevHx = 0f
+    private var prevHy = 0f
+    private var prevHz = 0f
+    private var sensorWarmupCount = 0
+    private var currentLaserX: Float = 0.5f
+    private var currentLaserY: Float = 0.5f
+    private var smoothDx: Float = 0f
+    private var smoothDy: Float = 0f
+    private var lastSendTs: Long = 0L
+
+    private val sensorListener = object : android.hardware.SensorEventListener {
+        override fun onSensorChanged(event: android.hardware.SensorEvent) {
+            if (!isLaserActive) return
+
+            try {
+                var rawDx = 0f
+                var rawDy = 0f
+
+                if (isAccelerometerFallback) {
+                    // Device has NO Gyroscope (e.g. Oppo A78 5G / budget devices)
+                    val curX = event.values[0]
+                    val curY = event.values[1]
+                    val curZ = if (event.values.size > 2) event.values[2] else 9.81f
+
+                    if (curX.isNaN() || curY.isNaN() || curZ.isNaN()) return
+
+                    if (sensorWarmupCount < 3) {
+                        prevAccelX = curX
+                        prevAccelY = curY
+                        sensorWarmupCount++
+                        currentLaserX = 0.5f
+                        currentLaserY = 0.5f
+                        smoothDx = 0f
+                        smoothDy = 0f
+                        lastSendTs = 0L
+                        sendLaserMove(0.5f, 0.5f)
+                        return
+                    }
+
+                    // Delta tilt in radians:
+                    // Invert X when phone is held upside down (screen facing floor, curZ < -2.0)
+                    val isUpsideDown = (curZ < -2.0f)
+                    val deltaX = (curX - prevAccelX) / 9.81f
+                    val deltaY = (curY - prevAccelY) / 9.81f
+
+                    rawDx = if (isUpsideDown) -deltaX else deltaX
+                    rawDy = deltaY
+
+                    prevAccelX = curX
+                    prevAccelY = curY
+                } else {
+                    android.hardware.SensorManager.getRotationMatrixFromVector(currentMatrix, event.values)
+
+                    val currHx = currentMatrix[1]
+                    val currHy = currentMatrix[4]
+                    val currHz = currentMatrix[7]
+
+                    if (currHx.isNaN() || currHy.isNaN() || currHz.isNaN()) return
+
+                    val safeHz = currHz.coerceIn(-0.999f, 0.999f)
+
+                    if (sensorWarmupCount < 2) {
+                        prevHx = currHx
+                        prevHy = currHy
+                        prevHz = safeHz
+                        sensorWarmupCount++
+                        currentLaserX = 0.5f
+                        currentLaserY = 0.5f
+                        smoothDx = 0f
+                        smoothDy = 0f
+                        lastSendTs = 0L
+                        sendLaserMove(0.5f, 0.5f)
+                        return
+                    }
+
+                    // 1. Elevation (Pitch): Elevation angle in radians above ground plane
+                    val prevElev = Math.asin(prevHz.coerceIn(-0.999f, 0.999f).toDouble()).toFloat()
+                    val currElev = Math.asin(safeHz.toDouble()).toFloat()
+                    rawDy = currElev - prevElev
+
+                    // 2. Azimuth (Yaw): Turning around vertical gravity axis in radians
+                    val cross = prevHy * currHx - prevHx * currHy
+                    val dot = prevHx * currHx + prevHy * currHy
+                    val horizMag = Math.hypot(currHx.toDouble(), currHy.toDouble()).toFloat()
+                    rawDx = if (horizMag > 0.15f) {
+                        Math.atan2(cross.toDouble(), dot.toDouble()).toFloat()
+                    } else {
+                        0f
+                    }
+
+                    prevHx = currHx
+                    prevHy = currHy
+                    prevHz = safeHz
+                }
+
+                if (rawDx.isNaN() || rawDx.isInfinite()) rawDx = 0f
+                if (rawDy.isNaN() || rawDy.isInfinite()) rawDy = 0f
+
+                // Anomaly spike rejection: human wrist cannot exceed ~5 rad/s (0.045 rad per 10ms frame).
+                val maxDelta = 0.045f
+                val boundedDx = rawDx.coerceIn(-maxDelta, maxDelta)
+                val boundedDy = rawDy.coerceIn(-maxDelta, maxDelta)
+
+                // Calibrated deadzone:
+                // Accelerometer requires a slightly wider deadzone (0.0032 rad ≈ 0.18°) to freeze thermal/sensor jitter.
+                // Gyroscope uses a microscopic tremor filter (0.00035 rad).
+                val deadzoneThreshold = if (isAccelerometerFallback) 0.0032f else 0.00035f
+                val rampThreshold = if (isAccelerometerFallback) 0.0090f else 0.0014f
+
+                val mag = Math.hypot(boundedDx.toDouble(), boundedDy.toDouble()).toFloat()
+                val scale = if (mag < deadzoneThreshold) {
+                    0f // Rock-solid still: completely eliminates drift and constant moving
+                } else if (mag < rampThreshold) {
+                    (mag - deadzoneThreshold) / (rampThreshold - deadzoneThreshold)
+                } else {
+                    1f
+                }
+                val dx = boundedDx * scale
+                val dy = boundedDy * scale
+
+                // Low-pass exponential smoothing: removes sensor stepping and jitter
+                val alpha = if (isAccelerometerFallback) 0.25f else 0.40f
+                smoothDx = smoothDx * (1f - alpha) + dx * alpha
+                smoothDy = smoothDy * (1f - alpha) + dy * alpha
+
+                if (smoothDx.isNaN() || smoothDx.isInfinite()) smoothDx = 0f
+                if (smoothDy.isNaN() || smoothDy.isInfinite()) smoothDy = 0f
+
+                // Calibrated sensitivity
+                val SENSITIVITY_X = if (isAccelerometerFallback) 2.20f else 1.30f
+                val SENSITIVITY_Y = if (isAccelerometerFallback) 2.40f else 1.40f
+
+                // Update positions with instant edge un-sticking (never gets pinned or trapped)
+                currentLaserX = (currentLaserX + smoothDx * SENSITIVITY_X).coerceIn(0.01f, 0.99f)
+                currentLaserY = (currentLaserY - smoothDy * SENSITIVITY_Y).coerceIn(0.01f, 0.99f)
+
+                if (currentLaserX.isNaN()) currentLaserX = 0.5f
+                if (currentLaserY.isNaN()) currentLaserY = 0.5f
+
+                // Throttle WebSocket to ~65Hz to prevent TCP packet batching/micro-stutter
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (now - lastSendTs >= 15L) {
+                    lastSendTs = now
+                    sendLaserMove(currentLaserX, currentLaserY)
+                }
+            } catch (t: Throwable) {
+                android.util.Log.e("NXTslide_Sensor", "Error in MainActivity onSensorChanged: ${t.message}", t)
+            }
+        }
+
+        override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
+    }
+
+    fun hasHardwareGyro(): Boolean {
+        if (sensorManager == null) {
+            sensorManager = getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager
+        }
+        return sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE) != null
+    }
+
+    fun startHardwareLaser() {
+        if (!hasHardwareGyro()) {
+            android.util.Log.d("NXTslide_Sensor", "startHardwareLaser aborted: No physical gyroscope sensor on device")
+            return
+        }
+
+        if (sensorManager == null) {
+            sensorManager = getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager
+        }
+
+        // Check if device has a physical hardware gyroscope:
+        val hasHardwareGyro = (sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE) != null)
+
+        rotationSensor = if (hasHardwareGyro) {
+            // Devices WITH Gyroscope (e.g. flagship phones, OnePlus with gyro):
+            // Use Game Rotation Vector (Best: Gyro + Accel 6-DoF, zero compass drift/jumps)
+            sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_GAME_ROTATION_VECTOR)
+                ?: sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_ROTATION_VECTOR)
+        } else {
+            // Devices WITHOUT Gyroscope (e.g. Oppo A78 5G, budget phones):
+            // DO NOT use compass rotation vector (it constantly drifts & jitters indoors).
+            // Use clean Gravity sensor or Accelerometer for rock-solid stability!
+            sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_GRAVITY)
+                ?: sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER)
+        }
+
+        isAccelerometerFallback = (!hasHardwareGyro)
+        android.util.Log.d("NXTslide_Sensor", "startHardwareLaser: hasGyro=$hasHardwareGyro, isFallback=$isAccelerometerFallback, sensor=${rotationSensor?.name}")
+
+        if (isLaserActive) return
+        isLaserActive = true
+        sensorWarmupCount = 0
+        currentLaserX = 0.5f
+        currentLaserY = 0.5f
+        smoothDx = 0f
+        smoothDy = 0f
+        lastSendTs = 0L
+
+        rotationSensor?.let {
+            sensorManager?.registerListener(sensorListener, it, android.hardware.SensorManager.SENSOR_DELAY_GAME)
+        }
+
+        vibrateFeedback(60) // Strong laser active vibration
+        sendLaserDown(0.5f, 0.5f, "laser")
+
+        webView.post {
+            webView.evaluateJavascript("if(typeof window.onHardwareLaserStart==='function') window.onHardwareLaserStart();", null)
+        }
+    }
+
+    fun stopHardwareLaser() {
+        if (!isLaserActive) return
+        isLaserActive = false
+        sensorManager?.unregisterListener(sensorListener)
+        vibrateFeedback(25) // Release vibration
+        sendLaserUp()
+
+        webView.post {
+            webView.evaluateJavascript("if(typeof window.onHardwareLaserStop==='function') window.onHardwareLaserStop();", null)
+        }
+    }
+
+    private fun sendLaserDown(x: Float, y: Float, style: String = "laser") {
+        val safeX = if (x.isNaN() || x.isInfinite()) 0.5f else x.coerceIn(0.01f, 0.99f)
+        val safeY = if (y.isNaN() || y.isInfinite()) 0.5f else y.coerceIn(0.01f, 0.99f)
+        try {
+            val payload = JSONObject().apply {
+                put("type", "LASER_DOWN")
+                put("x", safeX.toDouble())
+                put("y", safeY.toDouble())
+                put("style", style)
+                put("source", "Android Hardware Aim")
+            }.toString()
+            val sent = webSocket?.send(payload) ?: false
+            if (!sent) connectWebSocket()
+        } catch (_: Exception) {}
+    }
+
+    private fun sendLaserMove(x: Float, y: Float) {
+        val safeX = if (x.isNaN() || x.isInfinite()) 0.5f else x.coerceIn(0.01f, 0.99f)
+        val safeY = if (y.isNaN() || y.isInfinite()) 0.5f else y.coerceIn(0.01f, 0.99f)
+        try {
+            val payload = JSONObject().apply {
+                put("type", "LASER_MOVE")
+                put("x", safeX.toDouble())
+                put("y", safeY.toDouble())
+                put("source", "Android Hardware Aim")
+            }.toString()
+            webSocket?.send(payload)
+        } catch (_: Exception) {}
+    }
+
+    private fun sendLaserUp() {
+        try {
+            val payload = JSONObject().apply {
+                put("type", "LASER_UP")
+                put("source", "Android Hardware Aim")
+            }.toString()
+            webSocket?.send(payload)
+        } catch (_: Exception) {}
+    }
+
     // ─── Volume keys (foreground — app visible) ────────────────────────────────
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP || event.keyCode == KeyEvent.KEYCODE_VOLUME_DOWN) {
-            if (event.action == KeyEvent.ACTION_DOWN) {
-                if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
+            val isUpKey = (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP)
+
+            // On phones without physical gyro sensor: Volume keys act strictly as instant slide switches (0 lag, no laser hold)
+            if (!hasHardwareGyro()) {
+                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
+                    val action = if (isUpKey) "NEXT" else "PREV"
                     vibrateFeedback(35)
-                    sendSlideAction("NEXT")
+                    sendSlideAction(action)
                     webView.post {
                         webView.evaluateJavascript(
-                            "if(typeof window.onHardwareVolumeKey==='function') " +
-                            "window.onHardwareVolumeKey('NEXT');", null)
+                            "if(typeof window.onHardwareVolumeKey==='function') window.onHardwareVolumeKey('$action');", null)
+                    }
+                }
+                return true
+            }
+
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                if (isUpKey) isVolUpHeld = true else isVolDownHeld = true
+
+                if (event.repeatCount == 0) {
+                    // Cancel any previous pending runnable
+                    holdLaserRunnable?.let { keyHandler.removeCallbacks(it) }
+
+                    // Schedule hold-to-laser timer (200ms)
+                    if (!isLaserActive) {
+                        hasLaserStarted = false
+                        val r = Runnable {
+                            if (isVolUpHeld || isVolDownHeld) {
+                                hasLaserStarted = true
+                                startHardwareLaser()
+                            }
+                        }
+                        holdLaserRunnable = r
+                        keyHandler.postDelayed(r, 200L)
+                    }
+                }
+            } else if (event.action == KeyEvent.ACTION_UP) {
+                if (isUpKey) isVolUpHeld = false else isVolDownHeld = false
+
+                // Cancel pending hold timer
+                holdLaserRunnable?.let { keyHandler.removeCallbacks(it) }
+                holdLaserRunnable = null
+
+                if (isLaserActive || hasLaserStarted) {
+                    // Stop laser on release — NO slide change, stays on current slide!
+                    if (!isVolUpHeld && !isVolDownHeld) {
+                        stopHardwareLaser()
+                        hasLaserStarted = false
                     }
                 } else {
+                    // Quick tap (< 180ms) -> Change slide!
+                    val action = if (isUpKey) "NEXT" else "PREV"
                     vibrateFeedback(35)
-                    sendSlideAction("PREV")
+                    sendSlideAction(action)
                     webView.post {
                         webView.evaluateJavascript(
-                            "if(typeof window.onHardwareVolumeKey==='function') " +
-                            "window.onHardwareVolumeKey('PREV');", null)
+                            "if(typeof window.onHardwareVolumeKey==='function') window.onHardwareVolumeKey('$action');", null)
                     }
                 }
             }
@@ -483,7 +797,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ─── Vibration ─────────────────────────────────────────────────────────────
-    private fun vibrateFeedback(ms: Long) {
+    fun vibrateFeedback(ms: Long) {
         @Suppress("DEPRECATION")
         val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -547,6 +861,9 @@ class MainActivity : AppCompatActivity() {
     // ─── JS Bridge ─────────────────────────────────────────────────────────────
     inner class AndroidBridge(val activity: MainActivity) {
         @JavascriptInterface
+        fun hasHardwareGyro(): Boolean = activity.hasHardwareGyro()
+
+        @JavascriptInterface
         fun getServerHost(): String {
             val code = activity.relayRoomCode
             return if (code != null) "relay:$code" else "${activity.serverIp}:${activity.serverPort}"
@@ -589,13 +906,23 @@ class MainActivity : AppCompatActivity() {
         fun openGoogleSignIn() {
             activity.runOnUiThread {
                 try {
-                    val authUrl = "${activity.relayBaseUrl}/auth/google?redirect=nxtslide://auth"
+                    val authUrl = "${activity.relayBaseUrl}/api/auth/google?redirect=nxtslide://auth"
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
                     activity.startActivity(intent)
                 } catch (e: Exception) {
                     android.util.Log.e("NXTslide", "Failed to launch Google Sign In: ${e.message}")
                 }
             }
+        }
+
+        @JavascriptInterface
+        fun startHardwareLaser() {
+            activity.runOnUiThread { activity.startHardwareLaser() }
+        }
+
+        @JavascriptInterface
+        fun stopHardwareLaser() {
+            activity.runOnUiThread { activity.stopHardwareLaser() }
         }
     }
 

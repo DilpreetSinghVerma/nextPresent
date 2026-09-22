@@ -470,7 +470,17 @@ const laserClutchBtn   = document.getElementById('laserClutchBtn');
 const laserTouchpad    = document.getElementById('laserTouchpad');
 const laserRecenterBtn = document.getElementById('laserRecenterBtn');
 
-let laserActiveMode = 'gyro'; // 'gyro' | 'touch'
+// Hardware Gyro Capability Check
+let hasHardwareGyro = true;
+if (window.AndroidApp && typeof window.AndroidApp.hasHardwareGyro === 'function') {
+  try {
+    hasHardwareGyro = window.AndroidApp.hasHardwareGyro();
+  } catch (e) {
+    console.warn('Error reading hasHardwareGyro:', e);
+  }
+}
+
+let laserActiveMode = hasHardwareGyro ? 'gyro' : 'touch'; // 'gyro' | 'touch'
 let laserStyle      = 'laser'; // 'laser' | 'spotlight'
 let isLaserPointing = false;
 let laserPointerX   = 0.5;
@@ -530,9 +540,66 @@ function sendLaserWs(data) {
   }
 }
 
+// Apply Gyro Availability: on devices without a hardware gyro, hide Flashlight Aiming entirely!
+function applyGyroAvailability(available) {
+  hasHardwareGyro = !!available;
+  const tabsContainer = document.querySelector('.laser-tabs');
+  const laserHeaderTitle = document.querySelector('.laser-header strong');
+
+  if (!hasHardwareGyro) {
+    if (tabLaserGyro) {
+      tabLaserGyro.style.display = 'none';
+      tabLaserGyro.classList.remove('active');
+    }
+    if (viewLaserGyro) {
+      viewLaserGyro.style.display = 'none';
+      viewLaserGyro.classList.remove('active');
+    }
+    if (tabsContainer) {
+      tabsContainer.style.display = 'none';
+    }
+    laserActiveMode = 'touch';
+    if (tabLaserTouch) {
+      tabLaserTouch.classList.add('active');
+      tabLaserTouch.style.display = 'none';
+    }
+    if (viewLaserTouch) {
+      viewLaserTouch.classList.add('active');
+      viewLaserTouch.style.display = 'flex';
+    }
+    if (laserTouchpad) {
+      laserTouchpad.style.height = '270px';
+    }
+    if (laserHeaderTitle) {
+      laserHeaderTitle.textContent = 'Touchpad Pointer';
+    }
+  } else {
+    if (tabLaserGyro) {
+      tabLaserGyro.style.display = '';
+    }
+    if (tabLaserTouch) {
+      tabLaserTouch.style.display = '';
+    }
+    if (tabsContainer) {
+      tabsContainer.style.display = '';
+    }
+    if (laserHeaderTitle) {
+      laserHeaderTitle.textContent = 'Virtual Laser Pointer';
+    }
+  }
+}
+
+window.nxtslideSetGyroAvailable = function(available) {
+  applyGyroAvailability(available);
+};
+
+// Immediately apply on page load
+applyGyroAvailability(hasHardwareGyro);
+
 // Modal open / close
 if (toolLaser) {
   toolLaser.addEventListener('click', () => {
+    applyGyroAvailability(hasHardwareGyro);
     if (laserModal) laserModal.classList.add('open');
   });
 }
@@ -569,19 +636,32 @@ if (laserStyleBtn) {
 // Tabs: Gyro vs Touchpad
 if (tabLaserGyro && tabLaserTouch) {
   tabLaserGyro.addEventListener('click', () => {
+    if (!hasHardwareGyro) return;
     laserActiveMode = 'gyro';
     tabLaserGyro.classList.add('active');
     tabLaserTouch.classList.remove('active');
-    if (viewLaserGyro) viewLaserGyro.classList.add('active');
-    if (viewLaserTouch) viewLaserTouch.classList.remove('active');
+    if (viewLaserGyro) {
+      viewLaserGyro.style.display = 'flex';
+      viewLaserGyro.classList.add('active');
+    }
+    if (viewLaserTouch) {
+      viewLaserTouch.style.display = 'none';
+      viewLaserTouch.classList.remove('active');
+    }
   });
 
   tabLaserTouch.addEventListener('click', () => {
     laserActiveMode = 'touch';
     tabLaserTouch.classList.add('active');
     tabLaserGyro.classList.remove('active');
-    if (viewLaserTouch) viewLaserTouch.classList.add('active');
-    if (viewLaserGyro) viewLaserGyro.classList.remove('active');
+    if (viewLaserTouch) {
+      viewLaserTouch.style.display = 'flex';
+      viewLaserTouch.classList.add('active');
+    }
+    if (viewLaserGyro) {
+      viewLaserGyro.style.display = 'none';
+      viewLaserGyro.classList.remove('active');
+    }
   });
 }
 
@@ -636,10 +716,25 @@ window.addEventListener('devicemotion', (e) => {
   });
 });
 
+// Global callbacks from Android companion hardware
+window.onHardwareLaserStart = function() {
+  if (!hasHardwareGyro) return;
+  if (laserModal) laserModal.classList.add('open');
+  if (laserClutchBtn) laserClutchBtn.classList.add('pressed');
+};
+
+window.onHardwareLaserStop = function() {
+  if (laserClutchBtn) laserClutchBtn.classList.remove('pressed');
+};
+
 // Clutch Button (Gyro Aiming)
 if (laserClutchBtn) {
   laserClutchBtn.addEventListener('pointerdown', (e) => {
     e.preventDefault();
+    if (window.AndroidApp && typeof window.AndroidApp.startHardwareLaser === 'function') {
+      window.AndroidApp.startHardwareLaser();
+      return;
+    }
     isLaserPointing = true;
     laserClutchBtn.classList.add('pressed');
     buzz('next');
@@ -659,6 +754,10 @@ if (laserClutchBtn) {
   });
 
   const onLaserRelease = (e) => {
+    if (window.AndroidApp && typeof window.AndroidApp.stopHardwareLaser === 'function') {
+      window.AndroidApp.stopHardwareLaser();
+      return;
+    }
     if (!isLaserPointing) return;
     isLaserPointing = false;
     laserClutchBtn.classList.remove('pressed');

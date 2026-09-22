@@ -85,28 +85,19 @@ class PresenterService : Service() {
     @Volatile private var isResettingVolume = false
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    // ─── Hold-to-Laser vs Quick-Click State ─────────────────────────────────
-    // (Legacy: kept for fallback path variable names)
-    private var isHoldingVolume: Boolean = false
-    private var hasLaserStartedForHold: Boolean = false
-    private var pendingSlideAction: String? = null
-    private var volumeEventCount: Int = 0
-    private var evaluateHoldOrTapRunnable: Runnable? = null
-    private var laserReleaseCheckRunnable: Runnable? = null
+    // ─── Precision Volume Handling (Screen-Off & Lock Screen) ───────────────
+    private var isVolKeyHeld: Boolean = false
+    private var hasLaserStarted: Boolean = false
+    private var pendingDirection: Int = 0 // +1 = Up (NEXT), -1 = Down (PREV)
+    private var holdThresholdRunnable: Runnable? = null
+    private var lastActionTs: Long = 0L
+    @Volatile private var lastVolumeProviderTs: Long = 0L
 
     /**
      * Set to true by VolumeKeyAccessibilityService when it is actively handling a key press.
-     * Suppresses the ContentObserver and BroadcastReceiver from double-firing on the same event.
+     * Suppresses background paths from double-firing on the same event.
      */
     @Volatile var suppressVolumeObserver: Boolean = false
-
-    // ─── Double-Tap Laser Toggle State ────────────────────────────────────
-    // Single tap → change slide immediately
-    // Double-tap same button within DOUBLE_TAP_WINDOW_MS → toggle laser
-    private val DOUBLE_TAP_WINDOW_MS = 400L  // max time between two taps to count as double-tap
-    private var lastTapTs: Long = 0L
-    private var lastTapIsUp: Boolean = false
-    private var pendingTapRunnable: Runnable? = null
 
     /** Whether the broadcast receiver is registered */
     private var receiverRegistered = false
@@ -143,69 +134,216 @@ class PresenterService : Service() {
      */
     private var laserWakeLock: PowerManager.WakeLock? = null
 
-    private val baseMatrix = FloatArray(9)
     private val currentMatrix = FloatArray(9)
-    private val baseOrientation = FloatArray(3)
-    private val currentOrientation = FloatArray(3)
-    private var baseYaw: Float = 0f
-    private var basePitch: Float = 0f
+    private var isAccelerometerFallback = false
+    private var prevAccelX = 0f
+    private var prevAccelY = 0f
+    private var prevHx = 0f
+    private var prevHy = 0f
+    private var prevHz = 0f
+    private var sensorWarmupCount = 0
     private var currentLaserX: Float = 0.5f
     private var currentLaserY: Float = 0.5f
-    private var isBaseOrientationSet: Boolean = false
+    private var smoothDx: Float = 0f
+    private var smoothDy: Float = 0f
+    private var lastSendTs: Long = 0L
 
     private val sensorListener = object : SensorEventListener {
         override fun onSensorChanged(event: SensorEvent) {
             if (!isLaserActive) return
 
-            SensorManager.getRotationMatrixFromVector(currentMatrix, event.values)
+            try {
+                var rawDx = 0f
+                var rawDy = 0f
 
-            // Phone's TOP/HEAD vector (+Y axis in device coordinates) in 3D world space:
-            // R[1] = East (X), R[4] = North (Y), R[7] = Up (Z)
-            val headX = currentMatrix[1]
-            val headY = currentMatrix[4]
-            val headZ = currentMatrix[7].coerceIn(-1.0f, 1.0f)
+                if (isAccelerometerFallback) {
+                    // Device has NO Gyroscope (e.g. Oppo A78 5G / budget devices)
+                    val curX = event.values[0]
+                    val curY = event.values[1]
+                    val curZ = if (event.values.size > 2) event.values[2] else 9.81f
 
-            // Azimuth angle (horizontal angle of the top edge in radians)
-            val azimuth = Math.atan2(headX.toDouble(), headY.toDouble()).toFloat()
-            // Elevation angle (vertical angle of the top edge in radians)
-            val elevation = Math.asin(headZ.toDouble()).toFloat()
+                    if (curX.isNaN() || curY.isNaN() || curZ.isNaN()) return
 
-            if (!isBaseOrientationSet) {
-                baseYaw = azimuth
-                basePitch = elevation
-                isBaseOrientationSet = true
-                currentLaserX = 0.5f
-                currentLaserY = 0.5f
-                return
+                    if (sensorWarmupCount < 3) {
+                        prevAccelX = curX
+                        prevAccelY = curY
+                        sensorWarmupCount++
+                        currentLaserX = 0.5f
+                        currentLaserY = 0.5f
+                        smoothDx = 0f
+                        smoothDy = 0f
+                        lastSendTs = 0L
+                        sendLaserMove(0.5f, 0.5f)
+                        return
+                    }
+
+                    // Delta tilt in radians:
+                    // Invert X when phone is held upside down (screen facing floor, curZ < -2.0)
+                    val isUpsideDown = (curZ < -2.0f)
+                    val deltaX = (curX - prevAccelX) / 9.81f
+                    val deltaY = (curY - prevAccelY) / 9.81f
+
+                    rawDx = if (isUpsideDown) -deltaX else deltaX
+                    rawDy = deltaY
+
+                    prevAccelX = curX
+                    prevAccelY = curY
+                } else {
+                    // Device HAS Gyroscope / Rotation Vector
+                    SensorManager.getRotationMatrixFromVector(currentMatrix, event.values)
+
+                    val currHx = currentMatrix[1]
+                    val currHy = currentMatrix[4]
+                    val currHz = currentMatrix[7]
+
+                    if (currHx.isNaN() || currHy.isNaN() || currHz.isNaN()) return
+
+                    val safeHz = currHz.coerceIn(-0.999f, 0.999f)
+
+                    if (sensorWarmupCount < 2) {
+                        prevHx = currHx
+                        prevHy = currHy
+                        prevHz = safeHz
+                        sensorWarmupCount++
+                        currentLaserX = 0.5f
+                        currentLaserY = 0.5f
+                        smoothDx = 0f
+                        smoothDy = 0f
+                        lastSendTs = 0L
+                        sendLaserMove(0.5f, 0.5f)
+                        return
+                    }
+
+                    // 1. Elevation (Pitch): Elevation angle in radians above ground plane
+                    val prevElev = Math.asin(prevHz.coerceIn(-0.999f, 0.999f).toDouble()).toFloat()
+                    val currElev = Math.asin(safeHz.toDouble()).toFloat()
+                    rawDy = currElev - prevElev
+
+                    // 2. Azimuth (Yaw): Turning around vertical gravity axis in radians
+                    val cross = prevHy * currHx - prevHx * currHy
+                    val dot = prevHx * currHx + prevHy * currHy
+                    val horizMag = Math.hypot(currHx.toDouble(), currHy.toDouble()).toFloat()
+                    rawDx = if (horizMag > 0.15f) {
+                        Math.atan2(cross.toDouble(), dot.toDouble()).toFloat()
+                    } else {
+                        0f
+                    }
+
+                    prevHx = currHx
+                    prevHy = currHy
+                    prevHz = safeHz
+                }
+
+                if (rawDx.isNaN() || rawDx.isInfinite()) rawDx = 0f
+                if (rawDy.isNaN() || rawDy.isInfinite()) rawDy = 0f
+
+                // Anomaly spike rejection: human wrist cannot exceed ~5 rad/s (0.045 rad per 10ms frame).
+                val maxDelta = 0.045f
+                val boundedDx = rawDx.coerceIn(-maxDelta, maxDelta)
+                val boundedDy = rawDy.coerceIn(-maxDelta, maxDelta)
+
+                // Calibrated deadzone:
+                // Accelerometer requires a slightly wider deadzone (0.0032 rad ≈ 0.18°) to freeze thermal/sensor jitter.
+                // Gyroscope uses a microscopic tremor filter (0.00035 rad).
+                val deadzoneThreshold = if (isAccelerometerFallback) 0.0032f else 0.00035f
+                val rampThreshold = if (isAccelerometerFallback) 0.0090f else 0.0014f
+
+                val mag = Math.hypot(boundedDx.toDouble(), boundedDy.toDouble()).toFloat()
+                val scale = if (mag < deadzoneThreshold) {
+                    0f // Rock-solid still: completely eliminates drift and constant moving
+                } else if (mag < rampThreshold) {
+                    (mag - deadzoneThreshold) / (rampThreshold - deadzoneThreshold)
+                } else {
+                    1f
+                }
+                val dx = boundedDx * scale
+                val dy = boundedDy * scale
+
+                // Keep laser alive while user is actively moving / pointing
+                if (mag > deadzoneThreshold && laserTimeoutRunnable != null) {
+                    mainHandler.removeCallbacks(laserTimeoutRunnable!!)
+                    mainHandler.postDelayed(laserTimeoutRunnable!!, 60000L)
+                }
+
+                // Low-pass exponential smoothing: removes sensor stepping and jitter
+                val alpha = if (isAccelerometerFallback) 0.25f else 0.40f
+                smoothDx = smoothDx * (1f - alpha) + dx * alpha
+                smoothDy = smoothDy * (1f - alpha) + dy * alpha
+
+                if (smoothDx.isNaN() || smoothDx.isInfinite()) smoothDx = 0f
+                if (smoothDy.isNaN() || smoothDy.isInfinite()) smoothDy = 0f
+
+                // Calibrated sensitivity
+                val SENSITIVITY_X = if (isAccelerometerFallback) 2.20f else 1.30f
+                val SENSITIVITY_Y = if (isAccelerometerFallback) 2.40f else 1.40f
+
+                // Update positions with instant edge un-sticking (never gets pinned or trapped)
+                currentLaserX = (currentLaserX + smoothDx * SENSITIVITY_X).coerceIn(0.01f, 0.99f)
+                currentLaserY = (currentLaserY - smoothDy * SENSITIVITY_Y).coerceIn(0.01f, 0.99f)
+
+                if (currentLaserX.isNaN()) currentLaserX = 0.5f
+                if (currentLaserY.isNaN()) currentLaserY = 0.5f
+
+                // Throttle WebSocket to ~65Hz to prevent TCP packet batching/micro-stutter
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (now - lastSendTs >= 15L) {
+                    lastSendTs = now
+                    sendLaserMove(currentLaserX, currentLaserY)
+                }
+            } catch (t: Throwable) {
+                android.util.Log.e("NXTslide_Sensor", "Error in onSensorChanged: ${t.message}", t)
             }
-
-            var deltaYaw = azimuth - baseYaw
-            while (deltaYaw > Math.PI) deltaYaw -= (2 * Math.PI).toFloat()
-            while (deltaYaw < -Math.PI) deltaYaw += (2 * Math.PI).toFloat()
-            val deltaPitch = elevation - basePitch
-
-            val SENSITIVITY_X = 1.35f
-            val SENSITIVITY_Y = 1.45f
-
-            val targetX = Math.max(0.01f, Math.min(0.99f, 0.5f + deltaYaw * SENSITIVITY_X))
-            val targetY = Math.max(0.01f, Math.min(0.99f, 0.5f - deltaPitch * SENSITIVITY_Y))
-
-            currentLaserX += (targetX - currentLaserX) * 0.45f
-            currentLaserY += (targetY - currentLaserY) * 0.45f
-
-            sendLaserMove(currentLaserX, currentLaserY)
         }
 
         override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
     }
 
+    fun hasHardwareGyro(): Boolean {
+        if (sensorManager == null) {
+            sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+        }
+        return sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null
+    }
+
     @Synchronized
     fun startBackgroundLaser() {
+        if (!hasHardwareGyro()) {
+            android.util.Log.d("NXTslide_Sensor", "startBackgroundLaser aborted: No physical gyroscope sensor on device")
+            return
+        }
+
+        if (sensorManager == null) {
+            sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+        }
+
+        // Check if device has a physical hardware gyroscope:
+        val hasHardwareGyro = (sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null)
+
+        rotationSensor = if (hasHardwareGyro) {
+            // Devices WITH Gyroscope (e.g. flagship phones, OnePlus with gyro):
+            // Use Game Rotation Vector (Best: Gyro + Accel 6-DoF, zero compass drift/jumps)
+            sensorManager?.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
+                ?: sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
+        } else {
+            // Devices WITHOUT Gyroscope (e.g. Oppo A78 5G, budget phones):
+            // DO NOT use compass rotation vector (it constantly drifts & jitters indoors).
+            // Use clean Gravity sensor or Accelerometer for rock-solid stability!
+            sensorManager?.getDefaultSensor(Sensor.TYPE_GRAVITY)
+                ?: sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        }
+
+        isAccelerometerFallback = (!hasHardwareGyro)
+        android.util.Log.d("NXTslide_Sensor", "startBackgroundLaser: hasGyro=$hasHardwareGyro, isFallback=$isAccelerometerFallback, sensor=${rotationSensor?.name}")
+
         if (isLaserActive) return
         isLaserActive = true
-        isBaseOrientationSet = false
+        hasLaserStarted = true
+        sensorWarmupCount = 0
         currentLaserX = 0.5f
         currentLaserY = 0.5f
+        smoothDx = 0f
+        smoothDy = 0f
+        lastSendTs = 0L
 
         // ── Acquire a dedicated WakeLock so CPU stays awake for sensor readings ──
         // Without this, rotation sensor events stop within ~200ms when screen is off.
@@ -217,19 +355,13 @@ class PresenterService : Service() {
             )
         }
         if (laserWakeLock?.isHeld == false) {
-            laserWakeLock?.acquire(15_000L) // max 15s — safety limit
+            laserWakeLock?.acquire(120_000L) // 2 min safety limit
         }
 
         // ── Start dedicated sensor thread if not already running ──
         if (sensorThread == null || !sensorThread!!.isAlive) {
             sensorThread = HandlerThread("PresenterSensorThread").apply { start() }
             sensorHandler = Handler(sensorThread!!.looper)
-        }
-
-        if (sensorManager == null) {
-            sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-            rotationSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)
-                ?: sensorManager?.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR)
         }
 
         // Use SENSOR_DELAY_FASTEST: Android may throttle GAME/UI sensors when screen is off,
@@ -244,13 +376,16 @@ class PresenterService : Service() {
         laserTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
         val timeout = Runnable { stopBackgroundLaser() }
         laserTimeoutRunnable = timeout
-        mainHandler.postDelayed(timeout, 12000L) // 12s safety auto-off
+        mainHandler.postDelayed(timeout, 90000L) // 90s safety auto-off (reset dynamically while moving)
     }
 
     @Synchronized
     fun stopBackgroundLaser() {
         if (!isLaserActive) return
         isLaserActive = false
+        hasLaserStarted = false
+        isVolKeyHeld = false
+        pendingDirection = 0
         sensorManager?.unregisterListener(sensorListener)
         laserTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
         laserTimeoutRunnable = null
@@ -261,143 +396,147 @@ class PresenterService : Service() {
     }
 
     private fun sendLaserDown(x: Float, y: Float, style: String = "laser") {
-        val payload = JSONObject().apply {
-            put("type", "LASER_DOWN")
-            put("x", x)
-            put("y", y)
-            put("style", style)
-            put("source", "Background Hardware Aim")
-        }.toString()
-        webSocket?.send(payload)
+        val safeX = if (x.isNaN() || x.isInfinite()) 0.5f else x.coerceIn(0.01f, 0.99f)
+        val safeY = if (y.isNaN() || y.isInfinite()) 0.5f else y.coerceIn(0.01f, 0.99f)
+        try {
+            val payload = JSONObject().apply {
+                put("type", "LASER_DOWN")
+                put("x", safeX.toDouble())
+                put("y", safeY.toDouble())
+                put("style", style)
+                put("source", "Background Hardware Aim")
+            }.toString()
+            val sent = webSocket?.send(payload) ?: false
+            if (!sent) connectWebSocket()
+            android.util.Log.d("NXTslide_Laser", "sendLaserDown sent=$sent")
+        } catch (_: Exception) {}
     }
 
     private fun sendLaserMove(x: Float, y: Float) {
-        val payload = JSONObject().apply {
-            put("type", "LASER_MOVE")
-            put("x", x)
-            put("y", y)
-            put("source", "Background Hardware Aim")
-        }.toString()
-        webSocket?.send(payload)
+        val safeX = if (x.isNaN() || x.isInfinite()) 0.5f else x.coerceIn(0.01f, 0.99f)
+        val safeY = if (y.isNaN() || y.isInfinite()) 0.5f else y.coerceIn(0.01f, 0.99f)
+        try {
+            val payload = JSONObject().apply {
+                put("type", "LASER_MOVE")
+                put("x", safeX.toDouble())
+                put("y", safeY.toDouble())
+                put("source", "Background Hardware Aim")
+            }.toString()
+            webSocket?.send(payload)
+        } catch (_: Exception) {}
     }
 
     private fun sendLaserUp() {
-        val payload = JSONObject().apply {
-            put("type", "LASER_UP")
-            put("source", "Background Hardware Aim")
-        }.toString()
-        webSocket?.send(payload)
-    }
-
-    // ─── Volume Trigger Core ─────────────────────────────────────────────────
-    //
-    // GESTURE MODEL (works identically on screen-on AND screen-off):
-    //   Single tap Vol Up   → NEXT slide   (fires after DOUBLE_TAP_WINDOW_MS with no second tap)
-    //   Single tap Vol Down → PREV slide
-    //   Double-tap Vol Up   → Toggle laser  (two Vol Up events within 400ms)
-    //   Double-tap Vol Down → Toggle laser  (two Vol Down events within 400ms)
-    //
-    // This approach is 100% reliable on screen-off because:
-    //   - No hold detection required (no auto-repeat timing dependency)
-    //   - No isResettingVolume race conditions
-    //   - Double-tap is just two ContentObserver events close in time
-    @Synchronized
-    private fun handleVolumeTrigger(isUp: Boolean) {
-        // If accessibility service is handling this, ignore (it calls sendSlideAction/laser directly)
-        if (suppressVolumeObserver) return
-
-        val now = System.currentTimeMillis()
-
-        // ── DEDUP: ContentObserver + Broadcast sometimes both fire for the same physical press ──
-        // 80ms window with same direction = duplicate event, ignore it
-        if (now - lastTapTs < 80 && isUp == lastTapIsUp) {
-            resetVolumeStream()
-            return
-        }
-
-        resetVolumeStream() // Always reset volume to midpoint after every press
-
-        // ── DOUBLE-TAP DETECTION ──────────────────────────────────────────
-        // Same button tapped twice within DOUBLE_TAP_WINDOW_MS = toggle laser
-        if (now - lastTapTs < DOUBLE_TAP_WINDOW_MS && isUp == lastTapIsUp) {
-            // Cancel the pending single-tap slide action (it hasn't fired yet)
-            pendingTapRunnable?.let { mainHandler.removeCallbacks(it) }
-            pendingTapRunnable = null
-
-            // Toggle laser
-            if (isLaserActive) {
-                stopBackgroundLaser()
-            } else {
-                startBackgroundLaser()
-            }
-
-            // Reset tap state so next press starts fresh
-            lastTapTs = 0L
-            return
-        }
-
-        // ── SINGLE TAP ───────────────────────────────────────────────────
-        // Record this tap. Wait DOUBLE_TAP_WINDOW_MS before acting, in case a second tap arrives.
-        lastTapTs = now
-        lastTapIsUp = isUp
-
-        val slideAction = if (isUp) "NEXT" else "PREV"
-
-        // Cancel any previous pending tap
-        pendingTapRunnable?.let { mainHandler.removeCallbacks(it) }
-
-        val tapRunnable = Runnable {
-            pendingTapRunnable = null
-            lastTapTs = 0L // Reset so next tap is treated as fresh
-
-            if (isLaserActive) {
-                // If laser is on, any single tap stops the laser (acts as laser-off)
-                stopBackgroundLaser()
-            } else {
-                // Normal slide change
-                sendSlideAction(slideAction)
-                vibrateFeedback(35)
-            }
-        }
-        pendingTapRunnable = tapRunnable
-        mainHandler.postDelayed(tapRunnable, DOUBLE_TAP_WINDOW_MS)
-    }
-
-    @Suppress("UNUSED")
-    private fun onVolumeReleasedAfterLaser() {
-        // Legacy method kept for compatibility, no longer used in double-tap model
-        isHoldingVolume = false
-        hasLaserStartedForHold = false
-        pendingSlideAction = null
-        volumeEventCount = 0
-        evaluateHoldOrTapRunnable?.let { mainHandler.removeCallbacks(it) }
-        evaluateHoldOrTapRunnable = null
-        laserReleaseCheckRunnable = null
-    }
-
-    private fun resetVolumeStream() {
-        isResettingVolume = true
         try {
-            audioManager?.setStreamVolume(
-                AudioManager.STREAM_MUSIC,
-                midVolume,
-                AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE
-            )
+            val payload = JSONObject().apply {
+                put("type", "LASER_UP")
+                put("source", "Background Hardware Aim")
+            }.toString()
+            val sent = webSocket?.send(payload) ?: false
+            android.util.Log.d("NXTslide_Laser", "sendLaserUp sent=$sent")
         } catch (_: Exception) {}
-
-        // 55ms: long enough to swallow the ContentObserver reset-echo (~5-20ms after setStreamVolume)
-        // but short enough that it does NOT block a legitimate repeat event coming later
-        mainHandler.postDelayed({
-            isResettingVolume = false
-        }, 55L)
     }
 
-    // ─── Volume BroadcastReceiver (System broadcast) ─────────────────────────
+    // ─── Precision Volume Handling Engine (Screen-Off & Lock-Screen) ────────
+    //
+    // GESTURE MODEL:
+    //   Quick tap Vol Up   (< 200ms) → NEXT slide immediately on release (no lag!)
+    //   Quick tap Vol Down (< 200ms) → PREV slide immediately on release (no lag!)
+    //   Hold Vol Up/Down   (>= 200ms) → Laser turns ON with tactile buzz
+    //   Release button               → Laser turns OFF, 0 slide change!
+    @Synchronized
+    private fun handleVolumeAdjust(direction: Int) {
+        lastVolumeProviderTs = System.currentTimeMillis()
+        android.util.Log.d("NXTslide_Volume", "handleVolumeAdjust: direction=$direction, isHeld=$isVolKeyHeld, hasLaser=$hasLaserStarted, isLaserActive=$isLaserActive")
+
+        if (!hasHardwareGyro()) {
+            // Non-gyro phones: Immediate slide change on tap, NO laser hold/sensor activation!
+            if (direction != 0) {
+                val now = System.currentTimeMillis()
+                if (now - lastActionTs >= 120L) {
+                    lastActionTs = now
+                    val action = if (direction > 0) "NEXT" else "PREV"
+                    vibrateFeedback(35)
+                    sendSlideAction(action)
+                }
+            }
+            return
+        }
+
+        if (direction != 0) {
+            // Direction is +1 (Vol UP) or -1 (Vol DOWN)
+            if (hasLaserStarted || isLaserActive) {
+                // Laser is currently active — user is holding button while aiming
+                return
+            }
+
+            if (!isVolKeyHeld) {
+                isVolKeyHeld = true
+                pendingDirection = direction
+                hasLaserStarted = false
+
+                // Schedule hold detection: hold for 200ms -> START LASER!
+                holdThresholdRunnable?.let { mainHandler.removeCallbacks(it) }
+                val holdRunnable = Runnable {
+                    if (isVolKeyHeld && !hasLaserStarted) {
+                        hasLaserStarted = true
+                        startBackgroundLaser()
+                    }
+                }
+                holdThresholdRunnable = holdRunnable
+                mainHandler.postDelayed(holdRunnable, 200L)
+            } else {
+                // Repeat event arrived while held -> user is holding, trigger laser immediately!
+                holdThresholdRunnable?.let { mainHandler.removeCallbacks(it) }
+                holdThresholdRunnable = null
+                if (!hasLaserStarted) {
+                    hasLaserStarted = true
+                    startBackgroundLaser()
+                }
+            }
+        } else {
+            // Direction 0: KEY RELEASED!
+            onVolumeKeyReleased()
+        }
+    }
+
+    @Synchronized
+    private fun onVolumeKeyReleased() {
+        holdThresholdRunnable?.let { mainHandler.removeCallbacks(it) }
+        holdThresholdRunnable = null
+
+        if (!isVolKeyHeld && !hasLaserStarted && !isLaserActive) return
+
+        if (hasLaserStarted || isLaserActive) {
+            // User was holding to aim laser, and just released the button!
+            // STOP LASER, DO NOT CHANGE SLIDE!
+            stopBackgroundLaser()
+            hasLaserStarted = false
+            isVolKeyHeld = false
+            pendingDirection = 0
+        } else {
+            // User released BEFORE hold threshold -> IT WAS A QUICK TAP!
+            val dir = pendingDirection
+            isVolKeyHeld = false
+            pendingDirection = 0
+
+            val now = System.currentTimeMillis()
+            if (now - lastActionTs >= 100L && dir != 0) {
+                lastActionTs = now
+                val action = if (dir > 0) "NEXT" else "PREV"
+                vibrateFeedback(35)
+                sendSlideAction(action)
+            }
+        }
+    }
+
+    // ─── Volume BroadcastReceiver (Fallback for devices without VolumeProvider) ──
     private val volumeReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action != "android.media.VOLUME_CHANGED_ACTION") return
-            if (isResettingVolume) return
-            if (suppressVolumeObserver) return // Accessibility service is handling this
+            if (suppressVolumeObserver) return
+            // Ignore if VolumeProvider recently handled an event
+            if (System.currentTimeMillis() - lastVolumeProviderTs < 2000L) return
 
             val streamType = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_TYPE", -1)
             if (streamType != AudioManager.STREAM_MUSIC && streamType != -1) return
@@ -405,10 +544,10 @@ class PresenterService : Service() {
             val now  = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE", -1)
             val prev = intent.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE", -1)
             if (now < 0 || prev < 0 || now == prev) return
-            if (now == midVolume) return // Ignore reset echo returning to midpoint
 
-            val isUp = if (now != midVolume) (now > midVolume) else (now > prev)
-            handleVolumeTrigger(isUp)
+            val isUp = now > prev
+            handleVolumeAdjust(if (isUp) 1 else -1)
+            mainHandler.postDelayed({ handleVolumeAdjust(0) }, 80L)
         }
     }
 
@@ -419,6 +558,10 @@ class PresenterService : Service() {
                 ACTION_PREV -> { vibrateFeedback(38); sendSlideAction("PREV") }
                 ACTION_NEXT -> { vibrateFeedback(38); sendSlideAction("NEXT") }
                 ACTION_STOP -> stopSelf()
+                "com.nextpresent.remote.ACTION_START_LASER" -> {
+                    if (hasHardwareGyro()) startBackgroundLaser()
+                }
+                "com.nextpresent.remote.ACTION_STOP_LASER"  -> stopBackgroundLaser()
             }
         }
     }
@@ -497,11 +640,9 @@ class PresenterService : Service() {
 
         try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (_: Exception) {}
         try { if (laserWakeLock?.isHeld == true) laserWakeLock?.release() } catch (_: Exception) {}
-        evaluateHoldOrTapRunnable?.let { mainHandler.removeCallbacks(it) }
-        laserReleaseCheckRunnable?.let { mainHandler.removeCallbacks(it) }
+        holdThresholdRunnable?.let { mainHandler.removeCallbacks(it) }
         laserTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
-        evaluateHoldOrTapRunnable = null
-        laserReleaseCheckRunnable = null
+        holdThresholdRunnable = null
         laserTimeoutRunnable = null
 
         if (instance === this) {
@@ -538,10 +679,12 @@ class PresenterService : Service() {
                 setFlags(MediaSession.FLAG_HANDLES_MEDIA_BUTTONS or MediaSession.FLAG_HANDLES_TRANSPORT_CONTROLS)
                 setCallback(object : MediaSession.Callback() {
                     override fun onSkipToNext() {
-                        handleVolumeTrigger(true)
+                        handleVolumeAdjust(1)
+                        mainHandler.postDelayed({ handleVolumeAdjust(0) }, 50L)
                     }
                     override fun onSkipToPrevious() {
-                        handleVolumeTrigger(false)
+                        handleVolumeAdjust(-1)
+                        mainHandler.postDelayed({ handleVolumeAdjust(0) }, 50L)
                     }
                     override fun onMediaButtonEvent(mediaButtonIntent: Intent): Boolean {
                         val keyEvent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -557,41 +700,11 @@ class PresenterService : Service() {
                             if (isVolUp || isVolDown) {
                                 if (keyEvent.action == android.view.KeyEvent.ACTION_DOWN) {
                                     if (keyEvent.repeatCount == 0) {
-                                        val action = if (isVolUp) "NEXT" else "PREV"
-                                        pendingSlideAction = action
-                                        isHoldingVolume = true
-                                        hasLaserStartedForHold = false
-
-                                        // Schedule hold-to-laser (180ms)
-                                        evaluateHoldOrTapRunnable?.let { mainHandler.removeCallbacks(it) }
-                                        val eval = Runnable {
-                                            if (isHoldingVolume && !hasLaserStartedForHold) {
-                                                hasLaserStartedForHold = true
-                                                pendingSlideAction = null
-                                                startBackgroundLaser()
-                                            }
-                                        }
-                                        evaluateHoldOrTapRunnable = eval
-                                        mainHandler.postDelayed(eval, 180L)
+                                        handleVolumeAdjust(if (isVolUp) 1 else -1)
                                     }
                                     return true
                                 } else if (keyEvent.action == android.view.KeyEvent.ACTION_UP) {
-                                    evaluateHoldOrTapRunnable?.let { mainHandler.removeCallbacks(it) }
-                                    evaluateHoldOrTapRunnable = null
-                                    isHoldingVolume = false
-                                    if (isLaserActive || hasLaserStartedForHold) {
-                                        // Release after laser -> turn off laser, NO slide change!
-                                        stopBackgroundLaser()
-                                        hasLaserStartedForHold = false
-                                        pendingSlideAction = null
-                                    } else {
-                                        // Quick tap (< 180ms) -> Change slide!
-                                        val action = pendingSlideAction ?: if (isVolUp) "NEXT" else "PREV"
-                                        pendingSlideAction = null
-                                        vibrateFeedback(40)
-                                        sendSlideAction(action)
-                                    }
-                                    resetVolumeStream()
+                                    handleVolumeAdjust(0)
                                     return true
                                 }
                             }
@@ -599,6 +712,14 @@ class PresenterService : Service() {
                         return super.onMediaButtonEvent(mediaButtonIntent)
                     }
                 })
+
+                val volumeProvider = object : android.media.VolumeProvider(VOLUME_CONTROL_RELATIVE, 100, 50) {
+                    override fun onAdjustVolume(direction: Int) {
+                        android.util.Log.d("NXTslide_VolProv", "VolumeProvider onAdjustVolume: direction=$direction")
+                        handleVolumeAdjust(direction)
+                    }
+                }
+                setPlaybackToRemote(volumeProvider)
 
                 setPlaybackState(
                     PlaybackState.Builder()
@@ -689,14 +810,16 @@ class PresenterService : Service() {
             volumeObserver = object : ContentObserver(mainHandler) {
                 override fun onChange(selfChange: Boolean) {
                     super.onChange(selfChange)
-                    if (isResettingVolume) return
-                    if (suppressVolumeObserver) return // Accessibility service is handling this
+                    if (suppressVolumeObserver) return
+                    // Ignore if VolumeProvider recently handled an event
+                    if (System.currentTimeMillis() - lastVolumeProviderTs < 2000L) return
+
                     val cur = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: return
                     if (cur == midVolume) return // Ignore reset echo returning to midpoint
 
-                    // cur > midVolume => Volume UP (NEXT)
-                    // cur < midVolume => Volume DOWN (PREV)
-                    handleVolumeTrigger(cur > midVolume)
+                    val isUp = cur > midVolume
+                    handleVolumeAdjust(if (isUp) 1 else -1)
+                    mainHandler.postDelayed({ handleVolumeAdjust(0) }, 80L)
                 }
             }
             contentResolver.registerContentObserver(
@@ -725,9 +848,11 @@ class PresenterService : Service() {
             addAction(ACTION_PREV)
             addAction(ACTION_NEXT)
             addAction(ACTION_STOP)
+            addAction("com.nextpresent.remote.ACTION_START_LASER")
+            addAction("com.nextpresent.remote.ACTION_STOP_LASER")
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(actionReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(actionReceiver, filter, Context.RECEIVER_EXPORTED)
         } else {
             @Suppress("UnspecifiedRegisterReceiverFlag")
             registerReceiver(actionReceiver, filter)
@@ -738,9 +863,14 @@ class PresenterService : Service() {
     private fun connectWebSocket() {
         try { webSocket?.close(1000, "Reconnecting") } catch (_: Exception) {}
         val wsUrl = buildWsUrl()
+        android.util.Log.d("NXTslide_WS", "PresenterService connecting to: $wsUrl")
         val request = Request.Builder().url(wsUrl).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                android.util.Log.d("NXTslide_WS", "PresenterService WebSocket OPEN to $wsUrl")
+            }
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                android.util.Log.w("NXTslide_WS", "PresenterService WebSocket FAIL ($wsUrl): ${t.message}")
                 android.os.Handler(mainLooper).postDelayed({ connectWebSocket() }, 5000L)
             }
         })
@@ -777,6 +907,7 @@ class PresenterService : Service() {
         }.toString()
 
         val sent = webSocket?.send(payload) ?: false
+        android.util.Log.d("NXTslide_Action", "sendSlideAction: action=$action, sentViaWs=$sent")
         if (!sent) {
             // Immediate HTTP fallback — ensures zero lost clicks when screen is locked
             val code = relayRoomCode

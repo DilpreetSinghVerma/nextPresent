@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NXTslide Laser Overlay</title>
+  <style>
+    :root {
+      --laser-red: #ff1244;
+      --laser-glow: rgba(255, 18, 68, 0.85);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    html, body {
+      background: transparent !important;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+    }
+
+    /* Laser Pointer Layer */
+    #laserOverlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 999999;
+    }
+
+    /* Ultra-Realistic Presentation Laser Pointer Dot */
+    #laserDot {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 
+        0 0 4px 1px #ffffff,
+        0 0 14px 4px var(--laser-red),
+        0 0 32px 10px var(--laser-glow),
+        0 0 65px 22px rgba(255, 18, 68, 0.45);
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.08s ease-out;
+      will-change: left, top, opacity;
+    }
+
+    #laserDot::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255, 80, 110, 0.6);
+      transform: translate(-50%, -50%) scale(0.9);
+      animation: laserPulse 1.2s infinite ease-out;
+      pointer-events: none;
+    }
+
+    @keyframes laserPulse {
+      0% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.9; }
+      50% { transform: translate(-50%, -50%) scale(1.35); opacity: 0.3; }
+      100% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.9; }
+    }
+
+    #laserDot.visible {
+      opacity: 1;
+    }
+
+    /* Logitech-Style Flashlight / Spotlight Mask */
+    #spotlightMask {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 999998;
+      background: rgba(0, 0, 0, 0.65);
+      clip-path: circle(135px at -500px -500px);
+      transition: opacity 0.15s ease-out;
+      opacity: 0;
+      will-change: clip-path, opacity;
+    }
+
+    #spotlightMask.visible {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="laserOverlay">
+    <div id="laserDot"></div>
+  </div>
+  <div id="spotlightMask"></div>
+
+  <script>
+    const laserDot = document.getElementById('laserDot');
+    const spotlightMask = document.getElementById('spotlightMask');
+
+    let pointerStyle = 'laser'; // 'laser' | 'spotlight'
+    let isPointing = false;
+
+    let targetX = window.innerWidth / 2;
+    let targetY = window.innerHeight / 2;
+    let currentX = targetX;
+    let currentY = targetY;
+
+    // Fast, responsive tracking (0.55 = instant crisp follow)
+    const GLIDE_FACTOR = 0.55;
+
+    function renderLoop() {
+      if (isPointing) {
+        currentX += (targetX - currentX) * GLIDE_FACTOR;
+        currentY += (targetY - currentY) * GLIDE_FACTOR;
+
+        if (pointerStyle === 'laser') {
+          laserDot.style.left = `${currentX}px`;
+          laserDot.style.top = `${currentY}px`;
+        } else {
+          spotlightMask.style.clipPath = `circle(135px at ${currentX}px ${currentY}px)`;
+        }
+      }
+      requestAnimationFrame(renderLoop);
+    }
+    requestAnimationFrame(renderLoop);
+
+    function updateVisuals(visible) {
+      if (pointerStyle === 'laser') {
+        spotlightMask.classList.remove('visible');
+        if (visible) {
+          laserDot.classList.add('visible');
+          laserDot.style.left = `${currentX}px`;
+          laserDot.style.top = `${currentY}px`;
+        } else {
+          laserDot.classList.remove('visible');
+        }
+      } else {
+        laserDot.classList.remove('visible');
+        if (visible) {
+          spotlightMask.classList.add('visible');
+          spotlightMask.style.clipPath = `circle(135px at ${currentX}px ${currentY}px)`;
+        } else {
+          spotlightMask.classList.remove('visible');
+        }
+      }
+    }
+
+    // Connect to local WebSocket
+    function connectWs() {
+      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${location.host}/ws?role=laser-overlay`;
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('[Laser Overlay] Connected to host WebSocket');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+
+          if (msg.type === 'LASER_DOWN') {
+            isPointing = true;
+            if (msg.style) pointerStyle = msg.style;
+            targetX = msg.x * window.innerWidth;
+            targetY = msg.y * window.innerHeight;
+            currentX = targetX;
+            currentY = targetY;
+            updateVisuals(true);
+          } else if (msg.type === 'LASER_MOVE') {
+            targetX = msg.x * window.innerWidth;
+            targetY = msg.y * window.innerHeight;
+          } else if (msg.type === 'LASER_UP') {
+            isPointing = false;
+            updateVisuals(false);
+          } else if (msg.type === 'LASER_STYLE') {
+            pointerStyle = msg.style;
+            if (isPointing) updateVisuals(true);
+          }
+        } catch (_) {}
+      };
+
+      ws.onclose = () => {
+        setTimeout(connectWs, 1500);
+      };
+    }
+
+    connectWs();
+
+    window.addEventListener('resize', () => {
+      targetX = window.innerWidth / 2;
+      targetY = window.innerHeight / 2;
+    });
+  </script>
+</body>
+</html>
