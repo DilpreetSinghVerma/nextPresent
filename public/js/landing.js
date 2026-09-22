@@ -92,6 +92,11 @@ let currentSlideIdx = 0;
 let totalClicks = 0;
 let simTimerSeconds = 168; // simulated timer starting at ~02:48
 let simTimerInterval = null;
+let simMode = 'pocket'; // 'pocket' | 'laser' | 'hud'
+let isSpotlightActive = false;
+let isBlackoutActive = false;
+const PROFILES = ['PowerPoint', 'Google Slides', 'Canva', 'Apple Keynote'];
+let currentProfileIdx = 0;
 
 function initSimulator() {
   const volUpBtn     = document.getElementById('simVolUp');
@@ -104,18 +109,159 @@ function initSimulator() {
   if (phoneNextBtn) phoneNextBtn.addEventListener('click', () => triggerSimulatorAction('NEXT', phoneNextBtn));
   if (phonePrevBtn) phonePrevBtn.addEventListener('click', () => triggerSimulatorAction('PREV', phonePrevBtn));
 
+  // Mode Switcher Tabs
+  const tabPocket = document.getElementById('tabModePocket');
+  const tabLaser  = document.getElementById('tabModeLaser');
+  const tabHUD    = document.getElementById('tabModeHUD');
+  const padPocket = document.getElementById('simPadPocket');
+  const padLaser  = document.getElementById('simPadLaser');
+  const padHUD    = document.getElementById('simPadHUD');
+  const simLaserDot = document.getElementById('simLaserDot');
+  const simSpotlightMask = document.getElementById('simSpotlightMask');
+  const simSlideMonitor = document.getElementById('simSlideMonitor');
+
+  function setSimMode(mode) {
+    simMode = mode;
+    if (tabPocket) tabPocket.classList.toggle('active', mode === 'pocket');
+    if (tabLaser)  tabLaser.classList.toggle('active', mode === 'laser');
+    if (tabHUD)    tabHUD.classList.toggle('active', mode === 'hud');
+
+    if (padPocket) padPocket.style.display = mode === 'pocket' ? 'flex' : 'none';
+    if (padLaser)  padLaser.style.display  = mode === 'laser' ? 'flex' : 'none';
+    if (padHUD)    padHUD.style.display    = mode === 'hud' ? 'flex' : 'none';
+
+    if (simLaserDot) simLaserDot.style.display = mode === 'laser' ? 'block' : 'none';
+    if (simSpotlightMask) simSpotlightMask.style.display = (mode === 'laser' && isSpotlightActive) ? 'block' : 'none';
+
+    const keyInjectedEl = document.getElementById('simKeyInjected');
+    if (keyInjectedEl) {
+      if (mode === 'laser') keyInjectedEl.textContent = '3D Gyro Motion (X, Y)';
+      else if (mode === 'hud') keyInjectedEl.textContent = 'Presentation HUD Controls';
+      else keyInjectedEl.textContent = 'Right Arrow [→]';
+    }
+  }
+
+  if (tabPocket) tabPocket.addEventListener('click', () => setSimMode('pocket'));
+  if (tabLaser)  tabLaser.addEventListener('click', () => setSimMode('laser'));
+  if (tabHUD)    tabHUD.addEventListener('click', () => setSimMode('hud'));
+
+  // Laser Pointer Aiming on Touchpad or Slide Monitor
+  const laserThumb = document.getElementById('simLaserThumb');
+
+  function updateAim(relX, relY) {
+    if (!simSlideMonitor || !simLaserDot) return;
+    const monRect = simSlideMonitor.getBoundingClientRect();
+    const clampedX = Math.max(12, Math.min(monRect.width - 12, relX * monRect.width));
+    const clampedY = Math.max(12, Math.min(monRect.height - 12, relY * monRect.height));
+
+    simLaserDot.style.left = `${clampedX}px`;
+    simLaserDot.style.top  = `${clampedY}px`;
+
+    if (simSpotlightMask) {
+      simSpotlightMask.style.clipPath = `circle(85px at ${clampedX}px ${clampedY}px)`;
+    }
+
+    if (laserThumb && padLaser) {
+      const padRect = padLaser.getBoundingClientRect();
+      laserThumb.style.left = `${relX * padRect.width}px`;
+      laserThumb.style.top  = `${relY * padRect.height}px`;
+    }
+  }
+
+  if (padLaser) {
+    const handlePadMove = (e) => {
+      const rect = padLaser.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const relX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const relY = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+      updateAim(relX, relY);
+    };
+    padLaser.addEventListener('mousemove', handlePadMove);
+    padLaser.addEventListener('touchmove', handlePadMove, { passive: true });
+  }
+
+  if (simSlideMonitor) {
+    simSlideMonitor.addEventListener('mousemove', (e) => {
+      if (simMode === 'laser') {
+        const rect = simSlideMonitor.getBoundingClientRect();
+        const relX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const relY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+        updateAim(relX, relY);
+      }
+    });
+  }
+
+  // Spotlight Toggle Button
+  const spotlightBtn = document.getElementById('simToggleSpotlight');
+  if (spotlightBtn) {
+    spotlightBtn.addEventListener('click', () => {
+      isSpotlightActive = !isSpotlightActive;
+      spotlightBtn.classList.toggle('active', isSpotlightActive);
+      if (simSpotlightMask) {
+        simSpotlightMask.style.display = (simMode === 'laser' && isSpotlightActive) ? 'block' : 'none';
+      }
+      if (simMode !== 'laser') setSimMode('laser');
+    });
+  }
+
+  // HUD Action buttons
+  const btnBlackout = document.getElementById('simBtnBlackout');
+  if (btnBlackout) {
+    btnBlackout.addEventListener('click', () => {
+      isBlackoutActive = !isBlackoutActive;
+      btnBlackout.classList.toggle('active', isBlackoutActive);
+      if (simSlideMonitor) simSlideMonitor.classList.toggle('blackout', isBlackoutActive);
+      const keyInjectedEl = document.getElementById('simKeyInjected');
+      if (keyInjectedEl) keyInjectedEl.textContent = isBlackoutActive ? 'Key [B] Screen Blackout' : 'Key [B] Restored';
+    });
+  }
+
+  const btnF5 = document.getElementById('simBtnF5');
+  if (btnF5) {
+    btnF5.addEventListener('click', () => {
+      triggerSimulatorAction('NEXT', btnF5);
+      const keyInjectedEl = document.getElementById('simKeyInjected');
+      if (keyInjectedEl) keyInjectedEl.textContent = 'Key [F5] Presentation Start';
+    });
+  }
+
+  const btnProfile = document.getElementById('simBtnProfile');
+  const hostProfileChip = document.getElementById('simHostProfileChip');
+  if (btnProfile) {
+    btnProfile.addEventListener('click', () => {
+      currentProfileIdx = (currentProfileIdx + 1) % PROFILES.length;
+      const prof = PROFILES[currentProfileIdx];
+      const valEl = document.getElementById('simProfileVal');
+      if (valEl) valEl.textContent = prof;
+      if (hostProfileChip) hostProfileChip.textContent = `${prof} Live Host`;
+      const keyInjectedEl = document.getElementById('simKeyInjected');
+      if (keyInjectedEl) keyInjectedEl.textContent = `Profile: ${prof}`;
+    });
+  }
+
+  const btnResetTimer = document.getElementById('simBtnTimerReset');
+  if (btnResetTimer) {
+    btnResetTimer.addEventListener('click', () => {
+      simTimerSeconds = 0;
+      const timerEl = document.getElementById('simTimerDisplay');
+      if (timerEl) timerEl.textContent = '00:00';
+    });
+  }
+
   // Global key listener when user interacts with demo
   window.addEventListener('keydown', (e) => {
     const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
     if (activeTag === 'input' || activeTag === 'textarea') return;
 
+    const demoSection = document.getElementById('demo');
     if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
-      if (isInViewport(document.getElementById('demoSection'))) {
+      if (isInViewport(demoSection)) {
         e.preventDefault();
         triggerSimulatorAction('NEXT', volUpBtn);
       }
     } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-      if (isInViewport(document.getElementById('demoSection'))) {
+      if (isInViewport(demoSection)) {
         e.preventDefault();
         triggerSimulatorAction('PREV', volDownBtn);
       }
@@ -132,6 +278,7 @@ function initSimulator() {
   }, 1000);
 
   updateSlideDisplay('NEXT');
+  setTimeout(() => updateAim(0.5, 0.4), 100);
 }
 
 function triggerSimulatorAction(action, triggerElement) {

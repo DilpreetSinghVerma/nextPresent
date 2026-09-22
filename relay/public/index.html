@@ -25,6 +25,7 @@
       </a>
 
       <ul class="nav-links">
+        <li><a href="#downloads">Downloads</a></li>
         <li><a href="#features">Features</a></li>
         <li><a href="#demo">Demo</a></li>
         <li><a href="#compare">Compare</a></li>
@@ -72,7 +73,7 @@
         </div>
         <!-- ── /Auth Widget ────────────────────────────────── -->
 
-        <a href="#download" class="btn-nav">Download Free</a>
+        <a href="#downloads" class="btn-nav">Download Free</a>
       </div>
 
       <button class="nav-hamburger" id="navHamburger" aria-label="Toggle menu">
@@ -88,17 +89,16 @@
 
       <div class="hero-badge">
         <span class="badge-dot"></span>
-        v1.0 — Volume Rocker &amp; Lock-Screen Control
+        v2.1 — Pocket Clicker · 3D Gyro Laser · Multi-Presenter Sync
       </div>
 
       <h1 class="hero-h1">
         Your phone is already<br>
-        <span class="hero-accent">a presentation clicker</span>
+        <span class="hero-accent">a presentation clicker &amp; laser</span>
       </h1>
 
       <p class="hero-sub">
-        Press the volume buttons through your pocket fabric. Slides advance instantly.<br>
-        No dongle. No subscription. No looking down.
+        Control PowerPoint, Google Slides, Keynote, and Canva from inside your pocket with physical volume keys. Aim a virtual 3D laser pointer. Zero dongles. Zero subscriptions.
       </p>
 
       <div class="hero-actions" id="downloadSection">
@@ -110,7 +110,7 @@
           </span>
           <span class="btn-content">
             <span class="btn-title">Download for Windows</span>
-            <span class="btn-sub">Free · 97 MB installer</span>
+            <span class="btn-sub">Free · 102 MB Installer</span>
           </span>
         </a>
         <a href="/NXTslide.apk" download="NXTslide.apk" class="btn-secondary" id="heroAndroidBtn">
@@ -119,26 +119,30 @@
           </span>
           <span class="btn-content">
             <span class="btn-title">Android Companion</span>
-            <span class="btn-sub">APK · 28 MB</span>
+            <span class="btn-sub">Native APK · 31 MB</span>
           </span>
         </a>
       </div>
 
       <div class="hero-trust">
-        <span>✓ 100% Free</span>
+        <span>✓ 100% Free Core</span>
         <span class="trust-sep">·</span>
-        <span>✓ No dongle</span>
+        <span>✓ No USB Dongle</span>
         <span class="trust-sep">·</span>
-        <span>✓ Works locked-screen</span>
+        <span>✓ Screen-Off Pocket Mode</span>
         <span class="trust-sep">·</span>
-        <span>✓ Zero-install portable mode</span>
+        <span>✓ 3D Gyro Laser Pointer</span>
+        <span class="trust-sep">·</span>
+        <span>✓ Zero-Install Portable Mode</span>
       </div>
 
-      <!-- Portable option -->
+      <!-- Portable option & Web Remote Callout -->
       <div class="portable-note">
-        On a locked corporate laptop?
-        <a href="/downloads/NXTslide-Portable.exe"
-           download="NXTslide-Portable.exe">Download Portable .exe instead →</a>
+        On a locked corporate or university laptop?
+        <a href="/downloads/NXTslide-Portable.exe" download="NXTslide-Portable.exe">Download Portable .exe (No Admin needed) →</a>
+      </div>
+      <div style="margin-top:10px;font-size:0.82rem;color:var(--ink-3);">
+        ⚡ Presenting right now with zero installation? <a href="/mobile.html" target="_blank" style="color:#4ade80;font-weight:600;text-decoration:none;border-bottom:1px solid rgba(74,222,128,0.4);">Open Instant Web Remote (PWA) →</a>
       </div>
     </div>
   </section>
@@ -147,23 +151,23 @@
   <section class="steps-section" id="features">
     <div class="container">
       <div class="section-eyebrow">How it works</div>
-      <h2 class="section-h2">Three steps. Then forget it exists.</h2>
+      <h2 class="section-h2">Three steps. Then command the room.</h2>
 
       <div class="steps-grid">
         <div class="step-card">
           <div class="step-num">01</div>
-          <h3>Install on PC &amp; Phone</h3>
-          <p>Run NXTslide on your Windows laptop. Install the Android companion. They pair automatically via cloud relay or local Wi-Fi.</p>
+          <h3>Connect in Seconds</h3>
+          <p>Launch NXTslide on your laptop. Scan the QR code or enter the 6-letter room code on your phone. Works over local Wi-Fi or global cloud relay across different networks.</p>
         </div>
         <div class="step-card">
           <div class="step-num">02</div>
-          <h3>Lock screen, slip into pocket</h3>
-          <p>Once connected, lock your phone and put it away. The background service stays active without draining battery or making noise.</p>
+          <h3>Lock Screen or Aim Laser</h3>
+          <p>Lock your phone and slip it into your blazer or pocket for stealth presentation, or hold it like a pointer to activate 3D motion-tracked laser aiming and spotlight focus.</p>
         </div>
         <div class="step-card">
           <div class="step-num">03</div>
-          <h3>Press volume through fabric</h3>
-          <p>Vol Up → next slide. Vol Down → previous. Tactile physical click. You never look down. Your audience never notices.</p>
+          <h3>Press Volume Through Fabric</h3>
+          <p>Vol Up advances slides, Vol Down goes back. Tactile physical clicks with silent volume suppression and discreet vibration confirmation. Your audience never notices.</p>
         </div>
       </div>
     </div>
@@ -173,8 +177,21 @@
   <section class="demo-section" id="demo">
     <div class="container">
       <div class="section-eyebrow">Interactive Demo</div>
-      <h2 class="section-h2">Try it right now</h2>
-      <p class="section-sub">Click the volume keys on the phone or use the buttons to advance slides</p>
+      <h2 class="section-h2">Experience the technology live</h2>
+      <p class="section-sub">Switch modes below to test the physical volume clicker, 3D gyro laser pointer with spotlight, and presentation HUD tools.</p>
+
+      <!-- Demo Mode Switcher Tabs -->
+      <div class="demo-tabs">
+        <button class="demo-tab-btn active" id="tabModePocket" type="button">
+          <span>🔊</span> Mode 1: Pocket Clicker (Volume Keys)
+        </button>
+        <button class="demo-tab-btn" id="tabModeLaser" type="button">
+          <span>🔴</span> Mode 2: 3D Gyro Laser &amp; Spotlight
+        </button>
+        <button class="demo-tab-btn" id="tabModeHUD" type="button">
+          <span>⏱️</span> Mode 3: Live Presentation HUD
+        </button>
+      </div>
 
       <div class="demo-frame">
         <!-- Phone mockup -->
@@ -189,44 +206,85 @@
                 <div class="phone-app-title">NXTslide Remote</div>
                 <div class="phone-app-status">
                   <span class="pulse-circle" style="width:6px;height:6px;"></span>
-                  <span>Connected · Pocket Ready</span>
+                  <span>Connected · Ready</span>
                 </div>
               </div>
-              <div class="phone-pad">
-                <button class="phone-btn" id="simPhoneNext">
+
+              <!-- VIEW 1: Pocket Pad (Default) -->
+              <div class="phone-pad" id="simPadPocket">
+                <button class="phone-btn" id="simPhoneNext" type="button">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
                   <span>NEXT [Vol ▲]</span>
                 </button>
-                <button class="phone-btn" id="simPhonePrev">
+                <button class="phone-btn" id="simPhonePrev" type="button">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
                   <span>PREV [Vol ▼]</span>
                 </button>
               </div>
+
+              <!-- VIEW 2: Laser & Touchpad Aim Surface -->
+              <div class="phone-laser-pad" id="simPadLaser">
+                <div class="laser-pad-grid"></div>
+                <div class="laser-thumb-indicator" id="simLaserThumb"></div>
+                <div class="laser-pad-label">Aiming Surface</div>
+                <div class="laser-pad-hint">Hover or drag to direct laser beam onto slide</div>
+              </div>
+
+              <!-- VIEW 3: HUD Quick Actions Pad -->
+              <div class="phone-hud-pad" id="simPadHUD">
+                <button class="hud-quick-btn" id="simBtnBlackout" type="button">
+                  <span>Blackout Screen</span>
+                  <span style="color:#a5b4fc;">[B]</span>
+                </button>
+                <button class="hud-quick-btn" id="simBtnF5" type="button">
+                  <span>Start Slideshow</span>
+                  <span style="color:#a5b4fc;">[F5]</span>
+                </button>
+                <button class="hud-quick-btn" id="simBtnProfile" type="button">
+                  <span>Profile:</span>
+                  <span id="simProfileVal" style="color:#4ade80;">PowerPoint</span>
+                </button>
+                <button class="hud-quick-btn" id="simBtnTimerReset" type="button">
+                  <span>Reset Timer</span>
+                  <span style="color:#94a3b8;">[00:00]</span>
+                </button>
+              </div>
+
               <div class="phone-pocket-badge">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px;margin-right:4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Screen Off Mode Active
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px;margin-right:4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Screen-Off Mode Active
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Slide preview -->
+        <!-- Slide preview monitor -->
         <div class="slide-display-wrapper">
-          <div class="slide-monitor">
-            <div class="slide-top-bar">
+          <div class="slide-monitor" id="simSlideMonitor" style="position:relative;overflow:hidden;">
+            <!-- Simulation Spotlight Mask -->
+            <div class="sim-spotlight-mask" id="simSpotlightMask"></div>
+            <!-- Simulation Laser Dot -->
+            <div class="sim-laser-dot" id="simLaserDot"></div>
+
+            <div class="slide-top-bar" style="position:relative;z-index:35;">
               <span class="slide-deck-title" id="slideTag">Q3 Strategy Keynote</span>
-              <span class="slide-deck-badge" id="slideDeckBadge">Slide 1 of 6</span>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <button id="simToggleSpotlight" class="spotlight-toggle-btn" type="button" title="Toggle Spotlight Beam">
+                  🔦 Spotlight Beam
+                </button>
+                <span class="slide-deck-badge" id="slideDeckBadge">Slide 1 of 6</span>
+              </div>
             </div>
-            <div class="slide-body">
+            <div class="slide-body" style="position:relative;z-index:20;">
               <div class="slide-content-card" id="slideCard">
                 <h3 class="slide-headline" id="slideHeadline">Scaling High-Performance Teams in 2026</h3>
                 <p class="slide-detail" id="slideDetail">How distributed autonomous teams deliver 10x output while maintaining radical clarity and zero overhead.</p>
               </div>
             </div>
-            <div class="slide-bottom-bar">
+            <div class="slide-bottom-bar" style="position:relative;z-index:35;">
               <div class="slide-indicator" id="slideIndicator"><span>01</span> / 06</div>
               <div class="slide-status-chip">
                 <span class="pulse-circle" style="width:6px;height:6px;"></span>
-                <span>PowerPoint Live Host</span>
+                <span id="simHostProfileChip">PowerPoint Live Host</span>
               </div>
             </div>
           </div>
@@ -236,7 +294,7 @@
               <span class="hud-value" id="simLatency">1.4 ms</span>
             </div>
             <div class="hud-pill">
-              <span class="hud-label">Keystroke</span>
+              <span class="hud-label">Action / Telemetry</span>
               <span class="hud-value" id="simKeyInjected">Right Arrow [→]</span>
             </div>
             <div class="hud-pill">
@@ -252,51 +310,72 @@
   <!-- FEATURES GRID -->
   <section class="features-section">
     <div class="container">
-      <div class="section-eyebrow">Why NXTslide</div>
-      <h2 class="section-h2">Built for the stage, not the screen</h2>
+      <div class="section-eyebrow">Engineering Excellence</div>
+      <h2 class="section-h2">Engineered for the podium, stage &amp; boardroom</h2>
 
       <div class="features-grid">
         <div class="feature-card feature-wide">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
           </div>
-          <h3>Works behind a locked screen</h3>
-          <p>A high-priority background audio session keeps the service alive. Lock your phone, pocket it, and present for hours. Less than 1% battery per hour.</p>
+          <h3>Works behind a locked screen (Pocket Mode)</h3>
+          <p>A lightweight, background MediaSession service intercepts physical volume button clicks even when your phone is locked and sleeping in your blazer. Volume audio resets silently with zero rings or alerts.</p>
         </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="3" fill="currentColor"></circle></svg>
+          </div>
+          <h3>3D Gyro Laser Pointer &amp; Spotlight</h3>
+          <p>Point your phone at the screen like a physical wand. Gyroscope sensors render an ultra-realistic glowing red laser dot or dim the background into a crisp spotlight focus cutout over any app.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+          </div>
+          <h3>Smart Touchpad Fallback</h3>
+          <p>Phone without a physical gyroscope sensor (e.g. OPPO A78 5G and budget smartphones)? NXTslide automatically falls back to a silky-smooth touchpad surface for precision laser pointing.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          </div>
+          <h3>Multi-Presenter Synchronization</h3>
+          <p>Team presentation, debate, or panel discussion? Up to 5 mobile phones can connect to the same slide deck simultaneously using the 6-letter room code with live client status monitoring.</p>
+        </div>
+
         <div class="feature-card">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
           </div>
-          <h3>Sub-2ms keystroke injection</h3>
-          <p>Native Windows keystroke injection via a lightweight C# helper. No perceptible delay between click and slide change.</p>
+          <h3>Sub-2ms Native C# SendInput</h3>
+          <p>Native Win32 key injection compiled in C# (`keySender.exe`). Unlike laggy browser-based simulated keystrokes, slides change instantly the microsecond you press the volume key.</p>
         </div>
-        <div class="feature-card">
-          <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
-          </div>
-          <h3>Cloud relay — any network</h3>
-          <p>Phone on cellular, laptop on hotel Wi-Fi? The cloud relay bridges them instantly with a 6-letter room code.</p>
-        </div>
+
         <div class="feature-card">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4 7.55 4.24M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.29 7 12 12 20.71 7"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
           </div>
-          <h3>Zero-install portable</h3>
-          <p>No admin rights needed. Run the portable .exe from a USB drive on a locked corporate laptop.</p>
+          <h3>Zero-Install Portable Mode</h3>
+          <p>Presenting from a locked enterprise podium laptop without administrator rights? Download `NXTslide-Portable.exe` to a USB drive and double-click. Zero installation, zero registry pollution.</p>
         </div>
+
         <div class="feature-card">
           <div class="feature-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="22" y1="9" x2="16" y2="15"></line><line x1="16" y1="9" x2="22" y2="15"></line></svg>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
           </div>
-          <h3>Completely silent</h3>
-          <p>Volume resets silently. No chime. No notification. Your audience hears nothing except your voice.</p>
+          <h3>Global Cloud Relay (Any Network)</h3>
+          <p>Presenter PC on university Wi-Fi, phone on 5G/LTE? The global WebSocket relay effortlessly tunnels through campus NATs, corporate firewalls, and guest portals with sub-100ms response.</p>
         </div>
+
         <div class="feature-card feature-wide">
           <div class="feature-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m4.93 4.93 4.24 4.24"></path><path d="m14.83 9.17 4.24-4.24"></path><path d="m14.83 14.83 4.24 4.24"></path><path d="m9.17 14.83-4.24 4.24"></path><circle cx="12" cy="12" r="4"></circle></svg>
           </div>
-          <h3>Universal software support</h3>
-          <p>Switch profiles in one click — PowerPoint, Google Slides, Keynote, Canva, PDF viewers, Prezi. Each profile sends the correct keystrokes automatically.</p>
+          <h3>Universal Software Profiles</h3>
+          <p>Instant one-click mappings for Microsoft PowerPoint, Google Slides, Apple Keynote, Canva Presentations, Adobe Acrobat PDF, Web PDF Readers, LibreOffice Impress, and Prezi.</p>
         </div>
       </div>
     </div>
@@ -306,7 +385,7 @@
   <section class="compare-section" id="compare">
     <div class="container">
       <div class="section-eyebrow">Direct Comparison</div>
-      <h2 class="section-h2">NXTslide vs the alternatives</h2>
+      <h2 class="section-h2">NXTslide vs Traditional Remotes</h2>
 
       <div class="table-scroll">
         <table class="compare-table">
@@ -314,49 +393,134 @@
             <tr>
               <th>Feature</th>
               <th class="col-nxt">NXTslide</th>
-              <th>Logitech R400 / Spotlight</th>
+              <th>Logitech Spotlight / R400</th>
               <th>Generic Remote Apps</th>
             </tr>
           </thead>
           <tbody>
             <tr>
               <td>Cost</td>
-              <td class="col-nxt"><span class="yes">Free</span></td>
-              <td>$60 – $130</td>
-              <td>$5/mo subscription</td>
+              <td class="col-nxt"><span class="yes">Free Core / ₹149 Lifetime Pro</span></td>
+              <td>$60 – $130 (₹5,000–₹11,000)</td>
+              <td>$5 – $10 / month subscription</td>
             </tr>
             <tr>
-              <td>Physical tactile click</td>
-              <td class="col-nxt"><span class="yes">✓ Volume rocker</span></td>
-              <td><span class="yes">✓ Plastic button</span></td>
-              <td><span class="no">✗ Flat glass only</span></td>
+              <td>Tactile Physical Click</td>
+              <td class="col-nxt"><span class="yes">✓ Phone volume keys</span></td>
+              <td><span class="yes">✓ Plastic clicker</span></td>
+              <td><span class="no">✗ Flat touch screen only</span></td>
             </tr>
             <tr>
-              <td>Hardware dongle required</td>
-              <td class="col-nxt"><span class="yes">✓ No dongle</span></td>
-              <td><span class="no">✗ Lose it → useless</span></td>
+              <td>Works In Pocket (Screen-Off)</td>
+              <td class="col-nxt"><span class="yes">✓ Yes (Background session)</span></td>
+              <td>N/A (Handheld wand)</td>
+              <td><span class="no">✗ Screen must remain on</span></td>
+            </tr>
+            <tr>
+              <td>Virtual Laser &amp; Spotlight Beam</td>
+              <td class="col-nxt"><span class="yes">✓ 3D Gyro + Touchpad</span></td>
+              <td><span class="yes">✓ Spotlight only ($130)</span></td>
+              <td><span class="no">✗ No pointer capability</span></td>
+            </tr>
+            <tr>
+              <td>Multi-Presenter Mode</td>
+              <td class="col-nxt"><span class="yes">✓ Up to 5 presenters</span></td>
+              <td><span class="no">✗ 1 physical clicker only</span></td>
+              <td><span class="no">✗ 1 device only</span></td>
+            </tr>
+            <tr>
+              <td>Hardware USB Dongle</td>
+              <td class="col-nxt"><span class="yes">✓ No dongle needed</span></td>
+              <td><span class="no">✗ Lose dongle = unusable</span></td>
               <td><span class="yes">✓ No dongle</span></td>
             </tr>
             <tr>
-              <td>Works with screen off</td>
-              <td class="col-nxt"><span class="yes">✓ Pocket Mode</span></td>
-              <td>N/A</td>
-              <td><span class="no">✗ Screen must stay on</span></td>
+              <td>Cross-Network Cloud Relay</td>
+              <td class="col-nxt"><span class="yes">✓ Any 5G/LTE/Wi-Fi</span></td>
+              <td><span class="no">✗ 10m Bluetooth/RF range</span></td>
+              <td><span class="no">✗ Same subnet Wi-Fi only</span></td>
             </tr>
             <tr>
-              <td>Cross-network cloud relay</td>
-              <td class="col-nxt"><span class="yes">✓ Any network</span></td>
-              <td><span class="no">✗ 10m RF range</span></td>
-              <td><span class="no">✗ Same Wi-Fi only</span></td>
+              <td>Zero-Install Portable .exe</td>
+              <td class="col-nxt"><span class="yes">✓ Run from USB (No Admin)</span></td>
+              <td><span class="yes">✓ Plug and play</span></td>
+              <td><span class="no">✗ Requires installer</span></td>
             </tr>
             <tr>
-              <td>Zero-install portable</td>
-              <td class="col-nxt"><span class="yes">✓ Run from USB</span></td>
-              <td><span class="yes">✓ Yes</span></td>
-              <td><span class="no">✗ No</span></td>
+              <td>Instant Web Remote (PWA)</td>
+              <td class="col-nxt"><span class="yes">✓ Scan QR code &amp; present</span></td>
+              <td><span class="no">✗ Hardware only</span></td>
+              <td><span class="no">✗ Mandatory app store install</span></td>
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLATFORM DOWNLOAD HUB -->
+  <section class="platforms-section" id="downloads">
+    <div class="container">
+      <div class="section-eyebrow">Distribution Matrix</div>
+      <h2 class="section-h2">Choose your platform &amp; present anywhere</h2>
+      <p class="section-sub">Production-grade native binaries for Windows and Android, plus an instant web remote for any mobile browser.</p>
+
+      <div class="platform-grid">
+        <!-- Windows Installer -->
+        <div class="platform-card highlight">
+          <span class="platform-card-badge">Recommended</span>
+          <div class="platform-card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+          </div>
+          <div class="platform-card-title">Windows Installer</div>
+          <div class="platform-card-meta">v2.1 · .exe · 102 MB · Windows 10/11</div>
+          <p class="platform-card-desc">Full desktop experience with system tray minimization, desktop shortcuts, transparent laser overlay, and auto-updates.</p>
+          <a href="/downloads/NXTslide-Setup.exe" download="NXTslide-Setup.exe" class="platform-card-btn primary">
+            Download Setup .exe
+          </a>
+        </div>
+
+        <!-- Windows Portable -->
+        <div class="platform-card">
+          <span class="platform-card-badge" style="background:rgba(99,102,241,0.15);color:#a5b4fc;border-color:rgba(99,102,241,0.3);">No Admin</span>
+          <div class="platform-card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+          </div>
+          <div class="platform-card-title">Windows Portable</div>
+          <div class="platform-card-meta">v2.1 · Standalone .exe · 102 MB</div>
+          <p class="platform-card-desc">Zero installation required. Copy to any USB flash drive and run immediately on locked school, university, or corporate laptops.</p>
+          <a href="/downloads/NXTslide-Portable.exe" download="NXTslide-Portable.exe" class="platform-card-btn secondary">
+            Download Portable .exe
+          </a>
+        </div>
+
+        <!-- Android Companion -->
+        <div class="platform-card">
+          <span class="platform-card-badge" style="background:rgba(168,85,247,0.15);color:#c084fc;border-color:rgba(168,85,247,0.3);">Pocket Mode</span>
+          <div class="platform-card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5896 8.3976 13.856 8.0833 12 8.0833s-3.5896.3143-5.1368.8664L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/></svg>
+          </div>
+          <div class="platform-card-title">Android Companion</div>
+          <div class="platform-card-meta">v2.1 · Native APK · 31 MB · Android 8.0+</div>
+          <p class="platform-card-desc">Native background volume listener with wake lock, 3D gyroscope hardware aiming, haptic vibration, and built-in camera QR scanner.</p>
+          <a href="/NXTslide.apk" download="NXTslide.apk" class="platform-card-btn secondary">
+            Download APK (31 MB)
+          </a>
+        </div>
+
+        <!-- Web Remote PWA -->
+        <div class="platform-card">
+          <span class="platform-card-badge" style="background:rgba(59,130,246,0.15);color:#60a5fa;border-color:rgba(59,130,246,0.3);">Zero Install</span>
+          <div class="platform-card-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          </div>
+          <div class="platform-card-title">Instant Web Remote</div>
+          <div class="platform-card-meta">PWA · Zero download · iOS &amp; Android</div>
+          <p class="platform-card-desc">No app download needed. Open directly in Safari, Chrome, or Edge on any phone or tablet to control slides via touchscreen or swipe gestures.</p>
+          <a href="/mobile.html" target="_blank" rel="noopener" class="platform-card-btn secondary">
+            Launch Web Remote →
+          </a>
+        </div>
       </div>
     </div>
   </section>
