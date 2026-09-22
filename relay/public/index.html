@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NXTslide — Turn Your Phone into a Presentation Clicker</title>
+  <meta name="description" content="Control PowerPoint, Google Slides, Keynote, and PDF presentations using your smartphone's physical volume buttons from inside your pocket. Zero latency, works behind locked screen.">
+  <meta name="keywords" content="presentation remote, clicker app, powerpoint clicker, volume button presentation, google slides remote, pocket presentation clicker">
+  <meta property="og:title" content="NXTslide — Invisible Presentation Clicker">
+  <meta property="og:description" content="Feel the click in your pocket. Control slides with volume buttons without ever breaking eye contact.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/logo-icon.jpg" type="image/jpeg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/landing.css">
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav" id="mainNav">
+    <div class="nav-inner">
+      <a href="#" class="nav-logo" aria-label="NXTslide Home">
+        <span class="logo-txt">NXT<span class="logo-highlight">slide</span></span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#features">Features</a></li>
+        <li><a href="#demo">Demo</a></li>
+        <li><a href="#compare">Compare</a></li>
+        <li><a href="#pricing">Pricing</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+
+      <div class="nav-right">
+        <a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener" class="nav-gh" aria-label="GitHub">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+
+        <!-- ── Auth Widget ─────────────────────────────────── -->
+        <!-- Signed OUT state -->
+        <div id="auth-signed-out" class="nav-auth-out" style="display:flex;align-items:center;gap:8px;">
+          <button id="auth-google-signin-btn" class="btn-nav btn-signin" title="Sign in with Google">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="flex-shrink:0"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+            Sign In
+          </button>
+        </div>
+
+        <!-- Signed IN state -->
+        <div id="auth-signed-in" class="nav-auth-in" style="display:none;align-items:center;gap:10px;">
+          <span id="auth-pro-badge" class="nav-pro-badge" style="display:none;">✦ PRO</span>
+          <div class="nav-user-pill" id="nav-user-pill">
+            <img id="auth-user-avatar" src="" alt="avatar" class="nav-avatar" style="display:none;">
+            <span id="auth-user-name" class="nav-user-name"></span>
+            <svg class="nav-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <!-- Dropdown -->
+          <div class="nav-user-dropdown" id="nav-user-dropdown">
+            <div class="nud-header">
+              <img id="auth-user-avatar-lg" src="" alt="" class="nud-avatar">
+              <div>
+                <div class="nud-name" id="nud-name"></div>
+                <div class="nud-email" id="auth-user-email"></div>
+              </div>
+            </div>
+            <div class="nud-divider"></div>
+            <button id="auth-upgrade-btn" class="nud-item nud-upgrade" style="display:none;">
+              ✦ Upgrade to Pro
+            </button>
+            <button id="auth-signout-btn" class="nud-item nud-signout">Sign Out</button>
+          </div>
+        </div>
+        <!-- ── /Auth Widget ────────────────────────────────── -->
+
+        <a href="#download" class="btn-nav">Download Free</a>
+      </div>
+
+      <button class="nav-hamburger" id="navHamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="download">
+    <div class="hero-noise"></div>
+    <div class="container">
+
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        v1.0 — Volume Rocker &amp; Lock-Screen Control
+      </div>
+
+      <h1 class="hero-h1">
+        Your phone is already<br>
+        <span class="hero-accent">a presentation clicker</span>
+      </h1>
+
+      <p class="hero-sub">
+        Press the volume buttons through your pocket fabric. Slides advance instantly.<br>
+        No dongle. No subscription. No looking down.
+      </p>
+
+      <div class="hero-actions" id="downloadSection">
+        <a href="/downloads/NXTslide-Setup.exe"
+           download="NXTslide-Setup.exe"
+           class="btn-primary" id="heroWinBtn">
+          <span class="btn-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+          </span>
+          <span class="btn-content">
+            <span class="btn-title">Download for Windows</span>
+            <span class="btn-sub">Free · 97 MB installer</span>
+          </span>
+        </a>
+        <a href="/NXTslide.apk" download="NXTslide.apk" class="btn-secondary" id="heroAndroidBtn">
+          <span class="btn-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4482.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5896 8.3976 13.856 8.0833 12 8.0833s-3.5896.3143-5.1368.8664L4.8409 5.4467a.4161.4161 0 00-.5677-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/></svg>
+          </span>
+          <span class="btn-content">
+            <span class="btn-title">Android Companion</span>
+            <span class="btn-sub">APK · 28 MB</span>
+          </span>
+        </a>
+      </div>
+
+      <div class="hero-trust">
+        <span>✓ 100% Free</span>
+        <span class="trust-sep">·</span>
+        <span>✓ No dongle</span>
+        <span class="trust-sep">·</span>
+        <span>✓ Works locked-screen</span>
+        <span class="trust-sep">·</span>
+        <span>✓ Zero-install portable mode</span>
+      </div>
+
+      <!-- Portable option -->
+      <div class="portable-note">
+        On a locked corporate laptop?
+        <a href="/downloads/NXTslide-Portable.exe"
+           download="NXTslide-Portable.exe">Download Portable .exe instead →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS (3 steps) -->
+  <section class="steps-section" id="features">
+    <div class="container">
+      <div class="section-eyebrow">How it works</div>
+      <h2 class="section-h2">Three steps. Then forget it exists.</h2>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">01</div>
+          <h3>Install on PC &amp; Phone</h3>
+          <p>Run NXTslide on your Windows laptop. Install the Android companion. They pair automatically via cloud relay or local Wi-Fi.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">02</div>
+          <h3>Lock screen, slip into pocket</h3>
+          <p>Once connected, lock your phone and put it away. The background service stays active without draining battery or making noise.</p>
+        </div>
+        <div class="step-card">
+          <div class="step-num">03</div>
+          <h3>Press volume through fabric</h3>
+          <p>Vol Up → next slide. Vol Down → previous. Tactile physical click. You never look down. Your audience never notices.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INTERACTIVE DEMO -->
+  <section class="demo-section" id="demo">
+    <div class="container">
+      <div class="section-eyebrow">Interactive Demo</div>
+      <h2 class="section-h2">Try it right now</h2>
+      <p class="section-sub">Click the volume keys on the phone or use the buttons to advance slides</p>
+
+      <div class="demo-frame">
+        <!-- Phone mockup -->
+        <div class="phone-mockup-wrapper">
+          <div class="phone-vol-key-hint">Click Volume Key</div>
+          <div class="phone-mockup">
+            <div class="phone-vol-key vol-up-btn" id="simVolUp" title="Volume Up — Next Slide"></div>
+            <div class="phone-vol-key vol-down-btn" id="simVolDown" title="Volume Down — Prev Slide"></div>
+            <div class="phone-screen">
+              <div class="phone-speaker-notch"></div>
+              <div class="phone-app-header">
+                <div class="phone-app-title">NXTslide Remote</div>
+                <div class="phone-app-status">
+                  <span class="pulse-circle" style="width:6px;height:6px;"></span>
+                  <span>Connected · Pocket Ready</span>
+                </div>
+              </div>
+              <div class="phone-pad">
+                <button class="phone-btn" id="simPhoneNext">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  <span>NEXT [Vol ▲]</span>
+                </button>
+                <button class="phone-btn" id="simPhonePrev">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                  <span>PREV [Vol ▼]</span>
+                </button>
+              </div>
+              <div class="phone-pocket-badge">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-1px;margin-right:4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>Screen Off Mode Active
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide preview -->
+        <div class="slide-display-wrapper">
+          <div class="slide-monitor">
+            <div class="slide-top-bar">
+              <span class="slide-deck-title" id="slideTag">Q3 Strategy Keynote</span>
+              <span class="slide-deck-badge" id="slideDeckBadge">Slide 1 of 6</span>
+            </div>
+            <div class="slide-body">
+              <div class="slide-content-card" id="slideCard">
+                <h3 class="slide-headline" id="slideHeadline">Scaling High-Performance Teams in 2026</h3>
+                <p class="slide-detail" id="slideDetail">How distributed autonomous teams deliver 10x output while maintaining radical clarity and zero overhead.</p>
+              </div>
+            </div>
+            <div class="slide-bottom-bar">
+              <div class="slide-indicator" id="slideIndicator"><span>01</span> / 06</div>
+              <div class="slide-status-chip">
+                <span class="pulse-circle" style="width:6px;height:6px;"></span>
+                <span>PowerPoint Live Host</span>
+              </div>
+            </div>
+          </div>
+          <div class="simulator-hud">
+            <div class="hud-pill">
+              <span class="hud-label">Latency</span>
+              <span class="hud-value" id="simLatency">1.4 ms</span>
+            </div>
+            <div class="hud-pill">
+              <span class="hud-label">Keystroke</span>
+              <span class="hud-value" id="simKeyInjected">Right Arrow [→]</span>
+            </div>
+            <div class="hud-pill">
+              <span class="hud-label">Timer</span>
+              <span class="hud-value" id="simTimerDisplay">02:48</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES GRID -->
+  <section class="features-section">
+    <div class="container">
+      <div class="section-eyebrow">Why NXTslide</div>
+      <h2 class="section-h2">Built for the stage, not the screen</h2>
+
+      <div class="features-grid">
+        <div class="feature-card feature-wide">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </div>
+          <h3>Works behind a locked screen</h3>
+          <p>A high-priority background audio session keeps the service alive. Lock your phone, pocket it, and present for hours. Less than 1% battery per hour.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          </div>
+          <h3>Sub-2ms keystroke injection</h3>
+          <p>Native Windows keystroke injection via a lightweight C# helper. No perceptible delay between click and slide change.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
+          </div>
+          <h3>Cloud relay — any network</h3>
+          <p>Phone on cellular, laptop on hotel Wi-Fi? The cloud relay bridges them instantly with a 6-letter room code.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16.5 9.4 7.55 4.24M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.29 7 12 12 20.71 7"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          </div>
+          <h3>Zero-install portable</h3>
+          <p>No admin rights needed. Run the portable .exe from a USB drive on a locked corporate laptop.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="22" y1="9" x2="16" y2="15"></line><line x1="16" y1="9" x2="22" y2="15"></line></svg>
+          </div>
+          <h3>Completely silent</h3>
+          <p>Volume resets silently. No chime. No notification. Your audience hears nothing except your voice.</p>
+        </div>
+        <div class="feature-card feature-wide">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m4.93 4.93 4.24 4.24"></path><path d="m14.83 9.17 4.24-4.24"></path><path d="m14.83 14.83 4.24 4.24"></path><path d="m9.17 14.83-4.24 4.24"></path><circle cx="12" cy="12" r="4"></circle></svg>
+          </div>
+          <h3>Universal software support</h3>
+          <p>Switch profiles in one click — PowerPoint, Google Slides, Keynote, Canva, PDF viewers, Prezi. Each profile sends the correct keystrokes automatically.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPARISON TABLE -->
+  <section class="compare-section" id="compare">
+    <div class="container">
+      <div class="section-eyebrow">Direct Comparison</div>
+      <h2 class="section-h2">NXTslide vs the alternatives</h2>
+
+      <div class="table-scroll">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th class="col-nxt">NXTslide</th>
+              <th>Logitech R400 / Spotlight</th>
+              <th>Generic Remote Apps</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Cost</td>
+              <td class="col-nxt"><span class="yes">Free</span></td>
+              <td>$60 – $130</td>
+              <td>$5/mo subscription</td>
+            </tr>
+            <tr>
+              <td>Physical tactile click</td>
+              <td class="col-nxt"><span class="yes">✓ Volume rocker</span></td>
+              <td><span class="yes">✓ Plastic button</span></td>
+              <td><span class="no">✗ Flat glass only</span></td>
+            </tr>
+            <tr>
+              <td>Hardware dongle required</td>
+              <td class="col-nxt"><span class="yes">✓ No dongle</span></td>
+              <td><span class="no">✗ Lose it → useless</span></td>
+              <td><span class="yes">✓ No dongle</span></td>
+            </tr>
+            <tr>
+              <td>Works with screen off</td>
+              <td class="col-nxt"><span class="yes">✓ Pocket Mode</span></td>
+              <td>N/A</td>
+              <td><span class="no">✗ Screen must stay on</span></td>
+            </tr>
+            <tr>
+              <td>Cross-network cloud relay</td>
+              <td class="col-nxt"><span class="yes">✓ Any network</span></td>
+              <td><span class="no">✗ 10m RF range</span></td>
+              <td><span class="no">✗ Same Wi-Fi only</span></td>
+            </tr>
+            <tr>
+              <td>Zero-install portable</td>
+              <td class="col-nxt"><span class="yes">✓ Run from USB</span></td>
+              <td><span class="yes">✓ Yes</span></td>
+              <td><span class="no">✗ No</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="pricing-section" id="pricing">
+    <div class="container">
+      <div class="section-eyebrow">Pricing</div>
+      <h2 class="section-h2">No subscriptions. Ever.</h2>
+      <p class="section-sub">Start free. Upgrade once if you want cloud relay.</p>
+
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <div class="plan-top">
+            <span class="plan-name">Community</span>
+            <div class="plan-price">$0 <span>forever</span></div>
+          </div>
+          <ul class="plan-features">
+            <li class="on">Unlimited presentations</li>
+            <li class="on">Local Wi-Fi connection</li>
+            <li class="on">Physical volume key control</li>
+            <li class="on">All software profiles</li>
+            <li class="on">Portable .exe mode</li>
+            <li class="off">Cloud relay (cross-network)</li>
+          </ul>
+          <a href="/downloads/NXTslide-Setup.exe"
+             download="NXTslide-Setup.exe" class="plan-btn">Download Free</a>
+        </div>
+
+        <div class="pricing-card featured">
+          <div class="plan-badge">Most Popular</div>
+          <div class="plan-top">
+            <span class="plan-name">Pro Lifetime</span>
+            <div class="plan-price">$19 <span>one-time</span></div>
+          </div>
+          <ul class="plan-features">
+            <li class="on">Everything in Community</li>
+            <li class="on"><strong>Global Cloud Relay</strong> — Present from anywhere on Earth (even across countries on 5G/LTE)</li>
+            <li class="on"><strong>Multi-Presenter Mode</strong> — Connect up to 5 mobile phones simultaneously</li>
+            <li class="on"><strong>Zero Subscriptions</strong> — One-time $19 payment, own forever</li>
+            <li class="on"><strong>Instant 6-Letter Room Code</strong> — Bypasses hotel & venue Wi-Fi firewalls</li>
+            <li class="on"><strong>Stealth Pocket Haptic Timer</strong> — Vibration pulses at 10m, 5m & 1m</li>
+            <li class="on">Lifetime updates + commercial license</li>
+          </ul>
+          <!-- Shows different CTA depending on sign-in state -->
+          <button id="pricing-pro-btn" class="plan-btn plan-btn-primary" onclick="window._pricingProClick()">Get Pro Lifetime</button>
+          <div id="pricing-pro-active" class="plan-pro-active" style="display:none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Pro Active — Thank you! 🎉
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="faq-section" id="faq">
+    <div class="container faq-container">
+      <div class="section-eyebrow">FAQ</div>
+      <h2 class="section-h2">Common questions</h2>
+
+      <div class="faq-list">
+        <div class="faq-item open">
+          <button class="faq-question">
+            <span>Does the volume button really change slides with the screen off?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            Yes. The Android companion uses a background MediaSession with a partial wake lock. Lock your phone, pocket it — pressing Volume Up advances the slide, Volume Down goes back. Zero audio noise.
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Do I need admin rights on my corporate laptop?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            No. The Portable .exe runs without installation or admin privileges. Download it to your desktop or USB drive and double-click.
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>What if my laptop and phone are on different networks?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            The cloud relay handles this. When you open NXTslide you get a 6-letter room code (e.g. <code>ABC-123</code>). Enter it in the phone app — they pair across any network, firewall, or cellular connection.
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Will pressing volume play a sound or notification?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            No. NXTslide silently resets the volume stream and suppresses all audio flags. The only feedback is a discreet vibration on your phone.
+          </div>
+        </div>
+        <div class="faq-item">
+          <button class="faq-question">
+            <span>Which presentation software does it support?</span>
+            <span class="faq-icon">+</span>
+          </button>
+          <div class="faq-answer">
+            PowerPoint, Google Slides, Keynote (Windows/Mac), Canva, LibreOffice Impress, PDF viewers (Adobe, Edge, Chrome), and Prezi. Each has a one-click profile preset in the dashboard.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOUNDER -->
+  <section class="founder-section">
+    <div class="container">
+      <div class="founder-card">
+        <div class="founder-avatar" aria-hidden="true">
+          <span>DS</span>
+        </div>
+        <div class="founder-text">
+          <div class="founder-label">Founder &amp; Creator</div>
+          <div class="founder-name">Dilpreet Singh</div>
+          <p>"I built NXTslide to eliminate presentation anxiety — no more fumbling for dongles, no more looking down at a screen. Every speaker deserves to command the room from their pocket."</p>
+          <div class="founder-actions">
+            <a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener" class="btn-secondary-sm">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+              GitHub
+            </a>
+            <a href="#download" class="btn-primary-sm">Download Free</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <span class="logo-txt footer-logo-txt">NXT<span class="logo-highlight">slide</span></span>
+      </div>
+
+      <div class="footer-cols">
+        <div class="footer-col">
+          <div class="footer-col-title">Downloads</div>
+          <ul>
+            <li><a href="/downloads/NXTslide-Setup.exe" download="NXTslide-Setup.exe">Windows Installer</a></li>
+            <li><a href="/downloads/NXTslide-Portable.exe" download="NXTslide-Portable.exe">Windows Portable</a></li>
+            <li><a href="/NXTslide.apk" download="NXTslide.apk">Android APK</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Works With</div>
+          <ul>
+            <li>Microsoft PowerPoint</li>
+            <li>Google Slides</li>
+            <li>Canva Decks</li>
+            <li>Apple Keynote &amp; PDF</li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Project</div>
+          <ul>
+            <li><a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener">GitHub Repository</a></li>
+            <li><a href="https://nextpresent-relay.onrender.com/health" target="_blank" rel="noopener">Relay Status</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="container footer-bottom">
+      <span>© 2026 NXTslide · Built by <strong>Dilpreet Singh</strong></span>
+      <span>Open source · Free forever</span>
+    </div>
+  </footer>
+
+  <script src="/js/landing.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    // ── Landing page pricing integration ───────────────────────────────────
+    window._pricingProClick = function() {
+      const user = window.NXTAuth && window.NXTAuth.getCurrentUser();
+      if (!user) {
+        // Not signed in — open sign-in then show upgrade prompt
+        if (window.NXTAuth) window.NXTAuth.signIn();
+        return;
+      }
+      if (user.isPro) return; // already pro
+      if (window.NXTAuth) window.NXTAuth.upgrade();
+    };
+
+    // Watch auth state to update pricing button
+    (function syncPricingBtn() {
+      function update() {
+        const user = window.NXTAuth && window.NXTAuth.getCurrentUser();
+        const btn    = document.getElementById('pricing-pro-btn');
+        const active = document.getElementById('pricing-pro-active');
+        const avatarLg = document.getElementById('auth-user-avatar-lg');
+        const nudName  = document.getElementById('nud-name');
+        if (!btn || !active) return;
+        if (user && user.isPro) {
+          btn.style.display    = 'none';
+          active.style.display = 'flex';
+        } else if (user) {
+          btn.style.display    = 'block';
+          btn.textContent      = '✦ Upgrade to Pro — $19';
+          active.style.display = 'none';
+        } else {
+          btn.style.display    = 'block';
+          btn.textContent      = 'Get Pro Lifetime';
+          active.style.display = 'none';
+        }
+        // Sync large avatar and name in dropdown
+        if (user && avatarLg) {
+          avatarLg.src = user.avatar || '';
+          avatarLg.style.display = user.avatar ? 'block' : 'none';
+        }
+        if (user && nudName) nudName.textContent = user.name || user.email;
+      }
+
+      // Patch NXTAuth.refresh to call update
+      var _origInit = document.addEventListener;
+      document.addEventListener('DOMContentLoaded', function() {
+        // Poll every second until NXTAuth is ready, then observe
+        var interval = setInterval(function() {
+          if (window.NXTAuth) {
+            clearInterval(interval);
+            update();
+            // Re-check every 3s for plan changes
+            setInterval(update, 3000);
+          }
+        }, 200);
+      });
+    })();
+
+    // ── Nav user-pill dropdown toggle ────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', function() {
+      var pill = document.getElementById('nav-user-pill');
+      var dropdown = document.getElementById('nav-user-dropdown');
+      if (pill && dropdown) {
+        pill.addEventListener('click', function(e) {
+          e.stopPropagation();
+          dropdown.classList.toggle('open');
+        });
+        document.addEventListener('click', function() {
+          dropdown.classList.remove('open');
+        });
+      }
+    });
+  </script>
+</body>
+</html>
