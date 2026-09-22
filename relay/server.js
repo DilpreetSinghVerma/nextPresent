@@ -64,8 +64,8 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'nxtslide-secret-2026';
 const ADMIN_EMAILS   = ['dilpreetsinghverma@gmail.com'];
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'nxtslide-admin-2026';
 
-// Pro Plan price in paise (₹199 Lifetime Early Bird = 19900 paise)
-const PRO_LIFETIME_PRICE = 19900;
+// Pro Plan price in paise (₹149 Lifetime Permanent Account = 14900 paise)
+const PRO_LIFETIME_PRICE = 14900;
 
 // ─── SQLite Database Setup ────────────────────────────────────────────────────
 let db = null;
@@ -1252,6 +1252,37 @@ app.get(['/laser', '/laser.html'], async (_req, res) => {
     }
   } catch (_) {}
   res.status(404).send('<h1>Laser Not Found</h1>');
+});
+
+// Policy Pages (terms, privacy, refund, contact)
+['terms', 'privacy', 'refund', 'contact'].forEach((page) => {
+  app.get([`/${page}`, `/${page}.html`], async (_req, res) => {
+    const localPaths = [
+      path.resolve(__dirname, 'public', `${page}.html`),
+      path.resolve(__dirname, '..', 'public', `${page}.html`)
+    ];
+    for (const p of localPaths) {
+      if (fs.existsSync(p)) {
+        try {
+          const html = fs.readFileSync(p, 'utf8');
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          return res.send(html);
+        } catch (_) {}
+      }
+    }
+    try {
+      const ghRes = await fetch(`${GITHUB_RAW_BASE}/${page}.html`, {
+        headers: { 'User-Agent': 'NXTslide-Relay/3.0', 'Cache-Control': 'no-cache' },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (ghRes.ok) {
+        const html = await ghRes.text();
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+      }
+    } catch (_) {}
+    res.status(404).send(`<h1>${page.toUpperCase()} Page Not Found</h1>`);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
