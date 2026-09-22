@@ -7,7 +7,9 @@
 (function () {
   'use strict';
 
-  const RELAY_BASE = 'https://nextpresent-relay.onrender.com';
+  const RELAY_BASE = (typeof window !== 'undefined' && window.location && (window.location.hostname.includes('nxtslide.online') || window.location.hostname.includes('render.com')))
+    ? window.location.origin
+    : 'https://nextpresent-relay.onrender.com';
 
   // ─── State ──────────────────────────────────────────────────────────────────
   let currentUser = null;
