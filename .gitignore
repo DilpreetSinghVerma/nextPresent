@@ -30,6 +30,7 @@ Thumbs.db
 public/downloads/*.exe
 public/downloads/*.apk
 NXTslide_Installers/
+assets/logos_source/
 
 
 # Environment variables & Databases

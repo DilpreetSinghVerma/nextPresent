@@ -52,6 +52,7 @@
       "!public/downloads/**",
       "bin/**/*",
       "assets/**/*",
+      "!assets/logos_source/**",
       "server.js",
       "package.json"
     ],
