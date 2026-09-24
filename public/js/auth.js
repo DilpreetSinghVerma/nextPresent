@@ -9,7 +9,7 @@
 
   const RELAY_BASE = (typeof window !== 'undefined' && window.location && (window.location.hostname.includes('nxtslide.online') || window.location.hostname.includes('render.com')))
     ? window.location.origin
-    : 'https://nextpresent-relay.onrender.com';
+    : 'https://nxtslide.online';
 
   // ─── State ──────────────────────────────────────────────────────────────────
   let currentUser = null;

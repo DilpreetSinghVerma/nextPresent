@@ -81,7 +81,16 @@
                 <data android:scheme="nextpresent" android:host="connect" />
             </intent-filter>
 
-            <!-- HTTPS relay share link: https://nextpresent-relay.onrender.com/r/* -->
+            <!-- HTTPS relay share link: https://nxtslide.online/r/* and legacy onrender.com/r/* -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="nxtslide.online"
+                    android:pathPrefix="/r/" />
+            </intent-filter>
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

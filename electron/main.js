@@ -65,7 +65,7 @@ let isQuitting = false;
 
 const PORT = process.env.PORT || 3333;
 const DASHBOARD_URL = `http://localhost:${PORT}/dashboard`;
-const RELAY_BASE = 'https://nextpresent-relay.onrender.com';
+const RELAY_BASE = 'https://nxtslide.online';
 
 // ─── Register nxtslide:// deep-link protocol ──────────────────────────────────
 // This lets Google OAuth redirect back to the desktop app after sign-in.

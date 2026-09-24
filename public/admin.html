@@ -785,7 +785,7 @@
     const isLocalRelay = window.location.port === '4000';
     const defaultRelay = isLocalRelay
       ? window.location.origin
-      : (window.location.origin.includes('render.com') ? window.location.origin : 'https://nextpresent-relay.onrender.com');
+      : (window.location.origin.includes('nxtslide.online') || window.location.origin.includes('render.com') ? window.location.origin : 'https://nxtslide.online');
     const RELAY_BASE = relayOverride || defaultRelay;
 
     // Check if admin key or auth token passed in query parameters
