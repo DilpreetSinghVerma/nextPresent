@@ -12,6 +12,7 @@
   },
   "license": "ISC",
   "dependencies": {
+    "@libsql/client": "^0.18.0",
     "better-sqlite3": "^13.0.3",
     "cookie-session": "^2.1.1",
     "dotenv": "^17.4.2",

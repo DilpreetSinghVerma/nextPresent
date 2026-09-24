@@ -40,12 +40,12 @@ const passport       = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const cookieSession  = require('cookie-session');
 
-// ─── Database ─────────────────────────────────────────────────────────────────
-let Database;
+// ─── Database (Turso LibSQL Cloud with Local SQLite Fallback) ──────────────────
+let createClient;
 try {
-  Database = require('better-sqlite3');
+  ({ createClient } = require('@libsql/client'));
 } catch (e) {
-  console.warn('[DB] better-sqlite3 not available:', e.message);
+  console.warn('[DB] @libsql/client not available:', e.message);
 }
 
 // ─── Razorpay ─────────────────────────────────────────────────────────────────
@@ -67,20 +67,32 @@ const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'nxtslide-admin-2026';
 // Pro Plan price in paise (₹149 Lifetime Permanent Account = 14900 paise)
 const PRO_LIFETIME_PRICE = 14900;
 
-// ─── SQLite Database Setup ────────────────────────────────────────────────────
+// ─── Database Setup ───────────────────────────────────────────────────────────
 let db = null;
 
-function setupDatabase() {
-  if (!Database) return null;
+async function setupDatabase() {
+  if (!createClient) {
+    console.error('[DB] Cannot initialize database: @libsql/client is missing.');
+    return null;
+  }
   try {
-    const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'nxtslide_users.db');
-    const db = new Database(dbPath);
+    let client;
+    if (process.env.TURSO_DATABASE_URL) {
+      console.log('[DB] Connecting to Turso Cloud Database:', process.env.TURSO_DATABASE_URL);
+      client = createClient({
+        url: process.env.TURSO_DATABASE_URL,
+        authToken: process.env.TURSO_AUTH_TOKEN,
+      });
+    } else {
+      const dbPath = process.env.DB_PATH || path.join(process.cwd(), 'nxtslide_users.db');
+      console.log('[DB] Using local SQLite database file at:', dbPath);
+      client = createClient({
+        url: `file:${dbPath}`,
+      });
+    }
 
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS users (
+    await client.batch([
+      `CREATE TABLE IF NOT EXISTS users (
         id                     TEXT PRIMARY KEY,
         googleId               TEXT UNIQUE,
         email                  TEXT UNIQUE NOT NULL,
@@ -91,17 +103,15 @@ function setupDatabase() {
         subscriptionExpiresAt  TEXT,
         razorpayCustomerId     TEXT,
         createdAt              TEXT NOT NULL DEFAULT (datetime('now'))
-      );
-
-      CREATE TABLE IF NOT EXISTS auth_tokens (
+      );`,
+      `CREATE TABLE IF NOT EXISTS auth_tokens (
         token     TEXT PRIMARY KEY,
         userId    TEXT NOT NULL,
         expiresAt TEXT NOT NULL,
         createdAt TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY(userId) REFERENCES users(id) ON DELETE CASCADE
-      );
-
-      CREATE TABLE IF NOT EXISTS payments (
+      );`,
+      `CREATE TABLE IF NOT EXISTS payments (
         id         TEXT PRIMARY KEY,
         userId     TEXT,
         userEmail  TEXT NOT NULL,
@@ -114,15 +124,14 @@ function setupDatabase() {
         notes      TEXT,
         createdAt  TEXT NOT NULL DEFAULT (datetime('now')),
         FOREIGN KEY(userId) REFERENCES users(id) ON DELETE SET NULL
-      );
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_payments_userId ON payments(userId);`,
+      `CREATE INDEX IF NOT EXISTS idx_payments_createdAt ON payments(createdAt);`,
+      `CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`
+    ]);
 
-      CREATE INDEX IF NOT EXISTS idx_payments_userId ON payments(userId);
-      CREATE INDEX IF NOT EXISTS idx_payments_createdAt ON payments(createdAt);
-      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-    `);
-
-    console.log('[DB] SQLite database ready at:', dbPath);
-    return db;
+    console.log('[DB] Database schema verified and ready.');
+    return client;
   } catch (err) {
     console.error('[DB] Failed to initialize database:', err.message);
     return null;
@@ -134,12 +143,15 @@ function generateId() {
   return randomBytes(8).toString('hex');
 }
 
-function createAuthToken(userId) {
+async function createAuthToken(userId) {
   if (!db || !userId) return null;
   const token = randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(); // 90 days
   try {
-    db.prepare('INSERT INTO auth_tokens (token, userId, expiresAt) VALUES (?, ?, ?)').run(token, userId, expiresAt);
+    await db.execute({
+      sql: 'INSERT INTO auth_tokens (token, userId, expiresAt) VALUES (?, ?, ?)',
+      args: [token, userId, expiresAt]
+    });
     return token;
   } catch (err) {
     console.error('[DB] Failed to create auth token:', err.message);
@@ -147,32 +159,33 @@ function createAuthToken(userId) {
   }
 }
 
-function getUserByToken(token) {
+async function getUserByToken(token) {
   if (!db || !token) return null;
   try {
-    const user = db.prepare(`
-      SELECT u.* FROM users u
-      JOIN auth_tokens t ON t.userId = u.id
-      WHERE t.token = ? AND datetime(t.expiresAt) > datetime('now')
-    `).get(token);
-    return user || null;
+    const res = await db.execute({
+      sql: `SELECT u.* FROM users u
+            JOIN auth_tokens t ON t.userId = u.id
+            WHERE t.token = ? AND datetime(t.expiresAt) > datetime('now')`,
+      args: [token]
+    });
+    return res.rows[0] || null;
   } catch (err) {
     console.error('[DB] Failed to get user by token:', err.message);
     return null;
   }
 }
 
-function resolveUser(req) {
+async function resolveUser(req) {
   // 1. Bearer token in Authorization header
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.slice(7).trim();
-    const user = getUserByToken(token);
+    const user = await getUserByToken(token);
     if (user) return user;
   }
   // 2. Query param ?token=
   if (req.query && req.query.token) {
-    const user = getUserByToken(req.query.token);
+    const user = await getUserByToken(req.query.token);
     if (user) return user;
   }
   // 3. Cookie session (passport)
@@ -182,40 +195,82 @@ function resolveUser(req) {
   return null;
 }
 
-function getUserById(id) {
-  if (!db) return null;
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+async function getUserById(id) {
+  if (!db || !id) return null;
+  try {
+    const res = await db.execute({
+      sql: 'SELECT * FROM users WHERE id = ?',
+      args: [id]
+    });
+    return res.rows[0] || null;
+  } catch (err) {
+    console.error('[DB] Failed to get user by id:', err.message);
+    return null;
+  }
 }
 
-function getUserByGoogleId(googleId) {
-  if (!db) return null;
-  return db.prepare('SELECT * FROM users WHERE googleId = ?').get(googleId);
+async function getUserByGoogleId(googleId) {
+  if (!db || !googleId) return null;
+  try {
+    const res = await db.execute({
+      sql: 'SELECT * FROM users WHERE googleId = ?',
+      args: [googleId]
+    });
+    return res.rows[0] || null;
+  } catch (err) {
+    console.error('[DB] Failed to get user by googleId:', err.message);
+    return null;
+  }
 }
 
-function getUserByEmail(email) {
-  if (!db) return null;
-  return db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase());
+async function getUserByEmail(email) {
+  if (!db || !email) return null;
+  try {
+    const res = await db.execute({
+      sql: 'SELECT * FROM users WHERE email = ?',
+      args: [email.toLowerCase()]
+    });
+    return res.rows[0] || null;
+  } catch (err) {
+    console.error('[DB] Failed to get user by email:', err.message);
+    return null;
+  }
 }
 
-function createUser(data) {
+async function createUser(data) {
   if (!db) return null;
   const id = generateId();
-  db.prepare(`
-    INSERT INTO users (id, googleId, email, name, avatar, plan)
-    VALUES (?, ?, ?, ?, ?, 'free')
-  `).run(id, data.googleId || null, data.email.toLowerCase(), data.name || null, data.avatar || null);
-  return getUserById(id);
+  try {
+    await db.execute({
+      sql: `INSERT INTO users (id, googleId, email, name, avatar, plan)
+            VALUES (?, ?, ?, ?, ?, 'free')`,
+      args: [id, data.googleId || null, data.email.toLowerCase(), data.name || null, data.avatar || null]
+    });
+    return await getUserById(id);
+  } catch (err) {
+    console.error('[DB] Failed to create user:', err.message);
+    return null;
+  }
 }
 
-function updateUser(id, updates) {
-  if (!db) return null;
+async function updateUser(id, updates) {
+  if (!db || !id) return null;
   const allowed = ['googleId','name','avatar','plan','subscriptionStartedAt','subscriptionExpiresAt','razorpayCustomerId'];
   const fields  = Object.keys(updates).filter(k => allowed.includes(k));
-  if (fields.length === 0) return getUserById(id);
+  if (fields.length === 0) return await getUserById(id);
   const setClause = fields.map(f => `${f} = ?`).join(', ');
   const values    = fields.map(f => updates[f]);
-  db.prepare(`UPDATE users SET ${setClause} WHERE id = ?`).run(...values, id);
-  return getUserById(id);
+  values.push(id);
+  try {
+    await db.execute({
+      sql: `UPDATE users SET ${setClause} WHERE id = ?`,
+      args: values
+    });
+    return await getUserById(id);
+  } catch (err) {
+    console.error('[DB] Failed to update user:', err.message);
+    return null;
+  }
 }
 
 function isUserPro(user) {
@@ -227,49 +282,53 @@ function isUserPro(user) {
 }
 
 // ─── Payments & Admin DB Helpers ──────────────────────────────────────────────
-function recordPayment(data) {
+async function recordPayment(data) {
   if (!db) return null;
   const id = generateId();
   try {
-    db.prepare(`
-      INSERT INTO payments (id, userId, userEmail, amount, currency, orderId, paymentId, status, source, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      id,
-      data.userId || null,
-      (data.userEmail || '').toLowerCase(),
-      data.amount || 0,
-      data.currency || 'INR',
-      data.orderId || null,
-      data.paymentId || null,
-      data.status || 'paid',
-      data.source || 'razorpay',
-      data.notes ? (typeof data.notes === 'string' ? data.notes : JSON.stringify(data.notes)) : null
-    );
-    return db.prepare('SELECT * FROM payments WHERE id = ?').get(id);
+    await db.execute({
+      sql: `INSERT INTO payments (id, userId, userEmail, amount, currency, orderId, paymentId, status, source, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        id,
+        data.userId || null,
+        (data.userEmail || '').toLowerCase(),
+        data.amount || 0,
+        data.currency || 'INR',
+        data.orderId || null,
+        data.paymentId || null,
+        data.status || 'paid',
+        data.source || 'razorpay',
+        data.notes ? (typeof data.notes === 'string' ? data.notes : JSON.stringify(data.notes)) : null
+      ]
+    });
+    const res = await db.execute({ sql: 'SELECT * FROM payments WHERE id = ?', args: [id] });
+    return res.rows[0] || null;
   } catch (err) {
     console.error('[DB] Failed to record payment:', err.message);
     return null;
   }
 }
 
-function getAllPayments(limit = 100, offset = 0) {
+async function getAllPayments(limit = 100, offset = 0) {
   if (!db) return [];
   try {
-    return db.prepare(`
-      SELECT p.*, u.name as userName, u.avatar as userAvatar
-      FROM payments p
-      LEFT JOIN users u ON p.userId = u.id
-      ORDER BY datetime(p.createdAt) DESC
-      LIMIT ? OFFSET ?
-    `).all(limit, offset);
+    const res = await db.execute({
+      sql: `SELECT p.*, u.name as userName, u.avatar as userAvatar
+            FROM payments p
+            LEFT JOIN users u ON p.userId = u.id
+            ORDER BY datetime(p.createdAt) DESC
+            LIMIT ? OFFSET ?`,
+      args: [limit, offset]
+    });
+    return res.rows;
   } catch (err) {
     console.error('[DB] Failed to query payments:', err.message);
     return [];
   }
 }
 
-function getAllUsers(query = '', planFilter = 'all', limit = 100, offset = 0) {
+async function getAllUsers(query = '', planFilter = 'all', limit = 100, offset = 0) {
   if (!db) return { users: [], total: 0 };
   try {
     let sql = 'SELECT * FROM users WHERE 1=1';
@@ -296,10 +355,11 @@ function getAllUsers(query = '', planFilter = 'all', limit = 100, offset = 0) {
     sql += ' ORDER BY datetime(createdAt) DESC LIMIT ? OFFSET ?';
     params.push(limit, offset);
 
-    const total = db.prepare(countSql).get(...countParams)?.total || 0;
-    const rawUsers = db.prepare(sql).all(...params);
+    const countRes = await db.execute({ sql: countSql, args: countParams });
+    const total = Number(countRes.rows[0]?.total || 0);
 
-    const users = rawUsers.map(u => ({
+    const usersRes = await db.execute({ sql, args: params });
+    const users = usersRes.rows.map(u => ({
       ...u,
       isPro: isUserPro(u),
     }));
@@ -311,26 +371,26 @@ function getAllUsers(query = '', planFilter = 'all', limit = 100, offset = 0) {
   }
 }
 
-function getAdminStats() {
+async function getAdminStats() {
   if (!db) return { totalUsers: 0, proUsers: 0, freeUsers: 0, totalRevenue: 0, recentSignups: 0, activeRooms: rooms.size, conversionRate: '0' };
   try {
-    const totalUsers = db.prepare('SELECT count(*) as count FROM users').get()?.count || 0;
-    const proUsers = db.prepare(`
+    const totalRes = await db.execute('SELECT count(*) as count FROM users');
+    const totalUsers = Number(totalRes.rows[0]?.count || 0);
+
+    const proSql = `
       SELECT count(*) as count FROM users 
       WHERE (plan = 'pro' AND datetime(subscriptionExpiresAt) > datetime('now'))
          OR email IN ('${ADMIN_EMAILS.join("','")}')
-    `).get()?.count || 0;
+    `;
+    const proRes = await db.execute(proSql);
+    const proUsers = Number(proRes.rows[0]?.count || 0);
     const freeUsers = Math.max(0, totalUsers - proUsers);
 
-    // Sum total successful revenue in INR (amount is in paise)
-    const revRow = db.prepare(`
-      SELECT sum(amount) as totalPaise FROM payments WHERE status = 'paid'
-    `).get();
-    const totalRevenue = Math.round((revRow?.totalPaise || 0) / 100);
+    const revRes = await db.execute("SELECT sum(amount) as totalPaise FROM payments WHERE status = 'paid'");
+    const totalRevenue = Math.round(Number(revRes.rows[0]?.totalPaise || 0) / 100);
 
-    const recentSignups = db.prepare(`
-      SELECT count(*) as count FROM users WHERE datetime(createdAt) >= datetime('now', '-7 days')
-    `).get()?.count || 0;
+    const recentRes = await db.execute("SELECT count(*) as count FROM users WHERE datetime(createdAt) >= datetime('now', '-7 days')");
+    const recentSignups = Number(recentRes.rows[0]?.count || 0);
 
     return {
       totalUsers,
@@ -347,11 +407,11 @@ function getAdminStats() {
   }
 }
 
-function deleteUserAccount(userId) {
+async function deleteUserAccount(userId) {
   if (!db || !userId) return false;
   try {
-    db.prepare('DELETE FROM auth_tokens WHERE userId = ?').run(userId);
-    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    await db.execute({ sql: 'DELETE FROM auth_tokens WHERE userId = ?', args: [userId] });
+    await db.execute({ sql: 'DELETE FROM users WHERE id = ?', args: [userId] });
     return true;
   } catch (err) {
     console.error('[DB] Failed to delete user:', err.message);
@@ -359,8 +419,8 @@ function deleteUserAccount(userId) {
   }
 }
 
-function setManualPlan(userId, plan, expiresAt, adminNotes = '') {
-  const user = getUserById(userId);
+async function setManualPlan(userId, plan, expiresAt, adminNotes = '') {
+  const user = await getUserById(userId);
   if (!user) return null;
 
   const now = new Date();
@@ -369,7 +429,7 @@ function setManualPlan(userId, plan, expiresAt, adminNotes = '') {
     exp = (plan === 'pro') ? '2099-12-31T23:59:59.999Z' : null;
   }
 
-  const updated = updateUser(userId, {
+  const updated = await updateUser(userId, {
     plan: plan || 'free',
     subscriptionStartedAt: (plan === 'pro') ? now.toISOString() : null,
     subscriptionExpiresAt: exp,
@@ -377,7 +437,7 @@ function setManualPlan(userId, plan, expiresAt, adminNotes = '') {
 
   // Record a payment entry if granting Pro
   if (plan === 'pro') {
-    recordPayment({
+    await recordPayment({
       userId: user.id,
       userEmail: user.email,
       amount: 0,
@@ -392,7 +452,7 @@ function setManualPlan(userId, plan, expiresAt, adminNotes = '') {
 }
 
 // ─── Admin Security Middleware ────────────────────────────────────────────────
-function requireAdmin(req, res, next) {
+async function requireAdmin(req, res, next) {
   // 1. Master admin secret key via header or query
   const keyHeader = req.headers['x-admin-key'];
   const keyQuery  = req.query.admin_key;
@@ -406,7 +466,7 @@ function requireAdmin(req, res, next) {
   }
 
   // 3. User Google Email matches ADMIN_EMAILS
-  const user = resolveUser(req);
+  const user = await resolveUser(req);
   if (user && ADMIN_EMAILS.includes(user.email.toLowerCase())) {
     return next();
   }
@@ -473,18 +533,18 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         const email = profile.emails?.[0]?.value;
         if (!email) return done(new Error('No email from Google'));
 
-        let user = getUserByGoogleId(profile.id);
+        let user = await getUserByGoogleId(profile.id);
         if (!user) {
-          user = getUserByEmail(email);
+          user = await getUserByEmail(email);
           if (user) {
             // Link Google account to existing email user
-            user = updateUser(user.id, {
+            user = await updateUser(user.id, {
               googleId: profile.id,
               avatar:   user.avatar || profile.photos?.[0]?.value || null,
             });
           } else {
             // New user — create account
-            user = createUser({
+            user = await createUser({
               googleId: profile.id,
               email,
               name:   profile.displayName || email.split('@')[0],
@@ -505,8 +565,8 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
 }
 
 passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser((id, done) => {
-  const user = getUserById(id);
+passport.deserializeUser(async (id, done) => {
+  const user = await getUserById(id);
   done(null, user || false);
 });
 
@@ -697,9 +757,9 @@ app.get(['/auth/google', '/api/auth/google'], (req, res, next) => {
 // Google OAuth Callback (handles both /auth/google/callback and /api/auth/google/callback)
 app.get(['/auth/google/callback', '/api/auth/google/callback'],
   passport.authenticate('google', { failureRedirect: '/api/auth/failed' }),
-  (req, res) => {
+  async (req, res) => {
     const user = req.user;
-    const token = createAuthToken(user.id);
+    const token = await createAuthToken(user.id);
     const redirect = req.session.postLoginRedirect || req.query.state || '';
     delete req.session.postLoginRedirect;
 
@@ -801,8 +861,8 @@ app.get(['/auth/failed', '/api/auth/failed'], (_req, res) => {
 });
 
 // Get current user (accepts session cookie or Bearer token)
-app.get(['/auth/me', '/api/auth/me'], (req, res) => {
-  const user = resolveUser(req);
+app.get(['/auth/me', '/api/auth/me'], async (req, res) => {
+  const user = await resolveUser(req);
   if (!user) return res.status(401).json({ error: 'Not authenticated' });
   const isAdmin = !!(user.email && ADMIN_EMAILS.includes(user.email.toLowerCase()));
   res.json({
@@ -819,11 +879,11 @@ app.get(['/auth/me', '/api/auth/me'], (req, res) => {
 });
 
 // Logout
-app.post(['/auth/logout', '/api/auth/logout'], (req, res, next) => {
+app.post(['/auth/logout', '/api/auth/logout'], async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ') && db) {
     const token = authHeader.slice(7).trim();
-    try { db.prepare('DELETE FROM auth_tokens WHERE token = ?').run(token); } catch (_) {}
+    try { await db.execute({ sql: 'DELETE FROM auth_tokens WHERE token = ?', args: [token] }); } catch (_) {}
   }
   req.logout((err) => {
     if (err) return next(err);
@@ -835,7 +895,7 @@ app.post(['/auth/logout', '/api/auth/logout'], (req, res, next) => {
 
 // Get subscription status (works with both session auth and token auth)
 app.get('/api/billing/status', async (req, res) => {
-  const user = resolveUser(req);
+  const user = await resolveUser(req);
   if (!user) return res.status(401).json({ error: 'Not authenticated' });
   res.json({
     plan:                 user.plan,
@@ -847,7 +907,7 @@ app.get('/api/billing/status', async (req, res) => {
 
 // Create Razorpay order for Lifetime Pro activation
 app.post('/api/billing/subscribe', async (req, res) => {
-  const user = resolveUser(req);
+  const user = await resolveUser(req);
   if (!user) return res.status(401).json({ error: 'Not authenticated' });
   if (!razorpay) return res.status(503).json({ error: 'Payment system not configured' });
 
@@ -879,7 +939,7 @@ app.post('/api/billing/subscribe', async (req, res) => {
 });
 
 // Razorpay Webhook — verifies signature, updates user plan to Lifetime Pro
-app.post('/api/billing/webhook', (req, res) => {
+app.post('/api/billing/webhook', async (req, res) => {
   const secret    = process.env.RAZORPAY_WEBHOOK_SECRET || '';
   const signature = req.headers['x-razorpay-signature'];
 
@@ -913,14 +973,14 @@ app.post('/api/billing/webhook', (req, res) => {
         const startedAt  = new Date();
         const expiresAt  = new Date('2099-12-31T23:59:59.999Z'); // Permanent Lifetime Pro
 
-        updateUser(userId, {
+        await updateUser(userId, {
           plan: 'pro',
           razorpayCustomerId:    payment?.customer_id || null,
           subscriptionStartedAt: startedAt.toISOString(),
           subscriptionExpiresAt: expiresAt.toISOString(),
         });
 
-        recordPayment({
+        await recordPayment({
           userId,
           userEmail: payment?.email || order?.notes?.email || notes?.email || '',
           amount: payment?.amount || order?.amount || PRO_LIFETIME_PRICE,
@@ -955,12 +1015,12 @@ app.post('/api/admin/auth/key-login', (req, res) => {
 });
 
 // Admin Status & Key Verification
-app.get('/api/admin/auth/verify', (req, res) => {
+app.get('/api/admin/auth/verify', async (req, res) => {
   const keyHeader = req.headers['x-admin-key'];
   const keyQuery  = req.query.admin_key;
   const isMasterKey = (keyHeader && keyHeader === ADMIN_SECRET_KEY) || (keyQuery && keyQuery === ADMIN_SECRET_KEY);
   const isSessionAdmin = req.session && req.session.isAdmin;
-  const user = resolveUser(req);
+  const user = await resolveUser(req);
   const isEmailAdmin = user && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
   if (isMasterKey || isSessionAdmin || isEmailAdmin) {
@@ -975,52 +1035,52 @@ app.get('/api/admin/auth/verify', (req, res) => {
 });
 
 // KPI & Revenue Stats
-app.get('/api/admin/stats', requireAdmin, (_req, res) => {
-  res.json(getAdminStats());
+app.get('/api/admin/stats', requireAdmin, async (_req, res) => {
+  res.json(await getAdminStats());
 });
 
 // Users List (Search, Plan Filter, Pagination)
-app.get('/api/admin/users', requireAdmin, (req, res) => {
+app.get('/api/admin/users', requireAdmin, async (req, res) => {
   const q          = (req.query.q || '').trim();
   const plan       = req.query.plan || 'all';
   const limit      = Math.min(200, parseInt(req.query.limit, 10) || 50);
   const offset     = Math.max(0, parseInt(req.query.offset, 10) || 0);
-  res.json(getAllUsers(q, plan, limit, offset));
+  res.json(await getAllUsers(q, plan, limit, offset));
 });
 
 // Change User Plan (Grant Pro, Revoke to Free, Set Expiration)
-app.post('/api/admin/users/:id/plan', requireAdmin, (req, res) => {
+app.post('/api/admin/users/:id/plan', requireAdmin, async (req, res) => {
   const { plan, expiresAt, notes } = req.body || {};
-  const updated = setManualPlan(req.params.id, plan, expiresAt, notes);
+  const updated = await setManualPlan(req.params.id, plan, expiresAt, notes);
   if (!updated) return res.status(404).json({ error: 'User not found' });
   res.json({ success: true, user: updated });
 });
 
 // Delete User Account
-app.delete('/api/admin/users/:id', requireAdmin, (req, res) => {
-  const success = deleteUserAccount(req.params.id);
+app.delete('/api/admin/users/:id', requireAdmin, async (req, res) => {
+  const success = await deleteUserAccount(req.params.id);
   if (!success) return res.status(404).json({ error: 'User not found' });
   res.json({ success: true, message: 'User deleted successfully.' });
 });
 
 // Payments & Revenue Ledger
-app.get('/api/admin/payments', requireAdmin, (req, res) => {
+app.get('/api/admin/payments', requireAdmin, async (req, res) => {
   const limit  = Math.min(200, parseInt(req.query.limit, 10) || 100);
   const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
-  res.json({ payments: getAllPayments(limit, offset) });
+  res.json({ payments: await getAllPayments(limit, offset) });
 });
 
 // Record Manual / Offline Payment
-app.post('/api/admin/payments/manual', requireAdmin, (req, res) => {
+app.post('/api/admin/payments/manual', requireAdmin, async (req, res) => {
   const { email, amount, notes, upgradeUser } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Email is required' });
 
-  let user = getUserByEmail(email);
+  let user = await getUserByEmail(email);
   if (!user && upgradeUser) {
-    user = createUser({ email: email.toLowerCase(), name: email.split('@')[0] });
+    user = await createUser({ email: email.toLowerCase(), name: email.split('@')[0] });
   }
 
-  const payment = recordPayment({
+  const payment = await recordPayment({
     userId: user ? user.id : null,
     userEmail: email.toLowerCase(),
     amount: Math.round((parseFloat(amount) || 0) * 100), // convert INR to paise
@@ -1031,7 +1091,7 @@ app.post('/api/admin/payments/manual', requireAdmin, (req, res) => {
   });
 
   if (upgradeUser && user) {
-    updateUser(user.id, {
+    await updateUser(user.id, {
       plan: 'pro',
       subscriptionStartedAt: new Date().toISOString(),
       subscriptionExpiresAt: '2099-12-31T23:59:59.999Z',
@@ -1330,11 +1390,16 @@ wss.on('connection', (ws, _req, code, role) => {
 });
 
 // ─── Startup ──────────────────────────────────────────────────────────────────
-db = setupDatabase();
+(async () => {
+  try {
+    db = await setupDatabase();
+  } catch (err) {
+    console.error('[Startup] Database initialization failed:', err.message);
+  }
+  server.listen(PORT, () => console.log('[Relay] NXTslide Cloud Relay v3.0.0 on port', PORT));
+})();
 
 process.on('SIGTERM', () => {
   rooms.forEach((_, c) => deleteRoom(c));
   server.close(() => process.exit(0));
 });
-
-server.listen(PORT, () => console.log('[Relay] NXTslide Cloud Relay v3.0.0 on port', PORT));
