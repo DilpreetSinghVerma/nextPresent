@@ -59,7 +59,7 @@ try {
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PORT        = process.env.PORT || 4000;
 const ROOM_TTL_MS = 8 * 60 * 60 * 1000;
-const BASE_URL    = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || process.env.SELF_URL || `http://localhost:${PORT}`;
+const BASE_URL    = process.env.PUBLIC_URL || (process.env.RENDER ? 'https://nxtslide.online' : (process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`));
 const SESSION_SECRET = process.env.SESSION_SECRET || 'nxtslide-secret-2026';
 const ADMIN_EMAILS   = ['dilpreetsinghverma@gmail.com'];
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'nxtslide-admin-2026';
