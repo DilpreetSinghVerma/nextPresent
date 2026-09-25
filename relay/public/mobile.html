@@ -251,6 +251,25 @@
   </div>
 </div>
 
+<!-- ───── PRO PAYWALL MODAL ───── -->
+<div class="overlay" id="mobileProModal" style="display:none;align-items:center;justify-content:center;">
+  <div class="sheet" style="text-align:center; padding: 28px 24px; max-width: 360px; width: 90%; border-radius: 18px; background: #111111; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
+    <div style="font-size: 2.2rem; margin-bottom: 8px;">✦</div>
+    <h3 style="color:#ffffff; font-size:1.25rem; font-weight:700; margin-bottom: 8px; letter-spacing: -0.02em;">Lifetime Pro Feature</h3>
+    <p id="proModalDesc" style="color:#a1a1a1; font-size:0.88rem; line-height:1.5; margin-bottom:22px;">
+      Virtual Laser Pointer &amp; 3D Gyro Aiming is an exclusive feature of NXTslide Lifetime Pro.
+    </p>
+    <a id="proUpgradeBtn" href="https://nxtslide.online#pricing" target="_blank" style="
+      display:block; width:100%; padding:14px; background:#22c55e; color:#000000; font-weight:700;
+      border-radius:10px; text-decoration:none; font-size:0.95rem; margin-bottom:10px; text-align:center;
+    ">Unlock Lifetime Pro — ₹149</a>
+    <button id="closeMobileProModal" style="
+      width:100%; padding:12px; background:rgba(255,255,255,0.06); color:#a1a1a1; border:1px solid rgba(255,255,255,0.1);
+      border-radius:10px; font-size:0.9rem; cursor:pointer; font-weight:500;
+    ">Dismiss</button>
+  </div>
+</div>
+
 <script src="js/mobile.js"></script>
 <script>
 window.nxtslideOnAuthSuccess = function(userJson) {
@@ -262,11 +281,17 @@ window.nxtslideOnAuthSuccess = function(userJson) {
     if (u && u.name) {
       if (nameEl) nameEl.textContent = u.name;
       if (subEl) subEl.textContent = u.isPro ? '✦ Pro Active' : 'Free Plan';
+      if (u.isPro) {
+        localStorage.setItem('nxtslide_pro_unlocked', 'true');
+        localStorage.setItem('nxtslide_user', JSON.stringify(u));
+      } else {
+        localStorage.removeItem('nxtslide_pro_unlocked');
+      }
       if (btn) {
         btn.textContent = 'Signed In';
         btn.style.background = 'rgba(255,255,255,0.1)';
         btn.onclick = function() {
-          alert('Logged in as ' + u.name + ' (' + (u.email || '') + ')' + (u.isPro ? '\n✦ Pro Subscriber' : ''));
+          alert('Logged in as ' + u.name + ' (' + (u.email || '') + ')' + (u.isPro ? '\n✦ Pro Subscriber' : '\nFree Account'));
         };
       }
     }

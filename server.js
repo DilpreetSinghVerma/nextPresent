@@ -33,6 +33,14 @@ let relayPingTimer  = null;
 
 /** Register a room on the relay server and connect the PC WebSocket */
 async function connectToRelay() {
+  const license = licenseService.getLicenseStatus();
+  if (!license.isPro) {
+    console.log('[Relay] Host is on Free Community plan. Cloud Relay is locked (Pro required).');
+    relayConnected = false;
+    relayRoomCode = null;
+    relayPhoneUrl = null;
+    return;
+  }
   try {
     if (relayPingTimer) clearInterval(relayPingTimer);
 
@@ -74,6 +82,7 @@ async function connectToRelay() {
               profileInfo:SOFTWARE_PROFILES[data.profile], sessionState });
           }
         } else if (data.type === 'LASER_DOWN' || data.type === 'LASER_MOVE' || data.type === 'LASER_UP' || data.type === 'LASER_STYLE') {
+          if (!licenseService.getLicenseStatus().isPro) return; // Pro feature
           broadcast(data);
         } else if (data.type === 'PING') {
           relayWsClient.send(JSON.stringify({ type:'PONG', timestamp:Date.now() }));
@@ -340,7 +349,8 @@ app.get('/api/info', async (req, res) => {
     });
 
     let cloudQrDataUrl = null;
-    if (relayPhoneUrl) {
+    const isProUser = licenseService.getLicenseStatus().isPro;
+    if (isProUser && relayPhoneUrl) {
       cloudQrDataUrl = await QRCode.toDataURL(relayPhoneUrl, {
         margin: 1,
         width: 320,
@@ -402,6 +412,10 @@ app.post('/api/license/activate', async (req, res) => {
     const { key, instanceName } = req.body || {};
     const result = await licenseService.activateLicense(key, instanceName);
     if (result.success) {
+      if (result.isPro) {
+        connectToRelay();
+        broadcast({ type: 'PRO_STATUS_CHANGED', isPro: true });
+      }
       res.json(result);
     } else {
       res.status(400).json(result);
@@ -505,6 +519,7 @@ wss.on('connection', (ws, req) => {
     remoteUrl,
     profiles: SOFTWARE_PROFILES,
     activeProfile: sessionState.activeProfile,
+    isPro: licenseService.getLicenseStatus().isPro,
   }));
 
   broadcast({
@@ -546,6 +561,7 @@ wss.on('connection', (ws, req) => {
         sessionState.slideCount = 1;
         broadcast({ type: 'STATE_SYNC', sessionState });
       } else if (data.type === 'LASER_DOWN' || data.type === 'LASER_MOVE' || data.type === 'LASER_UP' || data.type === 'LASER_STYLE') {
+        if (!licenseService.getLicenseStatus().isPro) return; // Pro feature
         broadcast(data);
       } else if (data.type === 'PING') {
         ws.send(JSON.stringify({ type: 'PONG', timestamp: Date.now() }));

@@ -880,6 +880,12 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun isNativeApp(): Boolean = true
 
+        @JavascriptInterface
+        fun isProUnlocked(): Boolean {
+            val prefs = activity.getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+            return prefs.getBoolean("nxtslide_pro_unlocked", false)
+        }
+
         /** Original method used by local mobile.html */
         @JavascriptInterface
         fun sendAction(action: String) {

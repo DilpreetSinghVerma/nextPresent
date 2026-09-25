@@ -84,7 +84,7 @@ function updateRelayUI(relay) {
   // Hide the connecting spinner always once we got a response
   if (relayConnecting) relayConnecting.style.display = 'none';
 
-  if (relay.connected && relay.roomCode) {
+  if (isProUnlocked() && relay.connected && relay.roomCode) {
     // Format code as ABC-123 (first 3 + dash + last 3)
     const code = relay.roomCode;
     const formatted = code.length === 6
@@ -101,8 +101,7 @@ function updateRelayUI(relay) {
       shareRelayBtn.style.display = 'inline-block';
     }
   } else {
-    // Not connected yet — keep banner hidden, re-poll in 5s
-    setTimeout(() => fetch('/api/info').then(r => r.json()).then(d => updateRelayUI(d.relay)).catch(() => {}), 5000);
+    if (relayBanner) relayBanner.style.display = 'none';
   }
 }
 
@@ -272,7 +271,7 @@ async function handleLicenseActivation() {
 
     const data = await res.json();
 
-    if (res.ok && data.success) {
+    if (res.ok && data.success && data.isPro) {
       localStorage.setItem('nxtslide_pro_unlocked', 'true');
       updateProBadge();
       if (licenseFeedback) {
@@ -284,29 +283,17 @@ async function handleLicenseActivation() {
         switchMode('cloud');
       }, 1200);
     } else {
+      localStorage.removeItem('nxtslide_pro_unlocked');
+      updateProBadge();
       if (licenseFeedback) {
         licenseFeedback.className = 'license-feedback error';
-        licenseFeedback.textContent = data.message || 'Invalid license key. Please check and try again.';
+        licenseFeedback.textContent = data.message || 'Pro status not active for this account. Please upgrade to Pro (₹149).';
       }
     }
   } catch (err) {
-    // Fallback: if server endpoint has a network hitch, check key format locally
-    if (key.length >= 8) {
-      localStorage.setItem('nxtslide_pro_unlocked', 'true');
-      updateProBadge();
-      if (licenseFeedback) {
-        licenseFeedback.className = 'license-feedback success';
-        licenseFeedback.textContent = '✅ Pro Lifetime Activated!';
-      }
-      setTimeout(() => {
-        closeProModal();
-        switchMode('cloud');
-      }, 1200);
-    } else {
-      if (licenseFeedback) {
-        licenseFeedback.className = 'license-feedback error';
-        licenseFeedback.textContent = 'Verification error. Please check your key.';
-      }
+    if (licenseFeedback) {
+      licenseFeedback.className = 'license-feedback error';
+      licenseFeedback.textContent = 'Verification error. Please ensure server is running.';
     }
   } finally {
     if (btnActivateKey) {
@@ -402,8 +389,10 @@ async function initDashboard() {
     if (data.license) {
       if (data.license.isPro) {
         localStorage.setItem('nxtslide_pro_unlocked', 'true');
-        updateProBadge();
+      } else {
+        localStorage.removeItem('nxtslide_pro_unlocked');
       }
+      updateProBadge();
       if (data.license.checkoutUrl && btnBuyProLifetime) {
         btnBuyProLifetime.href = data.license.checkoutUrl;
       }

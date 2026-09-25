@@ -92,9 +92,12 @@ function initWS() {
     try {
       const d = JSON.parse(e.data);
       if (d.type === 'INIT' || d.type === 'STATE_SYNC') {
+        if (d.isPro !== undefined) isHostPro = !!d.isPro;
         if (d.sessionState) syncState(d.sessionState);
         if (d.activeProfile) updateProfileUI(d.activeProfile);
         else if (d.sessionState && d.sessionState.activeProfile) updateProfileUI(d.sessionState.activeProfile);
+      } else if (d.type === 'PRO_STATUS_CHANGED') {
+        isHostPro = !!d.isPro;
       } else if (d.type === 'PROFILE_CHANGED') {
         updateProfileUI(d.profile);
       } else if (d.type === 'TIMER_SYNC') {
@@ -142,9 +145,12 @@ window.onServerMessage = function(jsonStr) {
   try {
     const d = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
     if (d.type === 'INIT' || d.type === 'STATE_SYNC') {
+      if (d.isPro !== undefined) isHostPro = !!d.isPro;
       if (d.sessionState) syncState(d.sessionState);
       if (d.activeProfile) updateProfileUI(d.activeProfile);
       else if (d.sessionState && d.sessionState.activeProfile) updateProfileUI(d.sessionState.activeProfile);
+    } else if (d.type === 'PRO_STATUS_CHANGED') {
+      isHostPro = !!d.isPro;
     } else if (d.type === 'KEY_EVENT') {
       if (d.sessionState) syncState(d.sessionState);
     } else if (d.type === 'PROFILE_CHANGED') {
@@ -596,9 +602,52 @@ window.nxtslideSetGyroAvailable = function(available) {
 // Immediately apply on page load
 applyGyroAvailability(hasHardwareGyro);
 
+let isHostPro = false;
+
+function isProActive() {
+  if (window.AndroidApp && typeof window.AndroidApp.isProUnlocked === 'function') {
+    try {
+      if (window.AndroidApp.isProUnlocked()) return true;
+    } catch (_) {}
+  }
+  if (isHostPro) return true;
+  try {
+    const userStr = localStorage.getItem('nxtslide_user');
+    if (userStr) {
+      const u = JSON.parse(userStr);
+      if (u && (u.isPro || u.plan === 'pro')) return true;
+    }
+    if (localStorage.getItem('nxtslide_pro_unlocked') === 'true') return true;
+  } catch(_) {}
+  return false;
+}
+
+function showProPaywall(featureName) {
+  const modal = document.getElementById('mobileProModal');
+  const desc = document.getElementById('proModalDesc');
+  if (desc && featureName) {
+    desc.textContent = `${featureName} is an exclusive feature of NXTslide Lifetime Pro (₹149). Unlock once, own forever!`;
+  }
+  if (modal) {
+    modal.style.display = 'flex';
+  }
+}
+
+const closeMobileProModal = document.getElementById('closeMobileProModal');
+if (closeMobileProModal) {
+  closeMobileProModal.addEventListener('click', () => {
+    const modal = document.getElementById('mobileProModal');
+    if (modal) modal.style.display = 'none';
+  });
+}
+
 // Modal open / close
 if (toolLaser) {
   toolLaser.addEventListener('click', () => {
+    if (!isProActive()) {
+      showProPaywall('Virtual Laser Pointer & 3D Gyro Aiming');
+      return;
+    }
     applyGyroAvailability(hasHardwareGyro);
     if (laserModal) laserModal.classList.add('open');
   });

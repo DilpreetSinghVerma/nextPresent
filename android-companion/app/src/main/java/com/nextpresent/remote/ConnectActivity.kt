@@ -256,6 +256,15 @@ class ConnectActivity : AppCompatActivity() {
                         val code = extractCode(raw)
                         if (!code.isNullOrBlank() && code != scannedCode) {
                             scannedCode = code
+                            val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+                            val isPro = prefs.getBoolean("nxtslide_pro_unlocked", false)
+                            if (!isPro) {
+                                runOnUiThread {
+                                    Toast.makeText(this@ConnectActivity, "☁️ Cloud Relay is a Lifetime Pro feature (₹149)", Toast.LENGTH_LONG).show()
+                                    showProPaywallDialog()
+                                }
+                                return@addOnSuccessListener
+                            }
                             runOnUiThread {
                                 switchMode("cloud")
                                 val formatted = if (code.length == 6)
@@ -301,6 +310,12 @@ class ConnectActivity : AppCompatActivity() {
             }
             connectWithLanIp(ip, port)
         } else {
+            val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+            val isPro = prefs.getBoolean("nxtslide_pro_unlocked", false)
+            if (!isPro) {
+                showProPaywallDialog()
+                return
+            }
             val raw = input.uppercase().replace("-", "").trim()
             if (raw.length != 6) {
                 tvStatus.text = "⚠ Enter a 6-character code (e.g. ABC-123)"
