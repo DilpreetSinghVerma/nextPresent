@@ -854,6 +854,9 @@ class MainActivity : AppCompatActivity() {
             unbindService(serviceConnection)
             serviceBound = false
         }
+        try {
+            stopService(Intent(this, PresenterService::class.java))
+        } catch (_: Exception) {}
         webSocket?.close(1000, "Activity destroyed")
         bgExecutor.shutdown()
     }

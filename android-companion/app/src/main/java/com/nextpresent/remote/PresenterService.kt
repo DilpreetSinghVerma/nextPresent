@@ -93,6 +93,9 @@ class PresenterService : Service() {
     private var lastActionTs: Long = 0L
     @Volatile private var lastVolumeProviderTs: Long = 0L
 
+    @Volatile var isSessionActive: Boolean = false
+    private var audioFocusRequest: android.media.AudioFocusRequest? = null
+
     /**
      * Set to true by VolumeKeyAccessibilityService when it is actively handling a key press.
      * Suppresses background paths from double-firing on the same event.
@@ -446,6 +449,7 @@ class PresenterService : Service() {
     //   Release button               → Laser turns OFF, 0 slide change!
     @Synchronized
     private fun handleVolumeAdjust(direction: Int) {
+        if (!isSessionActive) return
         lastVolumeProviderTs = System.currentTimeMillis()
         android.util.Log.d("NXTslide_Volume", "handleVolumeAdjust: direction=$direction, isHeld=$isVolKeyHeld, hasLaser=$hasLaserStarted, isLaserActive=$isLaserActive")
 
@@ -607,6 +611,8 @@ class PresenterService : Service() {
             )
         } catch (_: Exception) {}
 
+        isSessionActive = true
+
         // Start foreground immediately
         startForeground(NOTIF_ID, buildNotification(), foregroundServiceTypeMediaPlayback())
 
@@ -618,13 +624,22 @@ class PresenterService : Service() {
         registerActionReceiver()
         connectWebSocket()
 
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     override fun onBind(intent: Intent?): IBinder = binder
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        android.util.Log.d("NXTslide_Service", "onTaskRemoved: stopping PresenterService")
+        isSessionActive = false
+        stopSelf()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
+        isSessionActive = false
+        stopBackgroundLaser()
         try { if (receiverRegistered) unregisterReceiver(volumeReceiver) } catch (_: Exception) {}
         try { unregisterReceiver(actionReceiver) } catch (_: Exception) {}
         try { volumeObserver?.let { contentResolver.unregisterContentObserver(it) } } catch (_: Exception) {}
@@ -633,10 +648,24 @@ class PresenterService : Service() {
         audioThread?.interrupt()
         audioThread = null
 
+        // Abandon AudioFocus so Android routes hardware volume buttons back to system media/sound
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest?.let { audioManager?.abandonAudioFocusRequest(it) }
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager?.abandonAudioFocus(null)
+            }
+        } catch (_: Exception) {}
+        audioFocusRequest = null
+
         mediaSession?.isActive = false
         mediaSession?.release()
-        audioTrack?.stop()
-        audioTrack?.release()
+        mediaSession = null
+
+        try { audioTrack?.stop() } catch (_: Exception) {}
+        try { audioTrack?.release() } catch (_: Exception) {}
+        audioTrack = null
 
         try { if (wakeLock?.isHeld == true) wakeLock?.release() } catch (_: Exception) {}
         try { if (laserWakeLock?.isHeld == true) laserWakeLock?.release() } catch (_: Exception) {}
@@ -650,6 +679,7 @@ class PresenterService : Service() {
         }
 
         webSocket?.close(1000, "Service destroyed")
+        webSocket = null
         client.dispatcher.cancelAll()
     }
 
@@ -764,6 +794,7 @@ class PresenterService : Service() {
                     .setAudioAttributes(attrs)
                     .setOnAudioFocusChangeListener { /* keep rendering */ }
                     .build()
+                audioFocusRequest = focusRequest
                 audioManager?.requestAudioFocus(focusRequest)
             } else {
                 @Suppress("DEPRECATION")
@@ -861,6 +892,7 @@ class PresenterService : Service() {
 
     // ─── WebSocket ────────────────────────────────────────────────────────────
     private fun connectWebSocket() {
+        if (!isSessionActive) return
         try { webSocket?.close(1000, "Reconnecting") } catch (_: Exception) {}
         val wsUrl = buildWsUrl()
         android.util.Log.d("NXTslide_WS", "PresenterService connecting to: $wsUrl")
@@ -871,7 +903,11 @@ class PresenterService : Service() {
             }
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 android.util.Log.w("NXTslide_WS", "PresenterService WebSocket FAIL ($wsUrl): ${t.message}")
-                android.os.Handler(mainLooper).postDelayed({ connectWebSocket() }, 5000L)
+                if (isSessionActive) {
+                    android.os.Handler(mainLooper).postDelayed({
+                        if (isSessionActive) connectWebSocket()
+                    }, 5000L)
+                }
             }
         })
     }
@@ -900,6 +936,7 @@ class PresenterService : Service() {
     }
 
     fun sendSlideAction(action: String) {
+        if (!isSessionActive) return
         val payload = JSONObject().apply {
             put("type",   "COMMAND")
             put("action", action)

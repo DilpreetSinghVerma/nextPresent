@@ -29,8 +29,12 @@ class VolumeKeyAccessibilityService : AccessibilityService() {
             return super.onKeyEvent(event)
         }
 
-        val isUpKey = (keyCode == KeyEvent.KEYCODE_VOLUME_UP)
         val service = PresenterService.instance
+        if (service == null || !service.isSessionActive) {
+            return super.onKeyEvent(event)
+        }
+
+        val isUpKey = (keyCode == KeyEvent.KEYCODE_VOLUME_UP)
 
         val sensorManager = getSystemService(android.content.Context.SENSOR_SERVICE) as? android.hardware.SensorManager
         val hasGyro = (sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE) != null)
