@@ -64,8 +64,8 @@ const SESSION_SECRET = process.env.SESSION_SECRET || 'nxtslide-secret-2026';
 const ADMIN_EMAILS   = ['dilpreetsinghverma@gmail.com'];
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY || 'nxtslide-admin-2026';
 
-// Pro Plan price in paise (₹149 Lifetime Permanent Account = 14900 paise)
-const PRO_LIFETIME_PRICE = 14900;
+// Pro Plan price in paise (₹89 Lifetime Permanent Account = 8900 paise)
+const PRO_LIFETIME_PRICE = 8900;
 
 // ─── Database Setup ───────────────────────────────────────────────────────────
 let db = null;
@@ -648,8 +648,8 @@ app.get('/api/version', (_req, res) => {
       portableUrl:  'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide-Portable.exe'
     },
     android: {
-      versionName: '2.2.0',
-      versionCode: 4,
+      versionName: '2.3.0',
+      versionCode: 5,
       apkUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/raw/main/public/NXTslide.apk'
     },
     releaseNotes: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/latest'

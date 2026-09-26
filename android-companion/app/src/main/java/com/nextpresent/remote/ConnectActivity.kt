@@ -260,7 +260,7 @@ class ConnectActivity : AppCompatActivity() {
                             val isPro = prefs.getBoolean("nxtslide_pro_unlocked", false)
                             if (!isPro) {
                                 runOnUiThread {
-                                    Toast.makeText(this@ConnectActivity, "☁️ Cloud Relay is a Lifetime Pro feature (₹149)", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(this@ConnectActivity, "☁️ Cloud Relay is a Lifetime Pro feature (₹89)", Toast.LENGTH_LONG).show()
                                     showProPaywallDialog()
                                 }
                                 return@addOnSuccessListener

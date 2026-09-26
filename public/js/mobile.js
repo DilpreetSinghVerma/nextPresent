@@ -122,7 +122,7 @@ function initWS() {
         showProPaywall('Multi-Presenter Mode (2+ remotes)');
         const desc = document.getElementById('proModalDesc');
         if (desc) {
-          desc.textContent = d.message || 'Multi-Presenter Mode (2+ remotes) is an exclusive feature of NXTslide Lifetime Pro (₹149). Free version allows 1 remote at a time.';
+          desc.textContent = d.message || 'Multi-Presenter Mode (2+ remotes) is an exclusive feature of NXTslide Lifetime Pro (₹89). Free version allows 1 remote at a time.';
         }
       } else if (d.type === 'PRO_STATUS_CHANGED') {
         isHostPro = !!d.isPro;
@@ -192,7 +192,7 @@ window.onServerMessage = function(jsonStr) {
       showProPaywall('Multi-Presenter Mode (2+ remotes)');
       const desc = document.getElementById('proModalDesc');
       if (desc) {
-        desc.textContent = d.message || 'Multi-Presenter Mode (2+ remotes) is an exclusive feature of NXTslide Lifetime Pro (₹149). Free version allows 1 remote at a time.';
+        desc.textContent = d.message || 'Multi-Presenter Mode (2+ remotes) is an exclusive feature of NXTslide Lifetime Pro (₹89). Free version allows 1 remote at a time.';
       }
     } else if (d.type === 'PRO_STATUS_CHANGED') {
       isHostPro = !!d.isPro;
@@ -711,7 +711,7 @@ function showProPaywall(featureName) {
   const proEmailInput = document.getElementById('proEmailInput');
 
   if (desc && featureName) {
-    desc.textContent = `${featureName} is an exclusive feature of NXTslide Lifetime Pro (₹149). Unlock once, own forever!`;
+    desc.textContent = `${featureName} is an exclusive feature of NXTslide Lifetime Pro (₹89). Unlock once, own forever!`;
   }
 
   // Pre-fill email if available
@@ -949,7 +949,7 @@ window.onNativePaymentError = function(errorMsg) {
   const proUpgradeBtn = document.getElementById('proUpgradeBtn');
   if (proUpgradeBtn) {
     proUpgradeBtn.disabled = false;
-    proUpgradeBtn.innerHTML = '<span>⚡ Pay ₹149 via UPI / Cards</span>';
+    proUpgradeBtn.innerHTML = '<span>⚡ Pay ₹89 via UPI / Cards</span>';
   }
 };
 

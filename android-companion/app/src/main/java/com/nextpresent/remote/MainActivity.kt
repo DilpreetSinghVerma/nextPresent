@@ -427,7 +427,7 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
                         runOnUiThread {
                             AlertDialog.Builder(this@MainActivity)
                                 .setTitle("✦ Lifetime Pro Feature")
-                                .setMessage("Multi-Presenter Mode (2+ remotes) is a Lifetime Pro feature (₹149).\n\nAnother phone is currently controlling this presentation. Upgrade to Pro for unlimited co-presenters, or disconnect the other phone.")
+                                .setMessage("Multi-Presenter Mode (2+ remotes) is a Lifetime Pro feature (₹89).\n\nAnother phone is currently controlling this presentation. Upgrade to Pro for unlimited co-presenters, or disconnect the other phone.")
                                 .setPositiveButton("Upgrade") { _, _ ->
                                     val browserIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://nxtslide.online#pricing"))
                                     startActivity(browserIntent)

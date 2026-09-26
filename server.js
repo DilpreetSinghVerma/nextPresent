@@ -181,8 +181,8 @@ app.get('/api/version', (_req, res) => {
       portableUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide-Portable.exe'
     },
     android: {
-      versionName: '2.2.0',
-      versionCode: 4,
+      versionName: '2.3.0',
+      versionCode: 5,
       apkUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/raw/main/public/NXTslide.apk'
     },
     releaseNotes: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/latest'
@@ -468,7 +468,7 @@ app.post('/api/key', async (req, res) => {
   cleanDeadRemoteSockets();
   if (!isPro && activeRemoteDevices.size > 0 && deviceId && !activeRemoteDevices.has(deviceId)) {
     return res.status(403).json({
-      error: 'Multi-device presentation is a Lifetime Pro feature (₹149). Free version allows 1 remote at a time.',
+      error: 'Multi-device presentation is a Lifetime Pro feature (₹89). Free version allows 1 remote at a time.',
       code: 'MULTI_DEVICE_PRO_ONLY'
     });
   }
@@ -562,7 +562,7 @@ wss.on('connection', (ws, req) => {
       ws.send(JSON.stringify({
         type: 'MULTI_DEVICE_BLOCKED',
         code: 'MULTI_DEVICE_PRO_ONLY',
-        message: 'Multi-Presenter Mode (2+ remotes) is a Lifetime Pro feature (₹149). Free plan allows 1 remote at a time. Upgrade to Pro for unlimited co-presenters, or disconnect the other phone.',
+        message: 'Multi-Presenter Mode (2+ remotes) is a Lifetime Pro feature (₹89). Free plan allows 1 remote at a time. Upgrade to Pro for unlimited co-presenters, or disconnect the other phone.',
         isPro: false,
         activeDeviceCount: activeRemoteDevices.size
       }));
@@ -572,7 +572,7 @@ wss.on('connection', (ws, req) => {
         if (client !== ws && client.readyState === WebSocket.OPEN && !client.isBlockedMultiDevice) {
           client.send(JSON.stringify({
             type: 'MULTI_DEVICE_ATTEMPT',
-            message: 'A second presenter tried to connect. Upgrade to Lifetime Pro (₹149) to allow unlimited co-presenters!',
+            message: 'A second presenter tried to connect. Upgrade to Lifetime Pro (₹89) to allow unlimited co-presenters!',
             attemptedDeviceId: deviceId,
             attemptedIp: clientIp,
             timestamp: Date.now()
