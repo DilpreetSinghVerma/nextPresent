@@ -465,3 +465,101 @@ html, body {
   border-color: #22c55e;
   background: #181818;
 }
+
+/* ══════════════════════════════════════
+   STEALTH BLACKOUT MODE (OLED Fake Off)
+══════════════════════════════════════ */
+.stealth-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000000;
+  z-index: 999999;
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.stealth-overlay.active {
+  display: flex;
+}
+
+.stealth-exit-btn {
+  position: absolute;
+  top: max(16px, env(safe-area-inset-top));
+  right: 16px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 10;
+  transition: opacity 0.3s, background 0.15s;
+}
+
+.stealth-exit-btn:active {
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.stealth-hint-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  pointer-events: none;
+  text-align: center;
+  padding: 24px;
+  transition: opacity 1.2s ease-out;
+}
+
+.stealth-hint-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.stealth-hint-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.28);
+  line-height: 1.5;
+}
+
+.stealth-launch-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 13px 14px;
+  background: #09090b;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ededed;
+  border-radius: 12px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.stealth-launch-btn:active {
+  transform: scale(0.98);
+  background: #18181b;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+

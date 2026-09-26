@@ -587,6 +587,12 @@ const laserFilterX = new LaserOneEuroFilter(60, 0.45, 0.002, 1.0);
 const laserFilterY = new LaserOneEuroFilter(60, 0.45, 0.002, 1.0);
 
 function sendLaserWs(data) {
+  if (window.AndroidApp && typeof window.AndroidApp.sendLaserEvent === 'function') {
+    try {
+      window.AndroidApp.sendLaserEvent(data.type, data.x !== undefined ? data.x : 0.5, data.y !== undefined ? data.y : 0.5, data.style || laserStyle || 'laser');
+      return;
+    } catch (_) {}
+  }
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(data));
   }
@@ -666,6 +672,7 @@ function applyNativeAppUI() {
       badgeRow.innerHTML = `
         <span class="badge green">✓ Physical Volume Keys</span>
         <span class="badge green">✓ Pocket Mode (Screen Off)</span>
+        <span class="badge green">✓ Stealth Blackout Mode</span>
         <span class="badge green">✓ Tap zones</span>
         <span class="badge green">✓ Swipe gestures</span>
         <span class="badge green">✓ Headset &amp; Media keys</span>
@@ -955,4 +962,190 @@ if (laserRecenterBtn) {
     buzz('next');
   });
 }
+
+// ══════════════════════════════════════════════════════════
+//  Stealth Blackout Mode (OLED Fake Screen-Off Touchpad)
+// ══════════════════════════════════════════════════════════
+const btnEnterStealth = document.getElementById('btnEnterStealth');
+const stealthOverlay  = document.getElementById('stealthOverlay');
+const btnExitStealth  = document.getElementById('btnExitStealth');
+const stealthHintBox  = document.getElementById('stealthHintBox');
+
+let isStealthActive = false;
+let stealthHintTimer = null;
+
+function enterStealthMode() {
+  if (!isProActive()) {
+    showProPaywall('Stealth Blackout Mode');
+    return;
+  }
+
+  isStealthActive = true;
+  if (stealthOverlay) {
+    stealthOverlay.classList.add('active');
+  }
+
+  // Close Laser modal so it doesn't stay open behind
+  if (laserModal) {
+    laserModal.classList.remove('open');
+  }
+
+  // Dim Android screen brightness to 0.01 (near pitch black)
+  if (window.AndroidApp && typeof window.AndroidApp.setStealthBrightness === 'function') {
+    try {
+      window.AndroidApp.setStealthBrightness(true);
+    } catch (_) {}
+  }
+
+  // Haptic feedback confirming stealth mode entry
+  buzz('next');
+
+  // Fade out hints after 2.8 seconds so screen becomes 100% pitch black
+  if (stealthHintBox) {
+    stealthHintBox.style.opacity = '1';
+    stealthHintBox.style.display = 'flex';
+    clearTimeout(stealthHintTimer);
+    stealthHintTimer = setTimeout(() => {
+      stealthHintBox.style.opacity = '0';
+      setTimeout(() => {
+        if (isStealthActive && stealthHintBox) stealthHintBox.style.display = 'none';
+      }, 1200);
+    }, 2800);
+  }
+}
+
+function exitStealthMode() {
+  if (!isStealthActive) return;
+  isStealthActive = false;
+
+  if (stealthOverlay) {
+    stealthOverlay.classList.remove('active');
+  }
+
+  // Restore screen brightness in Android companion
+  if (window.AndroidApp && typeof window.AndroidApp.setStealthBrightness === 'function') {
+    try {
+      window.AndroidApp.setStealthBrightness(false);
+    } catch (_) {}
+  }
+
+  // Turn off laser pointer if pointing
+  if (isLaserPointing) {
+    isLaserPointing = false;
+    sendLaserWs({ type: 'LASER_UP' });
+  }
+
+  // Double buzz feedback on exit
+  buzz('prev');
+
+  if (stealthHintBox) {
+    stealthHintBox.style.opacity = '1';
+    stealthHintBox.style.display = 'flex';
+  }
+}
+
+if (btnEnterStealth) {
+  btnEnterStealth.addEventListener('click', enterStealthMode);
+}
+
+if (btnExitStealth) {
+  btnExitStealth.addEventListener('click', (e) => {
+    e.stopPropagation();
+    exitStealthMode();
+  });
+}
+
+// Stealth Touchpad & Gesture Handlers
+if (stealthOverlay) {
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchStartTime = 0;
+  let hasLaserDragStarted = false;
+  let padBaseX = 0.5;
+  let padBaseY = 0.5;
+
+  // Two-finger touch anywhere exits Stealth Mode immediately
+  stealthOverlay.addEventListener('touchstart', (e) => {
+    if (e.touches && e.touches.length >= 2) {
+      exitStealthMode();
+    }
+  }, { passive: true });
+
+  stealthOverlay.addEventListener('pointerdown', (e) => {
+    // If clicking exit button, let its listener handle it
+    if (e.target === btnExitStealth || (btnExitStealth && btnExitStealth.contains(e.target))) return;
+
+    e.preventDefault();
+    touchStartX = e.clientX;
+    touchStartY = e.clientY;
+    touchStartTime = performance.now();
+    hasLaserDragStarted = false;
+    padBaseX = laserPointerX;
+    padBaseY = laserPointerY;
+  });
+
+  stealthOverlay.addEventListener('pointermove', (e) => {
+    if (!isStealthActive || touchStartTime === 0) return;
+
+    const dx = e.clientX - touchStartX;
+    const dy = e.clientY - touchStartY;
+    const dist = Math.hypot(dx, dy);
+
+    // If moved > 10px, activate laser aiming
+    if (!hasLaserDragStarted && dist > 10) {
+      hasLaserDragStarted = true;
+      isLaserPointing = true;
+      sendLaserWs({
+        type: 'LASER_DOWN',
+        x: laserPointerX,
+        y: laserPointerY,
+        style: laserStyle
+      });
+      buzz('next');
+    }
+
+    if (hasLaserDragStarted) {
+      const sens = 0.90;
+      const w = window.innerWidth || 360;
+      const h = window.innerHeight || 640;
+
+      laserPointerX = Math.max(0.01, Math.min(0.99, padBaseX + (dx / w) * sens));
+      laserPointerY = Math.max(0.01, Math.min(0.99, padBaseY + (dy / h) * sens));
+
+      sendLaserWs({
+        type: 'LASER_MOVE',
+        x: laserPointerX,
+        y: laserPointerY
+      });
+    }
+  });
+
+  const onStealthPointerUp = (e) => {
+    if (!isStealthActive || touchStartTime === 0) return;
+    const duration = performance.now() - touchStartTime;
+    touchStartTime = 0;
+
+    if (hasLaserDragStarted) {
+      hasLaserDragStarted = false;
+      isLaserPointing = false;
+      sendLaserWs({ type: 'LASER_UP' });
+    } else if (duration < 450) {
+      // Tap detected!
+      const clickX = e.clientX || touchStartX;
+      const screenWidth = window.innerWidth || 360;
+
+      if (clickX > screenWidth * 0.42) {
+        // Right side -> NEXT slide
+        send('NEXT', 'Stealth Mode Tap');
+      } else {
+        // Left side -> PREVIOUS slide
+        send('PREV', 'Stealth Mode Tap');
+      }
+    }
+  };
+
+  stealthOverlay.addEventListener('pointerup', onStealthPointerUp);
+  stealthOverlay.addEventListener('pointercancel', onStealthPointerUp);
+}
+
 

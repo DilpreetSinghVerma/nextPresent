@@ -146,6 +146,21 @@ class MainActivity : AppCompatActivity() {
             or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         )
 
+        // Keep screen awake while presenting (never sleep unexpectedly)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        // Show directly on lock screen without password/PIN prompt
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                android.view.WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                android.view.WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            )
+        }
+
         // Handle deep-link if launched via nxtslide://auth
         handleAuthDeepLink(intent)
 
@@ -670,7 +685,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun sendLaserDown(x: Float, y: Float, style: String = "laser") {
+    fun sendLaserDown(x: Float, y: Float, style: String = "laser") {
         val safeX = if (x.isNaN() || x.isInfinite()) 0.5f else x.coerceIn(0.01f, 0.99f)
         val safeY = if (y.isNaN() || y.isInfinite()) 0.5f else y.coerceIn(0.01f, 0.99f)
         try {
@@ -679,14 +694,14 @@ class MainActivity : AppCompatActivity() {
                 put("x", safeX.toDouble())
                 put("y", safeY.toDouble())
                 put("style", style)
-                put("source", "Android Hardware Aim")
+                put("source", "Android Companion")
             }.toString()
             val sent = webSocket?.send(payload) ?: false
             if (!sent) connectWebSocket()
         } catch (_: Exception) {}
     }
 
-    private fun sendLaserMove(x: Float, y: Float) {
+    fun sendLaserMove(x: Float, y: Float) {
         val safeX = if (x.isNaN() || x.isInfinite()) 0.5f else x.coerceIn(0.01f, 0.99f)
         val safeY = if (y.isNaN() || y.isInfinite()) 0.5f else y.coerceIn(0.01f, 0.99f)
         try {
@@ -694,17 +709,17 @@ class MainActivity : AppCompatActivity() {
                 put("type", "LASER_MOVE")
                 put("x", safeX.toDouble())
                 put("y", safeY.toDouble())
-                put("source", "Android Hardware Aim")
+                put("source", "Android Companion")
             }.toString()
             webSocket?.send(payload)
         } catch (_: Exception) {}
     }
 
-    private fun sendLaserUp() {
+    fun sendLaserUp() {
         try {
             val payload = JSONObject().apply {
                 put("type", "LASER_UP")
-                put("source", "Android Hardware Aim")
+                put("source", "Android Companion")
             }.toString()
             webSocket?.send(payload)
         } catch (_: Exception) {}
@@ -912,6 +927,17 @@ class MainActivity : AppCompatActivity() {
             return android.provider.Settings.Secure.getString(activity.contentResolver, android.provider.Settings.Secure.ANDROID_ID) ?: "companion_android"
         }
 
+        @JavascriptInterface
+        fun setStealthBrightness(stealth: Boolean) {
+            activity.runOnUiThread {
+                try {
+                    val lp = activity.window.attributes
+                    lp.screenBrightness = if (stealth) 0.01f else android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                    activity.window.attributes = lp
+                } catch (_: Exception) {}
+            }
+        }
+
         /** Original method used by local mobile.html */
         @JavascriptInterface
         fun sendAction(action: String) {
@@ -955,6 +981,15 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun stopHardwareLaser() {
             activity.runOnUiThread { activity.stopHardwareLaser() }
+        }
+
+        @JavascriptInterface
+        fun sendLaserEvent(type: String, x: Float, y: Float, style: String = "laser") {
+            when (type) {
+                "LASER_DOWN" -> activity.sendLaserDown(x, y, style)
+                "LASER_MOVE" -> activity.sendLaserMove(x, y)
+                "LASER_UP"   -> activity.sendLaserUp()
+            }
         }
     }
 

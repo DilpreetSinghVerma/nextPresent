@@ -158,6 +158,15 @@
         <span style="font-size:0.9rem;font-weight:600;color:#cbd5e1;">Drag anywhere to point</span>
         <span style="font-size:0.72rem;color:#64748b;">Release finger to hide laser</span>
       </div>
+
+      <button id="btnEnterStealth" class="stealth-launch-btn">
+        <span style="font-size:1.15rem;">🕶️</span>
+        <span>Enter Stealth Blackout Mode</span>
+        <span style="background:#22c55e;color:#000;font-size:0.65rem;font-weight:800;padding:2px 6px;border-radius:4px;margin-left:auto;">PRO</span>
+      </button>
+      <div style="font-size:0.72rem;color:#64748b;text-align:center;line-height:1.4;">
+        OLED Fake Screen-Off: Dims screen completely so it looks asleep while touch stays active.
+      </div>
     </div>
   </div>
 </div>
@@ -239,6 +248,14 @@
       </div>
     </div>
 
+    <div class="info-item" style="border: 1px solid rgba(129, 140, 248, 0.3); background: rgba(129, 140, 248, 0.06);">
+      <div class="info-item-icon">🕶️</div>
+      <div class="info-item-text">
+        <strong>Stealth Blackout Mode (OLED Fake Off)</strong>
+        <span>Screen turns pitch-black and dims to 0.01 brightness so it looks completely asleep. Touch stays active — drag for laser, tap right/left for slides.</span>
+      </div>
+    </div>
+
     <div class="badge-row" id="badgeRow">
       <span class="badge green">✓ Tap zones</span>
       <span class="badge green">✓ Swipe gestures</span>
@@ -248,6 +265,21 @@
     </div>
 
     <button class="close-btn" id="closeModal">Got it!</button>
+  </div>
+</div>
+
+<!-- ───── STEALTH BLACKOUT OVERLAY ───── -->
+<div class="stealth-overlay" id="stealthOverlay">
+  <button class="stealth-exit-btn" id="btnExitStealth">✕ Exit Stealth</button>
+  <div class="stealth-hint-box" id="stealthHintBox">
+    <div class="stealth-hint-title">🕶️ STEALTH BLACKOUT ACTIVE</div>
+    <div class="stealth-hint-items">
+      <div>• Phone screen appears completely asleep</div>
+      <div>• <strong>Drag finger anywhere</strong> to aim laser pointer</div>
+      <div>• <strong>Tap Right half</strong> → Next Slide</div>
+      <div>• <strong>Tap Left half</strong> → Previous Slide</div>
+      <div>• <strong>Two-finger touch</strong> or button above to exit</div>
+    </div>
   </div>
 </div>
 
