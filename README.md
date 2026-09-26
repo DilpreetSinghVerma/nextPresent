@@ -1,134 +1,99 @@
-# 🎯 NXTslide
+# 🎯 NXTslide — Turn Your Smartphone into a Pro Presentation Clicker
 
-> **Control your PC presentation from your phone using physical volume keys.**
-> No USB, no Bluetooth pairing, no extra hardware — just Wi-Fi.
+> **Control your PC presentations seamlessly from your phone using physical hardware volume keys, a 3D gyro laser pointer, and a discreet stealth touchpad.**
+> Zero USB dongles. Zero Bluetooth pairing hassles. Connects instantly over local Wi-Fi or Global Cloud Relay.
 
----
-
-## ✨ Features
-
-| Feature | Details |
-|---|---|
-| 📱 Mobile Web Remote | Open in any browser — no app install needed |
-| 🔊 Volume Key Support | Physical Vol Up/Down → Next/Prev Slide |
-| 🤖 Android Native App | Zero volume-popup; true hardware key interception |
-| ⚡ Ultra-low Latency | Local Wi-Fi WebSocket (<15ms round trip) |
-| 👆 No-Look Clicker Mode | Giant tactile thumb zones with haptic vibration |
-| 👈 Swipe Gestures | Swipe left/right to navigate slides |
-| 🎧 Headset & BT Clicker | Inline headset button + lock screen media controls |
-| ⏱️ Presentation Timer | Live stopwatch across PC and mobile |
-| 📺 Blackout / Whiteout | One tap to blank screen (`B` / `W`) |
-| 🖥️ Works with All Apps | PowerPoint, Google Slides, Keynote, PDF viewers |
-| 🔗 QR Code Pairing | Instant URL sharing via QR scan |
+[![Website](https://img.shields.io/badge/Website-nxtslide.online-blue?style=flat-square&logo=googlechrome)](https://nxtslide.online)
+[![Android APK](https://img.shields.io/badge/Android-Download%20APK-brightgreen?style=flat-square&logo=android)](https://nxtslide.online/NXTslide.apk)
+[![Windows](https://img.shields.io/badge/Windows-Download%20Setup-informational?style=flat-square&logo=windows)](https://github.com/DilpreetSinghVerma/nextPresent/releases/latest)
+[![License](https://img.shields.io/badge/License-Proprietary%20%2F%20EventFold%20Studio-orange?style=flat-square)](LICENSE)
 
 ---
 
-## 🚀 Quick Start
+## ⚡ Why NXTslide?
 
-### 1. Install & Start
+Physical presentation remotes (Logitech Spotlight, Kensington) cost **$60 to $130 (₹5,000–₹11,000)** and require dedicated USB dongles that get lost or don't fit modern laptops without adapters. Other mobile apps force you into **monthly recurring subscriptions**.
 
+**NXTslide turns the smartphone already in your pocket into a studio-grade presentation wand.**
+
+---
+
+## ✨ Key Features
+
+| Feature | Community (Free) | Lifetime Pro (₹89 One-Time) |
+|---|:---:|:---:|
+| 🔊 **Hardware Volume Key Interception** (True physical Vol Up/Down clicker) | ✅ | ✅ |
+| 🔴 **3D Gyro Virtual Laser Pointer** (Wand pointing with physics smoothing) | ✅ | ✅ |
+| ⬛ **Stealth Touchpad** (Zero screen glare, pitch-black touch navigation) | ✅ | ✅ |
+| 🏠 **Local Wi-Fi & Hotspot Mode** (<15ms ultra-low latency WebSocket) | ✅ | ✅ |
+| 🖥️ **All Presentation Apps** (PowerPoint, Google Slides, Keynote, Canva, PDF) | ✅ | ✅ |
+| ⏱️ **Presentation Stopwatch & Pace Haptics** | ✅ | ✅ |
+| ☁️ **Global Cloud Relay** (Present across 5G/4G cellular & hotel Wi-Fi) | ❌ | ✅ |
+| 👥 **Multi-Presenter Mode** (Connect up to 5 phones simultaneously) | ❌ | ✅ |
+| ⚡ **Instant 6-Letter Room Code** (Bypasses college & corporate firewalls) | ❌ | ✅ |
+| 💳 **Native In-App UPI & Razorpay** (GPay, PhonePe, Paytm, CRED, Cards) | ❌ | ✅ |
+| ♾️ **Zero Subscriptions** (Pay once ₹89, own forever with all future updates) | — | ✅ |
+
+---
+
+## 🚀 Quick Download & Installation
+
+### Option 1: Official Website & Prebuilt Installers (Recommended)
+1. **Windows PC:** Download the installer or portable `.exe` from [nxtslide.online](https://nxtslide.online) or [GitHub Releases](https://github.com/DilpreetSinghVerma/nextPresent/releases/latest).
+2. **Android Phone:** Download the official [NXTslide.apk](https://nxtslide.online/NXTslide.apk) directly onto your phone.
+3. Launch NXTslide on your PC, scan the QR code with your phone (or enter the 6-letter room code), and you're ready to present!
+
+### Option 2: Run From Source (Developers)
 ```powershell
-# In NXTslide folder:
+# Clone the repository
+git clone https://github.com/DilpreetSinghVerma/nextPresent.git
+cd nextPresent
+
+# Install dependencies
 npm install
+
+# Start local server
 npm start
 ```
-
-The terminal will show a QR code and the connection URL (e.g. `http://192.168.1.15:3333/remote`).
-
-### 2. Connect Your Phone
-
-1. Make sure your **phone and PC are on the same Wi-Fi network**.
-2. **Scan the QR code** shown on the PC dashboard, or open the URL manually.
-3. Open your presentation on the PC.
-4. Use your phone to switch slides!
+The terminal and PC dashboard will launch at `http://localhost:3333` with your pairing QR code.
 
 ---
 
-## 📱 Phone Controls
+## 📱 Mobile Controls & Modes
 
-| Gesture / Key | Action |
-|---|---|
-| Tap bottom 70% of screen | ▶ Next Slide |
-| Tap top 30% of screen | ◀ Previous Slide |
-| Swipe Left | ▶ Next Slide |
-| Swipe Right | ◀ Previous Slide |
-| **Volume Up** (physical key) | ▶ Next Slide |
-| **Volume Down** (physical key) | ◀ Previous Slide |
-| Headset / Bluetooth button (Next) | ▶ Next Slide |
-| Lock Screen media next button | ▶ Next Slide |
-| [B] button | Toggle Blackout |
-| [F5] button | Start Slideshow |
+- **🔊 Hardware Volume Clicker:** Press Volume Up to advance slides, Volume Down to go back.
+- **👆 No-Look Clicker Area:** Giant bottom 70% tap zone for Next, top 30% for Prev with haptic feedback.
+- **🔴 3D Laser Pointer:** Hold the laser button and point your phone at your presentation screen.
+- **⬛ Stealth Touchpad:** Pitch-black OLED mode for dark auditoriums — swipe to move cursor, tap to click without screen glare distracting the audience.
+- **📺 Blank Screen:** Tap `B` for blackout, `W` for whiteout.
+- **🎬 Fullscreen Slideshow:** Tap `F5` to start presentation from slide 1.
 
 ---
 
-## 🤖 Android Companion App (Full Volume Key Support)
+## 💎 Pricing: Permanent Lifetime Deal
 
-For **true physical volume rocker** interception (suppresses system volume popup entirely):
-
-1. Open the `android-companion` folder in **Android Studio**.
-2. Connect your phone via USB with Developer Mode enabled.
-3. Press **Run (▶)**.
-4. When prompted, enter your PC's local IP address.
-
-See [`android-companion/README.md`](android-companion/README.md) for full build instructions.
+NXTslide believes presenters shouldn't be trapped in endless monthly subscriptions:
+- **Free Community Plan:** ₹0 forever for local Wi-Fi presentations.
+- **Lifetime Pro Plan:** **₹89 INR One-Time** (Never pay again).
+  - Securely processed via **Razorpay** (supports Google Pay, PhonePe, Paytm, UPI, Net Banking, and Cards).
+  - 7-Day 100% Money-Back Guarantee.
 
 ---
 
-## 🖥️ PC Dashboard
+## 🛡️ License & Commercial Protection
 
-Open `http://localhost:3333/dashboard` to see:
-- Live QR code for pairing
-- Number of connected phones
-- Real-time slide event log
-- Presentation timer
-- Quick test buttons for Next/Prev/F5/Blackout/Esc
+Copyright © 2026 **EventFold Studio** · Founded and developed by **Dilpreet Singh**.
 
----
-
-## 💎 Pricing
-
-| Feature | Community (Free) | Pro Lifetime ($19 one-time) |
-|---|:---:|:---:|
-| **Physical Volume Key Clicker** | ✅ | ✅ |
-| **Local Wi-Fi & Hotspot Mode** | ✅ | ✅ |
-| **All Software Profiles** (PowerPoint, Keynote, Canva, etc.) | ✅ | ✅ |
-| **🌍 Global Cloud Relay** (Across 5G/LTE, hotel Wi-Fi & different countries) | ❌ | ✅ |
-| **📱 Multi-Presenter Mode** (Connect up to 5 phones simultaneously) | ❌ | ✅ |
-| **⚡ Instant 6-Letter Room Code** (Bypass enterprise firewalls) | ❌ | ✅ |
-| **📳 Stealth Pocket Haptics** (10m, 5m, 1m pace vibrations) | ❌ | ✅ |
-| **Zero Subscriptions** (Pay once, own forever) | ✅ | ✅ |
-| **All Future Updates Included** | ✅ | ✅ |
+This repository contains the source code for the NXTslide community client and companion tooling. 
+- You are free to inspect, review, and run the code for personal, non-commercial, and educational presentations.
+- **Commercial re-hosting, white-labeling, re-branding, or selling of this software or its Cloud Relay services is strictly prohibited.**
+- For commercial licensing inquiries or partnership queries, contact us at [nxtslide.online/contact](https://nxtslide.online/contact).
 
 ---
 
-## 🔧 Configuration
+## 🔗 Official Links
 
-| Setting | Default | Environment Variable |
-|---|---|---|
-| Server Port | `3333` | `PORT=4000 npm start` |
-
----
-
-## 🗂️ Project Structure
-
-```
-NXTslide/
-├── server.js               # Main WebSocket + Express server
-├── lib/
-│   ├── keySender.cs        # Native C# Windows key injector source
-│   └── keySender.js        # Node.js wrapper (with Python fallback)
-│   └── network.js          # Local IP detection
-├── bin/
-│   └── keySender.exe       # Compiled key injector
-├── public/
-│   ├── index.html          # PC Dashboard
-│   ├── mobile.html         # Mobile Remote Controller
-│   ├── css/
-│   │   ├── dashboard.css
-│   │   └── mobile.css
-│   └── js/
-│       ├── dashboard.js
-│       └── mobile.js
-└── android-companion/      # Native Android app for hardware volume keys
-    └── app/src/main/java/com/nextpresent/remote/MainActivity.kt
-```
+- **Website:** [https://nxtslide.online](https://nxtslide.online)
+- **Direct APK Download:** [https://nxtslide.online/NXTslide.apk](https://nxtslide.online/NXTslide.apk)
+- **GitHub Repository:** [DilpreetSinghVerma/nextPresent](https://github.com/DilpreetSinghVerma/nextPresent)
+- **Legal & Policies:** [Terms](https://nxtslide.online/terms) · [Privacy](https://nxtslide.online/privacy) · [Refunds](https://nxtslide.online/refund)

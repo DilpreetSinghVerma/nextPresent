@@ -1,6 +1,6 @@
 {
   "name": "nxtslide",
-  "version": "2.1.0",
+  "version": "2.3.0",
   "description": "NXTslide — Wireless Presentation Remote & Volume Key Controller",
   "main": "electron/main.js",
   "scripts": {
@@ -84,8 +84,8 @@
     "google-slides",
     "canva"
   ],
-  "author": "Dilpreet Singh",
-  "license": "ISC",
+  "author": "Dilpreet Singh (EventFold Studio)",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "commonjs",
   "dependencies": {
     "electron-updater": "^6.8.9",
