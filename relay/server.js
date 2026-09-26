@@ -127,6 +127,7 @@ async function setupDatabase() {
       );`,
       `CREATE INDEX IF NOT EXISTS idx_payments_userId ON payments(userId);`,
       `CREATE INDEX IF NOT EXISTS idx_payments_createdAt ON payments(createdAt);`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_paymentId ON payments(paymentId) WHERE paymentId IS NOT NULL;`,
       `CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`
     ]);
 
@@ -284,6 +285,21 @@ function isUserPro(user) {
 // ─── Payments & Admin DB Helpers ──────────────────────────────────────────────
 async function recordPayment(data) {
   if (!db) return null;
+
+  // Deduplication check: if paymentId already recorded, avoid duplicate ledger entries
+  if (data.paymentId) {
+    try {
+      const existing = await db.execute({
+        sql: 'SELECT * FROM payments WHERE paymentId = ? LIMIT 1',
+        args: [data.paymentId]
+      });
+      if (existing.rows && existing.rows.length > 0) {
+        console.log(`[DB] Payment ${data.paymentId} already recorded. Returning existing entry.`);
+        return existing.rows[0];
+      }
+    } catch (_) {}
+  }
+
   const id = generateId();
   try {
     await db.execute({
@@ -305,6 +321,13 @@ async function recordPayment(data) {
     const res = await db.execute({ sql: 'SELECT * FROM payments WHERE id = ?', args: [id] });
     return res.rows[0] || null;
   } catch (err) {
+    // If unique constraint triggers on duplicate paymentId, gracefully return existing record
+    if (data.paymentId) {
+      try {
+        const res = await db.execute({ sql: 'SELECT * FROM payments WHERE paymentId = ? LIMIT 1', args: [data.paymentId] });
+        if (res.rows && res.rows[0]) return res.rows[0];
+      } catch (_) {}
+    }
     console.error('[DB] Failed to record payment:', err.message);
     return null;
   }
