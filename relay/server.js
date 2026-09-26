@@ -907,8 +907,23 @@ app.get('/api/billing/status', async (req, res) => {
 
 // Create Razorpay order for Lifetime Pro activation
 app.post('/api/billing/subscribe', async (req, res) => {
-  const user = await resolveUser(req);
-  if (!user) return res.status(401).json({ error: 'Not authenticated' });
+  let user = await resolveUser(req);
+  if (!user) {
+    const email = req.body && req.body.email ? String(req.body.email).trim().toLowerCase() : null;
+    if (email && email.includes('@')) {
+      user = await getUserByEmail(email);
+      if (!user) {
+        user = await createUser({
+          email,
+          name: (req.body && req.body.name) ? String(req.body.name).trim() : email.split('@')[0],
+          plan: 'free',
+          source: 'inapp_razorpay'
+        });
+      }
+    }
+  }
+
+  if (!user) return res.status(401).json({ error: 'Please enter a valid email address to continue' });
   if (!razorpay) return res.status(503).json({ error: 'Payment system not configured' });
 
   try {
@@ -927,6 +942,7 @@ app.post('/api/billing/subscribe', async (req, res) => {
       currency: order.currency,
       key:      process.env.RAZORPAY_KEY_ID,
       user: {
+        id:    user.id,
         name:  user.name  || user.email,
         email: user.email,
       }
@@ -935,6 +951,75 @@ app.post('/api/billing/subscribe', async (req, res) => {
     console.error('[Billing] Razorpay order error:', err);
     const msg = err.description || err.error?.description || err.message || 'Payment error';
     res.status(500).json({ error: msg });
+  }
+});
+
+// Verify Razorpay payment signature and immediately unlock Pro
+app.post('/api/billing/verify', async (req, res) => {
+  const { orderId, paymentId, signature, email } = req.body || {};
+  if (!orderId || !paymentId) {
+    return res.status(400).json({ error: 'Missing orderId or paymentId' });
+  }
+
+  try {
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (keySecret && signature) {
+      const generatedSignature = crypto
+        .createHmac('sha256', keySecret)
+        .update(`${orderId}|${paymentId}`)
+        .digest('hex');
+
+      if (generatedSignature !== signature) {
+        return res.status(400).json({ error: 'Invalid payment signature' });
+      }
+    }
+
+    let user = await resolveUser(req);
+    if (!user && email) {
+      user = await getUserByEmail(email.toLowerCase().trim());
+    }
+
+    if (user) {
+      const startedAt = new Date();
+      const expiresAt = new Date('2099-12-31T23:59:59.999Z');
+      await updateUser(user.id, {
+        plan: 'pro',
+        subscriptionStartedAt: startedAt.toISOString(),
+        subscriptionExpiresAt: expiresAt.toISOString()
+      });
+
+      await recordPayment({
+        userId: user.id,
+        userEmail: user.email,
+        amount: PRO_LIFETIME_PRICE,
+        currency: 'INR',
+        orderId,
+        paymentId,
+        status: 'paid',
+        source: 'razorpay_direct',
+        notes: { paymentId }
+      });
+
+      const token = await createAuthToken(user.id);
+      return res.json({
+        success: true,
+        isPro: true,
+        plan: 'pro',
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          isPro: true,
+          plan: 'pro'
+        }
+      });
+    }
+
+    res.json({ success: true, isPro: true });
+  } catch (err) {
+    console.error('[Billing] Verify error:', err);
+    res.status(500).json({ error: 'Verification failed' });
   }
 });
 

@@ -100,13 +100,68 @@ class MainActivity : AppCompatActivity() {
         webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            settings.databaseEnabled = true
             settings.allowFileAccess = true
             settings.allowContentAccess = true
+            settings.setSupportMultipleWindows(true)
+            settings.javaScriptCanOpenWindowsAutomatically = true
             settings.cacheMode = WebSettings.LOAD_DEFAULT
             setBackgroundColor(0xFF05070D.toInt())
 
             addJavascriptInterface(AndroidBridge(this@MainActivity), "AndroidApp")
             webViewClient = object : WebViewClient() {
+                override fun shouldOverrideUrlLoading(
+                    view: WebView?,
+                    request: android.webkit.WebResourceRequest?
+                ): Boolean {
+                    val url = request?.url?.toString() ?: return false
+                    return handlePaymentOrAppUrl(url)
+                }
+
+                @Suppress("DEPRECATION")
+                override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                    if (url == null) return false
+                    return handlePaymentOrAppUrl(url)
+                }
+
+                private fun handlePaymentOrAppUrl(url: String): Boolean {
+                    // Let WebView load regular web pages and Razorpay checkout scripts
+                    if (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("file://")) {
+                        return false
+                    }
+
+                    // UPI intent schemes (Google Pay, PhonePe, Paytm, CRED, BHIM, etc.)
+                    try {
+                        val intent = if (url.startsWith("intent://")) {
+                            Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
+                        } else {
+                            Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        }
+
+                        // Check if an app is installed to handle this intent
+                        if (packageManager.resolveActivity(intent, 0) != null || url.startsWith("upi:")) {
+                            startActivity(intent)
+                            return true
+                        }
+
+                        // Check fallback URL if specified in intent
+                        if (url.startsWith("intent://")) {
+                            val fallbackUrl = intent.getStringExtra("browser_fallback_url")
+                            if (!fallbackUrl.isNullOrEmpty()) {
+                                webView.loadUrl(fallbackUrl)
+                                return true
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("NXTslide", "Error routing payment URL: $url", e)
+                        try {
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                            return true
+                        } catch (_: Exception) {}
+                    }
+                    return true
+                }
+
                 override fun onReceivedError(
                     view: android.webkit.WebView?,
                     request: android.webkit.WebResourceRequest?,
@@ -920,6 +975,29 @@ class MainActivity : AppCompatActivity() {
         fun isProUnlocked(): Boolean {
             val prefs = activity.getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
             return prefs.getBoolean("nxtslide_pro_unlocked", false)
+        }
+
+        @JavascriptInterface
+        fun setProUnlocked(unlocked: Boolean, userEmail: String = "") {
+            val prefs = activity.getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+            val editor = prefs.edit().putBoolean("nxtslide_pro_unlocked", unlocked)
+            if (userEmail.isNotEmpty()) {
+                editor.putString("nxtslide_google_email", userEmail)
+                editor.putString("nxtslide_plan", if (unlocked) "pro" else "free")
+            }
+            editor.apply()
+        }
+
+        @JavascriptInterface
+        fun getUserEmail(): String {
+            val prefs = activity.getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+            return prefs.getString("nxtslide_google_email", "") ?: ""
+        }
+
+        @JavascriptInterface
+        fun getUserName(): String {
+            val prefs = activity.getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+            return prefs.getString("nxtslide_google_name", "") ?: ""
         }
 
         @JavascriptInterface

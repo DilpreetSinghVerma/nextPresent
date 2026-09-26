@@ -708,9 +708,27 @@ function isProActive() {
 function showProPaywall(featureName) {
   const modal = document.getElementById('mobileProModal');
   const desc = document.getElementById('proModalDesc');
+  const proEmailInput = document.getElementById('proEmailInput');
+
   if (desc && featureName) {
     desc.textContent = `${featureName} is an exclusive feature of NXTslide Lifetime Pro (₹149). Unlock once, own forever!`;
   }
+
+  // Pre-fill email if available
+  if (proEmailInput && !proEmailInput.value) {
+    let savedEmail = '';
+    if (window.AndroidApp && typeof window.AndroidApp.getUserEmail === 'function') {
+      savedEmail = window.AndroidApp.getUserEmail();
+    }
+    if (!savedEmail) {
+      try {
+        const u = JSON.parse(localStorage.getItem('nxtslide_user') || '{}');
+        if (u.email) savedEmail = u.email;
+      } catch(_) {}
+    }
+    if (savedEmail) proEmailInput.value = savedEmail;
+  }
+
   if (modal) {
     modal.style.display = 'flex';
   }
@@ -722,6 +740,180 @@ if (closeMobileProModal) {
     const modal = document.getElementById('mobileProModal');
     if (modal) modal.style.display = 'none';
   });
+}
+
+// ─── Direct In-App Razorpay Checkout (UPI GPay, PhonePe, Paytm, Cards) ───────
+const proUpgradeBtn = document.getElementById('proUpgradeBtn');
+const proEmailInput = document.getElementById('proEmailInput');
+
+async function startInAppProUpgrade() {
+  let email = proEmailInput ? proEmailInput.value.trim() : '';
+  if (!email && window.AndroidApp && typeof window.AndroidApp.getUserEmail === 'function') {
+    email = window.AndroidApp.getUserEmail();
+  }
+  if (!email) {
+    try {
+      const u = JSON.parse(localStorage.getItem('nxtslide_user') || '{}');
+      if (u.email) email = u.email;
+    } catch(_) {}
+  }
+
+  if (!email || !email.includes('@')) {
+    if (proEmailInput) {
+      proEmailInput.focus();
+      proEmailInput.style.borderColor = '#ef4444';
+    }
+    alert('Please enter your email address to receive your Lifetime Pro receipt and license.');
+    return;
+  }
+
+  let name = '';
+  if (window.AndroidApp && typeof window.AndroidApp.getUserName === 'function') {
+    name = window.AndroidApp.getUserName();
+  }
+  if (!name) {
+    try {
+      const u = JSON.parse(localStorage.getItem('nxtslide_user') || '{}');
+      if (u.name) name = u.name;
+    } catch(_) {}
+  }
+
+  const origBtnHtml = proUpgradeBtn ? proUpgradeBtn.innerHTML : '';
+  if (proUpgradeBtn) {
+    proUpgradeBtn.disabled = true;
+    proUpgradeBtn.innerHTML = '<span>⏳</span> <span>Connecting to Razorpay...</span>';
+  }
+
+  try {
+    const relayBase = 'https://nxtslide.online';
+
+    // 1. Create order on relay server
+    const token = localStorage.getItem('nxtslide_auth_token') || localStorage.getItem('auth_token') || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${relayBase}/api/billing/subscribe`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ email, name })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      alert('Could not initiate payment: ' + (err.error || 'Server error. Please try again.'));
+      if (proUpgradeBtn) {
+        proUpgradeBtn.disabled = false;
+        proUpgradeBtn.innerHTML = origBtnHtml;
+      }
+      return;
+    }
+
+    const order = await res.json();
+
+    // 2. Ensure Razorpay script is loaded
+    if (!window.Razorpay) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    // 3. Open Razorpay Checkout modal (supports UPI GPay, PhonePe, Paytm, CRED, Cards)
+    const rzp = new window.Razorpay({
+      key:         order.key,
+      amount:      order.amount,
+      currency:    order.currency || 'INR',
+      name:        'NXTslide',
+      description: 'Lifetime Pro Plan (Permanent License)',
+      order_id:    order.orderId,
+      prefill: {
+        name:  order.user?.name  || name  || '',
+        email: order.user?.email || email || '',
+      },
+      theme: { color: '#22c55e' },
+      modal: {
+        ondismiss: function() {
+          if (proUpgradeBtn) {
+            proUpgradeBtn.disabled = false;
+            proUpgradeBtn.innerHTML = origBtnHtml;
+          }
+        }
+      },
+      handler: async function(response) {
+        if (proUpgradeBtn) {
+          proUpgradeBtn.innerHTML = '<span>✅</span> <span>Verifying Payment...</span>';
+        }
+
+        try {
+          await fetch(`${relayBase}/api/billing/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId:   response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+              email:     email
+            })
+          });
+        } catch(e) {
+          console.warn('[Billing] Verify request warning:', e);
+        }
+
+        // Save Pro status to Android SharedPreferences
+        if (window.AndroidApp && typeof window.AndroidApp.setProUnlocked === 'function') {
+          try {
+            window.AndroidApp.setProUnlocked(true, email);
+          } catch(_) {}
+        }
+
+        // Save Pro status locally
+        localStorage.setItem('nxtslide_pro_unlocked', 'true');
+        const userData = { email, name, isPro: true, plan: 'pro' };
+        localStorage.setItem('nxtslide_user', JSON.stringify(userData));
+
+        // Close modal
+        const modal = document.getElementById('mobileProModal');
+        if (modal) modal.style.display = 'none';
+
+        if (proUpgradeBtn) {
+          proUpgradeBtn.disabled = false;
+          proUpgradeBtn.innerHTML = origBtnHtml;
+        }
+
+        // Update Account Pill UI if present
+        if (typeof window.nxtslideOnAuthSuccess === 'function') {
+          window.nxtslideOnAuthSuccess(userData);
+        }
+
+        alert('🎉 Congratulations!\n\nNXTslide Lifetime Pro is now activated.\nYou have unlimited access to Stealth Blackout Mode, Virtual Laser Pointer, Touchpad, and Multi-Device presentation forever!');
+      }
+    });
+
+    rzp.on('payment.failed', function(resp) {
+      console.error('[Billing] Payment failed:', resp.error);
+      alert('Payment cancelled or failed: ' + (resp.error?.description || 'Please try again.'));
+      if (proUpgradeBtn) {
+        proUpgradeBtn.disabled = false;
+        proUpgradeBtn.innerHTML = origBtnHtml;
+      }
+    });
+
+    rzp.open();
+  } catch(err) {
+    console.error('[Billing] Checkout error:', err);
+    alert('Error opening payment checkout: ' + (err.message || 'Please check your connection and try again.'));
+    if (proUpgradeBtn) {
+      proUpgradeBtn.disabled = false;
+      proUpgradeBtn.innerHTML = origBtnHtml;
+    }
+  }
+}
+
+if (proUpgradeBtn) {
+  proUpgradeBtn.addEventListener('click', startInAppProUpgrade);
 }
 
 // Modal open / close
