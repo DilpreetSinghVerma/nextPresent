@@ -345,6 +345,23 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             override fun onMessage(webSocket: WebSocket, text: String) {
+                try {
+                    val json = JSONObject(text)
+                    if (json.optString("type") == "MULTI_DEVICE_BLOCKED") {
+                        runOnUiThread {
+                            AlertDialog.Builder(this@MainActivity)
+                                .setTitle("✦ Lifetime Pro Feature")
+                                .setMessage("Multi-Presenter Mode (2+ remotes) is a Lifetime Pro feature (₹149).\n\nAnother phone is currently controlling this presentation. Upgrade to Pro for unlimited co-presenters, or disconnect the other phone.")
+                                .setPositiveButton("Upgrade") { _, _ ->
+                                    val browserIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://nxtslide.online#pricing"))
+                                    startActivity(browserIntent)
+                                }
+                                .setNegativeButton("OK", null)
+                                .show()
+                        }
+                    }
+                } catch (_: Exception) {}
+
                 webView.post {
                     webView.evaluateJavascript(
                         "if(typeof window.onServerMessage==='function') window.onServerMessage(${JSONObject.quote(text)});", null)
@@ -359,11 +376,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun buildWsUrl(): String {
         val code = relayRoomCode
+        val androidId = android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID) ?: "companion_android"
         return if (code != null) {
             val wsBase = relayBaseUrl.replace("https://", "wss://").replace("http://", "ws://")
-            "$wsBase/ws/$code/phone"
+            "$wsBase/ws/$code/phone?deviceId=$androidId"
         } else {
-            "ws://$serverIp:$serverPort/ws"
+            "ws://$serverIp:$serverPort/ws?role=companion&deviceId=$androidId"
         }
     }
 
@@ -887,6 +905,11 @@ class MainActivity : AppCompatActivity() {
         fun isProUnlocked(): Boolean {
             val prefs = activity.getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
             return prefs.getBoolean("nxtslide_pro_unlocked", false)
+        }
+
+        @JavascriptInterface
+        fun getDeviceId(): String {
+            return android.provider.Settings.Secure.getString(activity.contentResolver, android.provider.Settings.Secure.ANDROID_ID) ?: "companion_android"
         }
 
         /** Original method used by local mobile.html */

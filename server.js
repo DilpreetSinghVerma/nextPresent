@@ -442,11 +442,37 @@ app.post('/api/profile', (req, res) => {
     sessionState,
   });
   res.json({ success: true, profile, profileInfo: SOFTWARE_PROFILES[profile] });
-});
+// ─────────────────────────────────────────────────────────────────────
+// Remote Presenter Device Tracker (Free: 1 remote, Pro: Unlimited)
+// ─────────────────────────────────────────────────────────────────────
+const activeRemoteDevices = new Map(); // deviceId -> Set<WebSocket>
+
+function cleanDeadRemoteSockets() {
+  for (const [id, socketSet] of activeRemoteDevices.entries()) {
+    for (const s of socketSet) {
+      if (s.readyState !== WebSocket.OPEN) {
+        socketSet.delete(s);
+      }
+    }
+    if (socketSet.size === 0) {
+      activeRemoteDevices.delete(id);
+    }
+  }
+}
 
 app.post('/api/key', async (req, res) => {
-  const { action } = req.body;
+  const { action, deviceId } = req.body || {};
   if (!action) return res.status(400).json({ error: 'Action required' });
+
+  const isPro = licenseService.getLicenseStatus().isPro;
+  cleanDeadRemoteSockets();
+  if (!isPro && activeRemoteDevices.size > 0 && deviceId && !activeRemoteDevices.has(deviceId)) {
+    return res.status(403).json({
+      error: 'Multi-device presentation is a Lifetime Pro feature (₹149). Free version allows 1 remote at a time.',
+      code: 'MULTI_DEVICE_PRO_ONLY'
+    });
+  }
+
   await handleAction(action, 'API');
   res.json({ success: true, action });
 });
@@ -492,7 +518,7 @@ async function handleAction(action, source = 'unknown') {
 function broadcast(data) {
   const payload = JSON.stringify(data);
   for (const client of wss.clients) {
-    if (client.readyState === WebSocket.OPEN) {
+    if (client.readyState === WebSocket.OPEN && !client.isBlockedMultiDevice) {
       client.send(payload);
     }
   }
@@ -509,7 +535,66 @@ wss.on('connection', (ws, req) => {
   if (ws._socket) {
     ws._socket.setNoDelay(true); // Disable Nagle algorithm for 0-latency
   }
-  sessionState.connectedClients = wss.clients.size;
+
+  cleanDeadRemoteSockets();
+
+  const fullUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  const role = fullUrl.searchParams.get('role');
+  const rawDeviceId = fullUrl.searchParams.get('deviceId');
+
+  const clientIp = (req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || '127.0.0.1')
+    .replace(/^.*:/, ''); // normalize IPv6 ::ffff:192.168.x.x
+
+  const isDashboard = role === 'dashboard' || (req.headers.referer && req.headers.referer.includes('/dashboard'));
+  const isRemotePresenter = !isDashboard;
+  const deviceId = rawDeviceId || (isRemotePresenter ? `ip_${clientIp}` : `dash_${Date.now()}`);
+
+  const isPro = licenseService.getLicenseStatus().isPro;
+
+  if (isRemotePresenter) {
+    const isAlreadyConnected = activeRemoteDevices.has(deviceId);
+
+    // Free plan: Only 1 remote device allowed at a time!
+    if (!isPro && !isAlreadyConnected && activeRemoteDevices.size >= 1) {
+      console.warn(`[Paywall] Blocked 2nd remote device '${deviceId}' from IP ${clientIp}. Active devices: ${activeRemoteDevices.size}`);
+      ws.isBlockedMultiDevice = true;
+
+      ws.send(JSON.stringify({
+        type: 'MULTI_DEVICE_BLOCKED',
+        code: 'MULTI_DEVICE_PRO_ONLY',
+        message: 'Multi-Presenter Mode (2+ remotes) is a Lifetime Pro feature (₹149). Free plan allows 1 remote at a time. Upgrade to Pro for unlimited co-presenters, or disconnect the other phone.',
+        isPro: false,
+        activeDeviceCount: activeRemoteDevices.size
+      }));
+
+      // Notify host PC dashboard so host knows another device tried to connect
+      for (const client of wss.clients) {
+        if (client !== ws && client.readyState === WebSocket.OPEN && !client.isBlockedMultiDevice) {
+          client.send(JSON.stringify({
+            type: 'MULTI_DEVICE_ATTEMPT',
+            message: 'A second presenter tried to connect. Upgrade to Lifetime Pro (₹149) to allow unlimited co-presenters!',
+            attemptedDeviceId: deviceId,
+            attemptedIp: clientIp,
+            timestamp: Date.now()
+          }));
+        }
+      }
+
+      setTimeout(() => {
+        try { ws.close(4003, 'Multi-device requires Lifetime Pro'); } catch (_) {}
+      }, 500);
+
+      return;
+    }
+
+    if (!activeRemoteDevices.has(deviceId)) {
+      activeRemoteDevices.set(deviceId, new Set());
+      console.log(`[Remote] Remote device '${deviceId}' connected. Active devices: ${activeRemoteDevices.size}`);
+    }
+    activeRemoteDevices.get(deviceId).add(ws);
+  }
+
+  sessionState.connectedClients = activeRemoteDevices.size;
   const clientUa = req.headers['user-agent'] || 'unknown';
   const isMobile = /android|iphone|ipad|ipod|mobile/i.test(clientUa);
 
@@ -520,16 +605,19 @@ wss.on('connection', (ws, req) => {
     profiles: SOFTWARE_PROFILES,
     activeProfile: sessionState.activeProfile,
     isPro: licenseService.getLicenseStatus().isPro,
+    deviceId: isRemotePresenter ? deviceId : undefined
   }));
 
   broadcast({
     type: 'CLIENT_CONNECTED',
-    clientCount: wss.clients.size,
+    clientCount: activeRemoteDevices.size,
     isMobile,
     timestamp: Date.now(),
   });
 
   ws.on('message', async (message) => {
+    if (ws.isBlockedMultiDevice) return;
+
     try {
       const data = JSON.parse(message.toString());
 
@@ -572,10 +660,19 @@ wss.on('connection', (ws, req) => {
   });
 
   ws.on('close', () => {
-    sessionState.connectedClients = wss.clients.size;
+    if (isRemotePresenter && activeRemoteDevices.has(deviceId)) {
+      const set = activeRemoteDevices.get(deviceId);
+      set.delete(ws);
+      if (set.size === 0) {
+        activeRemoteDevices.delete(deviceId);
+        console.log(`[Remote] Remote device '${deviceId}' disconnected. (Active devices: ${activeRemoteDevices.size})`);
+      }
+    }
+    cleanDeadRemoteSockets();
+    sessionState.connectedClients = activeRemoteDevices.size;
     broadcast({
       type: 'CLIENT_DISCONNECTED',
-      clientCount: wss.clients.size,
+      clientCount: activeRemoteDevices.size,
       timestamp: Date.now(),
     });
   });

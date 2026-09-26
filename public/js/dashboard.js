@@ -484,7 +484,7 @@ copyUrlBtn.addEventListener('click', () => {
 // WebSocket Connection
 function connectWebSocket() {
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsUrl = `${protocol}//${location.host}/ws`;
+  const wsUrl = `${protocol}//${location.host}/ws?role=dashboard`;
 
   ws = new WebSocket(wsUrl);
 
@@ -519,6 +519,9 @@ function connectWebSocket() {
       } else if (data.type === 'CLIENT_DISCONNECTED') {
         connectedClientsVal.textContent = data.clientCount;
         logEvent('Device Disconnected', '', 'special');
+      } else if (data.type === 'MULTI_DEVICE_ATTEMPT') {
+        logEvent('⚠️ 2nd Remote Blocked', 'Another presenter tried to connect (Lifetime Pro feature)', 'special');
+        showMultiDeviceAlert(data.message);
       } else if (data.type === 'TIMER_SYNC') {
         updateTimerUI(data.sessionState);
       } else if (data.type === 'UI_SYNC_UPDATED') {
@@ -700,3 +703,44 @@ window.showUpdateReadyToast = function(msg) {
   }
   toast.innerHTML = `<span style="color:#22c55e;">🎉</span> <span>${msg}</span> <button onclick="window.close()" style="background:#16a34a;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:0.8rem;font-weight:600;cursor:pointer;margin-left:8px;">Restart</button>`;
 };
+
+function showMultiDeviceAlert(msg) {
+  let banner = document.getElementById('multiDeviceAlertBanner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'multiDeviceAlertBanner';
+    banner.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      max-width: 440px;
+      background: #18181b;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      color: #fafafa;
+      padding: 16px 20px;
+      border-radius: 12px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.6);
+      z-index: 10001;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: slideInRight 0.3s ease;
+    `;
+    document.body.appendChild(banner);
+  }
+  banner.innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:12px;">
+      <span style="font-size:1.4rem;">👥</span>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:0.92rem;color:#fbbf24;margin-bottom:4px;">Multi-Presenter Limit (Free Plan)</div>
+        <div style="font-size:0.82rem;color:#a1a1aa;line-height:1.4;">${msg || 'A second phone tried to connect. Free version allows 1 remote at a time.'}</div>
+      </div>
+      <button onclick="this.closest('#multiDeviceAlertBanner').remove()" style="background:none;border:none;color:#71717a;cursor:pointer;font-size:1.2rem;line-height:1;">×</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="this.closest('#multiDeviceAlertBanner').remove()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#a1a1aa;padding:6px 12px;border-radius:6px;font-size:0.8rem;cursor:pointer;">Dismiss</button>
+      <button onclick="openLicenseModal();this.closest('#multiDeviceAlertBanner').remove();" style="background:#fbbf24;color:#000;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">Unlock Multi-Presenter (₹149)</button>
+    </div>
+  `;
+}
+

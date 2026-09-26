@@ -68,12 +68,30 @@ function getServerHost() {
   return localStorage.getItem('nextpresent_server_ip') || '192.168.101.9:3333';
 }
 
+let isMultiDeviceBlocked = false;
+
+function getDeviceId() {
+  if (window.AndroidApp && typeof window.AndroidApp.getDeviceId === 'function') {
+    try {
+      const id = window.AndroidApp.getDeviceId();
+      if (id) return id;
+    } catch (_) {}
+  }
+  let id = localStorage.getItem('nxtslide_device_id');
+  if (!id) {
+    id = 'dev_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+    localStorage.setItem('nxtslide_device_id', id);
+  }
+  return id;
+}
+
 // ══════════════════════════════════════════════════════════
 //  WebSocket
 // ══════════════════════════════════════════════════════════
 function initWS() {
   const host = getServerHost();
-  const wsUrl = `ws://${host.includes(':') ? host : host + ':3333'}/ws`;
+  const deviceId = getDeviceId();
+  const wsUrl = `ws://${host.includes(':') ? host : host + ':3333'}/ws?role=remote&deviceId=${encodeURIComponent(deviceId)}`;
 
   try {
     if (ws) {
@@ -85,7 +103,9 @@ function initWS() {
   ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
-    connDot.classList.remove('off');
+    if (!isMultiDeviceBlocked) {
+      connDot.classList.remove('off');
+    }
   };
 
   ws.onmessage = (e) => {
@@ -96,8 +116,17 @@ function initWS() {
         if (d.sessionState) syncState(d.sessionState);
         if (d.activeProfile) updateProfileUI(d.activeProfile);
         else if (d.sessionState && d.sessionState.activeProfile) updateProfileUI(d.sessionState.activeProfile);
+      } else if (d.type === 'MULTI_DEVICE_BLOCKED') {
+        isMultiDeviceBlocked = true;
+        connDot.classList.add('off');
+        showProPaywall('Multi-Presenter Mode (2+ remotes)');
+        const desc = document.getElementById('proModalDesc');
+        if (desc) {
+          desc.textContent = d.message || 'Multi-Presenter Mode (2+ remotes) is an exclusive feature of NXTslide Lifetime Pro (₹149). Free version allows 1 remote at a time.';
+        }
       } else if (d.type === 'PRO_STATUS_CHANGED') {
         isHostPro = !!d.isPro;
+        if (isHostPro) isMultiDeviceBlocked = false;
       } else if (d.type === 'PROFILE_CHANGED') {
         updateProfileUI(d.profile);
       } else if (d.type === 'TIMER_SYNC') {
@@ -108,7 +137,9 @@ function initWS() {
 
   ws.onclose = () => {
     connDot.classList.add('off');
-    setTimeout(initWS, 2500);
+    if (!isMultiDeviceBlocked) {
+      setTimeout(initWS, 2500);
+    }
   };
 }
 
@@ -116,6 +147,11 @@ function initWS() {
 //  Send action
 // ══════════════════════════════════════════════════════════
 function send(action, source) {
+  if (isMultiDeviceBlocked) {
+    showProPaywall('Multi-Presenter Mode (2+ remotes)');
+    return;
+  }
+
   buzz(action);
   doFlash();
 
@@ -125,7 +161,8 @@ function send(action, source) {
     return;
   }
 
-  const msg = JSON.stringify({ type: 'COMMAND', action, source: source || 'Mobile' });
+  const deviceId = getDeviceId();
+  const msg = JSON.stringify({ type: 'COMMAND', action, source: source || 'Mobile', deviceId });
 
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(msg);
@@ -135,7 +172,7 @@ function send(action, source) {
     fetch(`http://${host.includes(':') ? host : host + ':3333'}/api/key`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, source: source || 'Mobile' })
+      body: JSON.stringify({ action, source: source || 'Mobile', deviceId })
     }).catch(() => {});
   }
 }
@@ -149,8 +186,17 @@ window.onServerMessage = function(jsonStr) {
       if (d.sessionState) syncState(d.sessionState);
       if (d.activeProfile) updateProfileUI(d.activeProfile);
       else if (d.sessionState && d.sessionState.activeProfile) updateProfileUI(d.sessionState.activeProfile);
+    } else if (d.type === 'MULTI_DEVICE_BLOCKED') {
+      isMultiDeviceBlocked = true;
+      connDot.classList.add('off');
+      showProPaywall('Multi-Presenter Mode (2+ remotes)');
+      const desc = document.getElementById('proModalDesc');
+      if (desc) {
+        desc.textContent = d.message || 'Multi-Presenter Mode (2+ remotes) is an exclusive feature of NXTslide Lifetime Pro (₹149). Free version allows 1 remote at a time.';
+      }
     } else if (d.type === 'PRO_STATUS_CHANGED') {
       isHostPro = !!d.isPro;
+      if (isHostPro) isMultiDeviceBlocked = false;
     } else if (d.type === 'KEY_EVENT') {
       if (d.sessionState) syncState(d.sessionState);
     } else if (d.type === 'PROFILE_CHANGED') {

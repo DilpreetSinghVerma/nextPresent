@@ -914,11 +914,12 @@ class PresenterService : Service() {
 
     private fun buildWsUrl(): String {
         val code = relayRoomCode
+        val androidId = android.provider.Settings.Secure.getString(contentResolver, android.provider.Settings.Secure.ANDROID_ID) ?: "companion_android"
         return if (code != null) {
             val wsBase = relayBaseUrl.replace("https://", "wss://").replace("http://", "ws://")
-            "$wsBase/ws/$code/phone"
+            "$wsBase/ws/$code/phone?deviceId=$androidId"
         } else {
-            "ws://$serverIp:$serverPort/ws"
+            "ws://$serverIp:$serverPort/ws?role=companion_service&deviceId=$androidId"
         }
     }
 
