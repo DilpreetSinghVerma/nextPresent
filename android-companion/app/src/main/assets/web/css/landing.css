@@ -327,6 +327,15 @@ code {
   font-family: inherit;
 }
 
+.nud-admin {
+  color: #fbbf24;
+  margin-top: 4px;
+}
+.nud-admin:hover {
+  background: rgba(234,179,8,0.12);
+  color: #fde047;
+}
+
 .nud-upgrade {
   color: #818cf8;
   margin-top: 4px;
