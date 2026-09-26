@@ -810,7 +810,24 @@ async function startInAppProUpgrade() {
 
     const order = await res.json();
 
-    // 2. Ensure Razorpay script is loaded
+    // 2. If inside native Android companion app, use Razorpay Native Android SDK
+    // This natively displays all installed UPI apps (Google Pay, PhonePe, Paytm, CRED) at the top!
+    if (window.AndroidApp && typeof window.AndroidApp.startRazorpayPayment === 'function') {
+      window.AndroidApp.startRazorpayPayment(
+        order.orderId,
+        order.amount,
+        order.key,
+        email,
+        name
+      );
+      if (proUpgradeBtn) {
+        proUpgradeBtn.disabled = false;
+        proUpgradeBtn.innerHTML = origBtnHtml;
+      }
+      return;
+    }
+
+    // 3. Fallback for mobile web browser: Ensure Razorpay checkout.js is loaded
     if (!window.Razorpay) {
       await new Promise((resolve, reject) => {
         const s = document.createElement('script');
@@ -821,7 +838,7 @@ async function startInAppProUpgrade() {
       });
     }
 
-    // 3. Open Razorpay Checkout modal (supports UPI GPay, PhonePe, Paytm, CRED, Cards)
+    // 4. Open Razorpay Checkout modal (supports UPI GPay, PhonePe, Paytm, CRED, Cards)
     const rzp = new window.Razorpay({
       key:         order.key,
       amount:      order.amount,
@@ -911,6 +928,30 @@ async function startInAppProUpgrade() {
     }
   }
 }
+
+// Global callback from Android Native Razorpay SDK
+window.onNativePaymentSuccess = function(paymentId) {
+  localStorage.setItem('nxtslide_pro_unlocked', 'true');
+  const proEmailInput = document.getElementById('proEmailInput');
+  const email = (proEmailInput && proEmailInput.value) || 'pro@nxtslide.online';
+  const userData = { email, isPro: true, plan: 'pro' };
+  localStorage.setItem('nxtslide_user', JSON.stringify(userData));
+
+  const modal = document.getElementById('mobileProModal');
+  if (modal) modal.style.display = 'none';
+
+  if (typeof window.nxtslideOnAuthSuccess === 'function') {
+    window.nxtslideOnAuthSuccess(userData);
+  }
+};
+
+window.onNativePaymentError = function(errorMsg) {
+  const proUpgradeBtn = document.getElementById('proUpgradeBtn');
+  if (proUpgradeBtn) {
+    proUpgradeBtn.disabled = false;
+    proUpgradeBtn.innerHTML = '<span>⚡ Pay ₹149 via UPI / Cards</span>';
+  }
+};
 
 if (proUpgradeBtn) {
   proUpgradeBtn.addEventListener('click', startInAppProUpgrade);

@@ -24,6 +24,9 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.razorpay.Checkout
+import com.razorpay.PaymentResultWithDataListener
+import com.razorpay.PaymentData
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -34,7 +37,7 @@ import java.net.DatagramSocket
 import java.net.InetAddress
 import java.util.concurrent.Executors
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
 
     private lateinit var webView: WebView
     private val client = OkHttpClient.Builder()
@@ -95,6 +98,9 @@ class MainActivity : AppCompatActivity() {
         relayRoomCode = prefs.getString("relay_room_code", null)
         relayBaseUrl  = prefs.getString("relay_base_url",
             "https://nxtslide.online") ?: "https://nxtslide.online"
+
+        // Preload Razorpay Native Checkout for instant launch
+        try { Checkout.preload(applicationContext) } catch (_: Exception) {}
 
         // Initialize Immersive Fullscreen WebView
         webView = WebView(this).apply {
@@ -1069,8 +1075,92 @@ class MainActivity : AppCompatActivity() {
                 "LASER_UP"   -> activity.sendLaserUp()
             }
         }
+
+        @JavascriptInterface
+        fun startRazorpayPayment(orderId: String, amount: Int, key: String, email: String, name: String) {
+            activity.runOnUiThread {
+                try {
+                    val co = Checkout()
+                    co.setKeyID(key)
+
+                    val options = JSONObject().apply {
+                        put("name", "NXTslide")
+                        put("description", "Lifetime Pro (Permanent License)")
+                        put("image", "https://nxtslide.online/logo-icon.png")
+                        put("order_id", orderId)
+                        put("currency", "INR")
+                        put("amount", amount)
+                        val prefill = JSONObject().apply {
+                            if (email.isNotEmpty()) put("email", email)
+                            if (name.isNotEmpty()) put("name", name)
+                        }
+                        put("prefill", prefill)
+                        val theme = JSONObject().apply {
+                            put("color", "#22c55e")
+                        }
+                        put("theme", theme)
+                    }
+                    co.open(activity, options)
+                } catch (e: Exception) {
+                    android.util.Log.e("NXTslide", "Error starting Razorpay checkout: ${e.message}", e)
+                    Toast.makeText(activity, "Error opening payment: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
+    // ─── Razorpay Payment Callbacks (Native UPI Intent GPay, PhonePe, Paytm) ──
+    override fun onPaymentSuccess(razorpayPaymentId: String?, paymentData: PaymentData?) {
+        val paymentId = razorpayPaymentId ?: paymentData?.paymentId ?: ""
+        val orderId   = paymentData?.orderId ?: ""
+        val signature = paymentData?.signature ?: ""
+        val userEmail = paymentData?.userEmail ?: ""
 
+        val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+        val finalEmail = if (userEmail.isNotEmpty()) userEmail else prefs.getString("nxtslide_google_email", "") ?: ""
+
+        prefs.edit()
+            .putBoolean("nxtslide_pro_unlocked", true)
+            .putString("nxtslide_plan", "pro")
+            .apply()
+
+        // Asynchronously notify relay server to record payment
+        bgExecutor.execute {
+            try {
+                val body = JSONObject().apply {
+                    put("orderId", orderId)
+                    put("paymentId", paymentId)
+                    put("signature", signature)
+                    put("email", finalEmail)
+                }.toString().toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
+
+                client.newCall(
+                    Request.Builder()
+                        .url("$relayBaseUrl/api/billing/verify")
+                        .post(body)
+                        .build()
+                ).execute().close()
+            } catch (_: Exception) {}
+        }
+
+        webView.post {
+            webView.evaluateJavascript(
+                "if(typeof window.onNativePaymentSuccess==='function') window.onNativePaymentSuccess(${JSONObject.quote(paymentId)});",
+                null
+            )
+        }
+        vibrateFeedback(60)
+        Toast.makeText(this, "🎉 Welcome to NXTslide Lifetime Pro!", Toast.LENGTH_LONG).show()
+    }
+
+    override fun onPaymentError(code: Int, response: String?, paymentData: PaymentData?) {
+        android.util.Log.e("NXTslide", "Razorpay error: code=$code, resp=$response")
+        webView.post {
+            webView.evaluateJavascript(
+                "if(typeof window.onNativePaymentError==='function') window.onNativePaymentError(${JSONObject.quote(response ?: "Payment cancelled")});",
+                null
+            )
+        }
+    }
 }
 

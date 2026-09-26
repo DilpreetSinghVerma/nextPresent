@@ -51,5 +51,8 @@ dependencies {
 
     // ML Kit Barcode Scanner — on-device QR decoding, no internet needed
     implementation 'com.google.mlkit:barcode-scanning:17.3.0'
+
+    // Razorpay Android Native SDK for Instant UPI Intent (GPay, PhonePe, Paytm, CRED)
+    implementation 'com.razorpay:checkout:1.6.41'
 }
 
