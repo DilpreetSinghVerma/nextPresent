@@ -648,6 +648,36 @@ window.nxtslideSetGyroAvailable = function(available) {
 // Immediately apply on page load
 applyGyroAvailability(hasHardwareGyro);
 
+function applyNativeAppUI() {
+  if (window.AndroidApp) {
+    if (volBanner) {
+      volBanner.classList.add('active');
+      if (volIcon) volIcon.textContent = '⚡';
+      if (volTitle) volTitle.textContent = 'Physical Volume Buttons Active ✓';
+      if (volSub) volSub.textContent = 'Vol Up / Down change slides (screen off in pocket supported)';
+      if (volBtn) {
+        volBtn.textContent = 'Active ✓';
+        volBtn.style.cursor = 'default';
+      }
+    }
+
+    const badgeRow = document.getElementById('badgeRow');
+    if (badgeRow) {
+      badgeRow.innerHTML = `
+        <span class="badge green">✓ Physical Volume Keys</span>
+        <span class="badge green">✓ Pocket Mode (Screen Off)</span>
+        <span class="badge green">✓ Tap zones</span>
+        <span class="badge green">✓ Swipe gestures</span>
+        <span class="badge green">✓ Headset &amp; Media keys</span>
+      `;
+    }
+  }
+}
+applyNativeAppUI();
+window.onServerConnected = function() {
+  applyNativeAppUI();
+};
+
 let isHostPro = false;
 
 function isProActive() {
