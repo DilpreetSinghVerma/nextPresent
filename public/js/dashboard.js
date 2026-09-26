@@ -189,7 +189,15 @@ const licenseFeedback   = document.getElementById('licenseFeedback');
 let currentMode = 'local';
 
 function isProUnlocked() {
-  return localStorage.getItem('nxtslide_pro_unlocked') === 'true';
+  if (localStorage.getItem('nxtslide_pro_unlocked') === 'true') return true;
+  if (window.NXTAuth && typeof window.NXTAuth.isPro === 'function' && window.NXTAuth.isPro()) return true;
+  try {
+    const u = JSON.parse(localStorage.getItem('nxtslide_user') || '{}');
+    if (u.isPro || u.isAdmin || (u.email && u.email.toLowerCase() === 'dilpreetsinghverma@gmail.com')) {
+      return true;
+    }
+  } catch (_) {}
+  return false;
 }
 
 function updateProBadge() {

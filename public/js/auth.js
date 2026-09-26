@@ -484,11 +484,28 @@
     const signedOutCta = $('modal-signed-out-cta');
     const signedInCta  = $('modal-signed-in-cta');
     const modalEmail   = $('modal-user-email');
+    const modalPayBtn  = $('modal-pay-btn');
     if (!signedOutCta || !signedInCta) return;
     if (user) {
       signedOutCta.style.display = 'none';
       signedInCta.style.display  = 'block';
       if (modalEmail) modalEmail.textContent = user.email;
+      const isPro = !!(user.isPro || (user.email && user.email.toLowerCase() === 'dilpreetsinghverma@gmail.com'));
+      if (modalPayBtn) {
+        if (isPro) {
+          modalPayBtn.innerHTML = '✅ Lifetime Pro Active — Cloud Relay Unlocked';
+          modalPayBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+          modalPayBtn.onclick = function() {
+            const m = $('proModalBackdrop');
+            if (m) m.style.display = 'none';
+            if (typeof switchMode === 'function') switchMode('cloud');
+          };
+        } else {
+          modalPayBtn.innerHTML = '✦ Unlock Lifetime Pro — ₹89 Only';
+          modalPayBtn.style.background = '';
+          modalPayBtn.onclick = startProUpgrade;
+        }
+      }
     } else {
       signedOutCta.style.display = 'block';
       signedInCta.style.display  = 'none';
