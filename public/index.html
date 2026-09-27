@@ -209,6 +209,11 @@
       </ul>
 
       <div class="nav-right">
+        <a href="#sponsor" class="nav-sponsor-btn" title="Support our Google Play developer launch">
+          <span class="heart-pulse">💖</span>
+          <span>Sponsor</span>
+        </a>
+
         <a href="https://github.com/DilpreetSinghVerma/nextPresent" target="_blank" rel="noopener" class="nav-gh" aria-label="GitHub">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
         </a>
@@ -734,13 +739,28 @@
       </div>
 
       <!-- Play Store Launch Mission Card -->
-      <div class="playstore-mission-card">
+      <div class="playstore-mission-card" id="sponsor">
         <div class="pmc-badge">🚀 Community Mission · Help Bring NXTslide to Google Play</div>
         <h3 class="pmc-title">Support Our $25 Google Play Developer Launch</h3>
         <p class="pmc-desc">
           Google requires a <strong>$25 USD (₹2,100 INR)</strong> registration fee to publish the native NXTslide Companion app onto the official Google Play Store. 
           Every Lifetime Pro upgrade (₹89) and backer contribution goes <strong>100% directly toward this goal</strong> so students, teachers, and presenters worldwide can install NXTslide in one click.
         </p>
+
+        <!-- Progress Tracker Bar -->
+        <div class="pmc-progress-wrap">
+          <div class="pmc-progress-header">
+            <span class="pmc-progress-label">🎯 Goal: $25 USD / ₹2,100 INR Developer Registration</span>
+            <span class="pmc-progress-status">🚀 Live Campaign</span>
+          </div>
+          <div class="pmc-progress-bar">
+            <div class="pmc-progress-fill" style="width: 38%;"></div>
+          </div>
+          <div class="pmc-progress-footer">
+            <span>Every rupee goes directly to Google Play publishing</span>
+            <span>Unlocks Lifetime Pro immediately</span>
+          </div>
+        </div>
 
         <div class="pmc-actions">
           <div class="pmc-tier">
@@ -763,6 +783,17 @@
             <p class="pmc-tier-desc">Permanent Lifetime Pro + Listed in Website &amp; GitHub Backers Hall of Fame + Permanent Founder recognition.</p>
             <button class="btn-pmc btn-pmc-featured" onclick="window._sponsorClick(499, 'Launch Patron — ₹499')">
               Sponsor ₹499
+            </button>
+          </div>
+
+          <div class="pmc-tier">
+            <div class="pmc-tier-info">
+              <span class="pmc-tier-name">💖 Custom Backer</span>
+              <span class="pmc-tier-price">Custom ₹</span>
+            </div>
+            <p class="pmc-tier-desc">Choose any contribution amount (min ₹89). Unlocks Permanent Lifetime Pro + Backer appreciation.</p>
+            <button class="btn-pmc" onclick="window._customSponsorClick()">
+              Contribute Custom ₹
             </button>
           </div>
         </div>
@@ -889,6 +920,9 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
                 GitHub
               </a>
+              <a href="#sponsor" class="btn-sponsor-sm">
+                <span class="heart-pulse">💖</span> Sponsor Launch
+              </a>
               <a href="#download" class="btn-primary-sm">Download Free</a>
             </div>
           </div>
@@ -912,6 +946,7 @@
             <li><a href="/downloads/NXTslide-Setup.exe" download="NXTslide-Setup.exe">Windows Installer</a></li>
             <li><a href="/downloads/NXTslide-Portable.exe" download="NXTslide-Portable.exe">Windows Portable</a></li>
             <li><a href="/NXTslide.apk" download="NXTslide.apk">Android Companion (APK)</a></li>
+            <li><a href="#sponsor" style="color:#22c55e;">💖 Sponsor Play Store Launch</a></li>
           </ul>
         </div>
         <div class="footer-col">
@@ -965,12 +1000,29 @@
     window._sponsorClick = function(amountInRupees, description) {
       const user = window.NXTAuth && window.NXTAuth.getCurrentUser();
       if (!user) {
+        try {
+          sessionStorage.setItem('pending_sponsor_upgrade', JSON.stringify({
+            amount: amountInRupees * 100,
+            desc: description
+          }));
+        } catch (_) {}
         if (window.NXTAuth) window.NXTAuth.signIn();
         return;
       }
       if (window.NXTAuth) {
         window.NXTAuth.upgrade(amountInRupees * 100, description);
       }
+    };
+
+    window._customSponsorClick = function() {
+      const amtStr = prompt('Enter your contribution amount in ₹ INR (minimum ₹89 to unlock Lifetime Pro):', '250');
+      if (!amtStr) return;
+      const amt = parseInt(amtStr.replace(/[^0-9]/g, ''), 10);
+      if (isNaN(amt) || amt < 89) {
+        alert('Please enter an amount of at least ₹89 to support and unlock Lifetime Pro.');
+        return;
+      }
+      window._sponsorClick(amt, `Community Backer — ₹${amt}`);
     };
 
     // Watch auth state to update pricing button

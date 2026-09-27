@@ -459,6 +459,18 @@
     // 2. Verify with server
     await refreshAuthState();
 
+    // Check for pending sponsor upgrade (e.g. user clicked Sponsor tier before OAuth login)
+    try {
+      const pendingSponsor = sessionStorage.getItem('pending_sponsor_upgrade');
+      if (pendingSponsor && currentUser) {
+        sessionStorage.removeItem('pending_sponsor_upgrade');
+        const pData = JSON.parse(pendingSponsor);
+        setTimeout(() => {
+          startProUpgrade(pData.amount, pData.desc);
+        }, 600);
+      }
+    } catch (_) {}
+
     // 3. Wire up header buttons
     const signInBtn  = $('auth-google-signin-btn');
     const signOutBtn = $('auth-signout-btn');
