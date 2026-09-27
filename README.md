@@ -29,12 +29,14 @@ Physical presentation remotes (Logitech Spotlight, Kensington) cost **$60 to $13
 |---|:---:|:---:|
 | 🔊 **Hardware Volume Key Clicker** (True physical Vol Up/Down clicks) | ✅ | ✅ |
 | 🔒 **Screen-Off Pocket Mode** (Operate invisibly behind locked screen) | ✅ | ✅ |
-| 🔴 **3D Gyro Virtual Laser Pointer** (Wand pointing with physics smoothing) | ✅ | ✅ |
-| 📱 **Smart Touchpad Fallback** (Smooth laser aiming on non-gyro phones) | ✅ | ✅ |
-| ⬛ **Stealth Touchpad** (Zero screen glare, pitch-black touch navigation) | ✅ | ✅ |
+| ⬛ **Giant Touch Screen Clicker** (Next/Prev with haptic vibration) | ✅ | ✅ |
 | 🏠 **Local Wi-Fi & Hotspot Mode** (<15ms ultra-low latency WebSocket) | ✅ | ✅ |
 | 🖥️ **All Presentation Apps** (PowerPoint, Google Slides, Keynote, Canva, PDF) | ✅ | ✅ |
+| 💼 **Zero-Install Portable Mode** (Run from USB without admin rights) | ✅ | ✅ |
 | ⏱️ **Presentation Stopwatch & Pace Haptics** | ✅ | ✅ |
+| 🔴 **3D Gyro Virtual Laser Pointer** (Wand pointing with physics smoothing) | ❌ | ✅ |
+| 🔦 **Spotlight Focus Beam** (Dim background to highlight key points) | ❌ | ✅ |
+| 📱 **Smart Touchpad Laser Fallback** (Smooth laser aiming on budget phones) | ❌ | ✅ |
 | ☁️ **Global Cloud Relay** (Present across 5G/4G cellular & hotel Wi-Fi) | ❌ | ✅ |
 | 👥 **Multi-Presenter Mode** (Connect up to 5 phones simultaneously) | ❌ | ✅ |
 | ⚡ **Instant 6-Letter Room Code** (Bypasses college & corporate firewalls) | ❌ | ✅ |
