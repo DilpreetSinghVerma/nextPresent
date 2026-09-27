@@ -255,9 +255,9 @@
   }
 
   // ─── Razorpay Checkout ────────────────────────────────────────────────────
-  async function startProUpgrade() {
+  async function startProUpgrade(customAmountPaise, customDesc) {
     if (!currentUser) {
-      alert('Please sign in with Google first.');
+      openGoogleSignIn();
       return;
     }
 
@@ -266,11 +266,16 @@
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
+      const bodyPayload = {};
+      if (customAmountPaise) bodyPayload.amount = customAmountPaise;
+      if (customDesc) bodyPayload.sponsorType = customDesc;
+
       // 1. Create order on relay server
       const res = await fetch(`${RELAY_BASE}/api/billing/subscribe`, {
         method: 'POST',
         credentials: 'include',
         headers,
+        body: JSON.stringify(bodyPayload),
       });
 
       if (!res.ok) {
@@ -292,13 +297,13 @@
         amount:      order.amount,
         currency:    order.currency || 'INR',
         name:        'NXTslide',
-        description: 'Lifetime Pro Plan – Early Bird (1-time payment)',
+        description: customDesc || 'Lifetime Pro Plan – Early Bird (1-time payment)',
         order_id:    order.orderId,
         prefill: {
           name:  order.user?.name  || '',
           email: order.user?.email || '',
         },
-        theme: { color: '#6366f1' },
+        theme: { color: '#22c55e' },
         handler: async function (response) {
           console.log('[Auth] Payment success:', response.razorpay_payment_id);
           try {
@@ -313,6 +318,7 @@
                 orderId:   response.razorpay_order_id,
                 paymentId: response.razorpay_payment_id,
                 signature: response.razorpay_signature,
+                amount:    order.amount,
                 email:     currentUser?.email || order.user?.email || ''
               })
             });
@@ -331,7 +337,8 @@
           } catch (_) {}
 
           await refreshAuthState();
-          alert('🎉 Welcome to NXTslide Lifetime Pro!');
+          alert('🎉 Thank you so much for supporting NXTslide! Lifetime Pro has been activated on your account.');
+          window.location.reload();
         },
       });
 

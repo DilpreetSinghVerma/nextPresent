@@ -998,11 +998,15 @@ app.post('/api/billing/subscribe', async (req, res) => {
 
   try {
     const receipt = `nxt_ltd_${user.id}_${Date.now()}`;
+    const requestedAmount = req.body && req.body.amount ? parseInt(req.body.amount, 10) : PRO_LIFETIME_PRICE;
+    const finalAmount = Math.max(PRO_LIFETIME_PRICE, isNaN(requestedAmount) ? PRO_LIFETIME_PRICE : requestedAmount);
+    const sponsorType = req.body && req.body.sponsorType ? String(req.body.sponsorType) : 'lifetime';
+
     const options = {
-      amount:   PRO_LIFETIME_PRICE,
+      amount:   finalAmount,
       currency: 'INR',
       receipt,
-      notes:    { userId: user.id, type: 'lifetime', plan: 'pro', email: user.email }
+      notes:    { userId: user.id, type: sponsorType, plan: 'pro', email: user.email }
     };
 
     const order = await razorpay.orders.create(options);
@@ -1026,7 +1030,7 @@ app.post('/api/billing/subscribe', async (req, res) => {
 
 // Verify Razorpay payment signature and immediately unlock Pro
 app.post('/api/billing/verify', async (req, res) => {
-  const { orderId, paymentId, signature, email } = req.body || {};
+  const { orderId, paymentId, signature, email, amount: paidAmount } = req.body || {};
   if (!orderId || !paymentId) {
     return res.status(400).json({ error: 'Missing orderId or paymentId' });
   }
@@ -1058,10 +1062,11 @@ app.post('/api/billing/verify', async (req, res) => {
         subscriptionExpiresAt: expiresAt.toISOString()
       });
 
+      const finalRecordedAmount = paidAmount && !isNaN(parseInt(paidAmount, 10)) ? parseInt(paidAmount, 10) : PRO_LIFETIME_PRICE;
       await recordPayment({
         userId: user.id,
         userEmail: user.email,
-        amount: PRO_LIFETIME_PRICE,
+        amount: finalRecordedAmount,
         currency: 'INR',
         orderId,
         paymentId,

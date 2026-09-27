@@ -732,6 +732,41 @@
           </div>
         </div>
       </div>
+
+      <!-- Play Store Launch Mission Card -->
+      <div class="playstore-mission-card">
+        <div class="pmc-badge">🚀 Community Mission · Help Bring NXTslide to Google Play</div>
+        <h3 class="pmc-title">Support Our $25 Google Play Developer Launch</h3>
+        <p class="pmc-desc">
+          Google requires a <strong>$25 USD (₹2,100 INR)</strong> registration fee to publish the native NXTslide Companion app onto the official Google Play Store. 
+          Every Lifetime Pro upgrade (₹89) and backer contribution goes <strong>100% directly toward this goal</strong> so students, teachers, and presenters worldwide can install NXTslide in one click.
+        </p>
+
+        <div class="pmc-actions">
+          <div class="pmc-tier">
+            <div class="pmc-tier-info">
+              <span class="pmc-tier-name">☕ Play Store Supporter</span>
+              <span class="pmc-tier-price">₹199</span>
+            </div>
+            <p class="pmc-tier-desc">Permanent Lifetime Pro + Early Play Store Closed Beta VIP invite + Personal founder thank-you.</p>
+            <button class="btn-pmc" onclick="window._sponsorClick(199, 'Play Store Supporter — ₹199')">
+              Sponsor ₹199
+            </button>
+          </div>
+
+          <div class="pmc-tier pmc-tier-featured">
+            <span class="pmc-tier-badge">⭐ Super Backer</span>
+            <div class="pmc-tier-info">
+              <span class="pmc-tier-name">🌟 Launch Patron</span>
+              <span class="pmc-tier-price">₹499</span>
+            </div>
+            <p class="pmc-tier-desc">Permanent Lifetime Pro + Listed in Website &amp; GitHub Backers Hall of Fame + Permanent Founder recognition.</p>
+            <button class="btn-pmc btn-pmc-featured" onclick="window._sponsorClick(499, 'Launch Patron — ₹499')">
+              Sponsor ₹499
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -925,6 +960,17 @@
       }
       if (user.isPro) return; // already pro
       if (window.NXTAuth) window.NXTAuth.upgrade();
+    };
+
+    window._sponsorClick = function(amountInRupees, description) {
+      const user = window.NXTAuth && window.NXTAuth.getCurrentUser();
+      if (!user) {
+        if (window.NXTAuth) window.NXTAuth.signIn();
+        return;
+      }
+      if (window.NXTAuth) {
+        window.NXTAuth.upgrade(amountInRupees * 100, description);
+      }
     };
 
     // Watch auth state to update pricing button
