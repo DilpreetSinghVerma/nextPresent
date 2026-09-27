@@ -140,6 +140,7 @@ code {
   padding: 5px 12px;
   border-radius: var(--r-sm);
   transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
 }
 
 .nav-links a:hover { color: var(--ink); background: var(--accent-dim); }
