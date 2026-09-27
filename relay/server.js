@@ -695,10 +695,26 @@ app.get(['/download/portable', '/downloads/NXTslide-Portable.exe', '/downloads/n
 // The Android app and (optionally) Electron load these routes instead of local
 // static files. Pushing new HTML/JS/CSS here updates all clients instantly.
 
-const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/DilpreetSinghVerma/nextPresent/main/public';
-const _staticCache = new Map();
+// ─── SEO & AI Crawlers (robots.txt, sitemap.xml, llms.txt) ────────────────────
+app.get('/robots.txt', (_req, res) => {
+  const p = path.resolve(__dirname, 'public', 'robots.txt');
+  if (fs.existsSync(p)) return res.type('text/plain').sendFile(p);
+  res.redirect(`${GITHUB_RAW_BASE}/robots.txt`);
+});
 
-app.get(['/css/{*file}', '/js/{*file}', '/logo.png', '/favicon.ico', '/logo-icon.png', '/logo-icon.jpg', '/logo-wordmark.jpg', '/robots.txt', '/sitemap.xml', '/llms.txt'], async (req, res) => {
+app.get('/sitemap.xml', (_req, res) => {
+  const p = path.resolve(__dirname, 'public', 'sitemap.xml');
+  if (fs.existsSync(p)) return res.type('application/xml').sendFile(p);
+  res.redirect(`${GITHUB_RAW_BASE}/sitemap.xml`);
+});
+
+app.get('/llms.txt', (_req, res) => {
+  const p = path.resolve(__dirname, 'public', 'llms.txt');
+  if (fs.existsSync(p)) return res.type('text/plain').sendFile(p);
+  res.redirect(`${GITHUB_RAW_BASE}/llms.txt`);
+});
+
+app.get(['/css/{*file}', '/js/{*file}', '/logo.png', '/favicon.ico', '/logo-icon.png', '/logo-icon.jpg', '/logo-wordmark.jpg'], async (req, res) => {
   const filePath = req.path.replace(/^\/+/, '');
   const localPath = path.resolve(__dirname, 'public', filePath);
   if (fs.existsSync(localPath)) {
