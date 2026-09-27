@@ -178,20 +178,20 @@ app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 
 // Health check endpoint (required for Railway / Render / Fly.io deployments)
-app.get('/health', (_req, res) => res.json({ status: 'ok', app: 'NXTslide', version: '2.2.0' }));
+app.get('/health', (_req, res) => res.json({ status: 'ok', app: 'NXTslide', version: '2.3.0' }));
 
 app.get('/api/version', (_req, res) => {
   res.json({
-    latestVersion: '2.2.0',
+    latestVersion: '2.3.2',
     minSupportedVersion: '1.0.0',
     windows: {
-      version: '2.2.0',
+      version: '2.3.0',
       installerUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe',
       portableUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide-Portable.exe'
     },
     android: {
-      versionName: '2.3.0',
-      versionCode: 5,
+      versionName: '2.3.2',
+      versionCode: 7,
       apkUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/raw/main/public/NXTslide.apk'
     },
     releaseNotes: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/latest'
