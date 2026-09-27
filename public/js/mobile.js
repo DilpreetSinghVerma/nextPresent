@@ -58,6 +58,27 @@ function updateProfileUI(profile) {
   }
 }
 
+function getRoomCode() {
+  if (window.AndroidApp && typeof window.AndroidApp.getRoomCode === 'function') {
+    try {
+      const c = window.AndroidApp.getRoomCode();
+      if (c) return c.trim().toUpperCase();
+    } catch (_) {}
+  }
+  const urlParams = new URLSearchParams(window.location.search);
+  const codeParam = urlParams.get('code') || urlParams.get('room');
+  if (codeParam) return codeParam.trim().toUpperCase();
+
+  const match = window.location.pathname.match(/\/r\/([A-Za-z0-9]{4,8})/i);
+  if (match) return match[1].trim().toUpperCase();
+
+  const saved = localStorage.getItem('nxtslide_room_code');
+  if (saved && (window.location.hostname.includes('nxtslide.online') || window.location.hostname.includes('render.com'))) {
+    return saved.trim().toUpperCase();
+  }
+  return null;
+}
+
 function getServerHost() {
   if (window.AndroidApp && typeof window.AndroidApp.getServerHost === 'function') {
     return window.AndroidApp.getServerHost();
@@ -86,12 +107,44 @@ function getDeviceId() {
 }
 
 // ══════════════════════════════════════════════════════════
-//  WebSocket
+//  WebSocket (Dual-Mode: Local LAN & Cloud Relay Room)
 // ══════════════════════════════════════════════════════════
 function initWS() {
-  const host = getServerHost();
+  const roomCode = getRoomCode();
   const deviceId = getDeviceId();
-  const wsUrl = `ws://${host.includes(':') ? host : host + ':3333'}/ws?role=remote&deviceId=${encodeURIComponent(deviceId)}`;
+  const isCloudHost = window.location.hostname.includes('nxtslide.online') ||
+                      window.location.hostname.includes('render.com') ||
+                      Boolean(roomCode);
+
+  let wsUrl;
+  if (roomCode && isCloudHost) {
+    // Cloud Relay WebSocket: wss://relay/ws/:code/phone
+    const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const relayHost = (window.location.host && !window.location.host.includes('localhost') && !window.location.host.includes('192.168.'))
+      ? window.location.host
+      : 'nxtslide.online';
+    wsUrl = `${wsProto}//${relayHost}/ws/${roomCode}/phone?deviceId=${encodeURIComponent(deviceId)}`;
+  } else {
+    // Local LAN Mode: ws://192.168.x.x:3333/ws?role=remote
+    const host = getServerHost();
+    const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const targetHost = host.includes(':') ? host : `${host}:3333`;
+    wsUrl = `${wsProto}//${targetHost}/ws?role=remote&deviceId=${encodeURIComponent(deviceId)}`;
+  }
+
+  // Update room badge UI if room code active
+  const roomBadge = document.getElementById('roomBadge');
+  const roomBar   = document.getElementById('roomBar');
+  const roomInput = document.getElementById('manualRoomCodeInput');
+  if (roomCode) {
+    if (roomBadge) {
+      roomBadge.textContent = `☁️ ${roomCode.length === 6 ? roomCode.slice(0, 3) + '-' + roomCode.slice(3) : roomCode}`;
+      roomBadge.style.display = 'inline-block';
+    }
+    if (roomBar) roomBar.style.display = 'none';
+  } else if (isCloudHost) {
+    if (roomBar) roomBar.style.display = 'flex';
+  }
 
   try {
     if (ws) {
@@ -106,6 +159,10 @@ function initWS() {
     if (!isMultiDeviceBlocked) {
       connDot.classList.remove('off');
     }
+    // Ask PC host for current state (works across local LAN and cloud relay)
+    try {
+      ws.send(JSON.stringify({ type: 'GET_STATE', timestamp: Date.now() }));
+    } catch (_) {}
   };
 
   ws.onmessage = (e) => {
@@ -116,6 +173,11 @@ function initWS() {
         if (d.sessionState) syncState(d.sessionState);
         if (d.activeProfile) updateProfileUI(d.activeProfile);
         else if (d.sessionState && d.sessionState.activeProfile) updateProfileUI(d.sessionState.activeProfile);
+      } else if (d.type === 'PC_CONNECTED') {
+        connDot.classList.remove('off');
+        try { ws.send(JSON.stringify({ type: 'GET_STATE' })); } catch (_) {}
+      } else if (d.type === 'PC_DISCONNECTED') {
+        connDot.classList.add('off');
       } else if (d.type === 'MULTI_DEVICE_BLOCKED') {
         isMultiDeviceBlocked = true;
         connDot.classList.add('off');
@@ -167,15 +229,60 @@ function send(action, source) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(msg);
   } else {
-    // HTTP fallback
-    const host = getServerHost();
-    fetch(`http://${host.includes(':') ? host : host + ':3333'}/api/key`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, source: source || 'Mobile', deviceId })
-    }).catch(() => {});
+    // HTTP fallback — works across both Cloud Relay and local LAN
+    const roomCode = getRoomCode();
+    const isCloudHost = window.location.hostname.includes('nxtslide.online') ||
+                        window.location.hostname.includes('render.com') ||
+                        Boolean(roomCode);
+
+    if (roomCode && isCloudHost) {
+      const relayHost = (window.location.host && !window.location.host.includes('localhost') && !window.location.host.includes('192.168.'))
+        ? window.location.origin
+        : 'https://nxtslide.online';
+      fetch(`${relayHost}/api/rooms/${roomCode}/command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, source: source || 'Mobile Web (Relay HTTP)', deviceId })
+      }).catch(() => {});
+    } else {
+      const host = getServerHost();
+      const targetHost = host.includes(':') ? host : `${host}:3333`;
+      fetch(`http://${targetHost}/api/key`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, source: source || 'Mobile', deviceId })
+      }).catch(() => {});
+    }
   }
 }
+
+// Room code connect bar event listeners
+document.addEventListener('DOMContentLoaded', () => {
+  const btnConnectRoom = document.getElementById('btnConnectRoom');
+  const inputRoomCode  = document.getElementById('manualRoomCodeInput');
+  const roomBadge      = document.getElementById('roomBadge');
+  const roomBar        = document.getElementById('roomBar');
+
+  if (btnConnectRoom && inputRoomCode) {
+    btnConnectRoom.addEventListener('click', () => {
+      const code = inputRoomCode.value.trim().toUpperCase();
+      if (code && code.length >= 4) {
+        localStorage.setItem('nxtslide_room_code', code);
+        initWS();
+      }
+    });
+    inputRoomCode.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') btnConnectRoom.click();
+    });
+  }
+
+  if (roomBadge && roomBar) {
+    roomBadge.addEventListener('click', () => {
+      roomBar.style.display = roomBar.style.display === 'none' ? 'flex' : 'none';
+      if (inputRoomCode && getRoomCode()) inputRoomCode.value = getRoomCode();
+    });
+  }
+});
 
 // Handler called by Android MainActivity when receiving WebSocket messages from PC or Cloud Relay
 window.onServerMessage = function(jsonStr) {

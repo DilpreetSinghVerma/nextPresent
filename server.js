@@ -84,6 +84,15 @@ async function connectToRelay() {
         } else if (data.type === 'LASER_DOWN' || data.type === 'LASER_MOVE' || data.type === 'LASER_UP' || data.type === 'LASER_STYLE') {
           if (!licenseService.getLicenseStatus().isPro) return; // Pro feature
           broadcast(data);
+        } else if (data.type === 'GET_STATE' || data.type === 'HELLO') {
+          if (relayWsClient && relayWsClient.readyState === WebSocket.OPEN) {
+            relayWsClient.send(JSON.stringify({
+              type: 'STATE_SYNC',
+              sessionState,
+              activeProfile: sessionState.activeProfile,
+              isPro: licenseService.getLicenseStatus().isPro
+            }));
+          }
         } else if (data.type === 'PING') {
           relayWsClient.send(JSON.stringify({ type:'PONG', timestamp:Date.now() }));
         }
@@ -429,6 +438,19 @@ app.post('/api/license/deactivate', (req, res) => {
   res.json(licenseService.deactivateLicense());
 });
 
+app.post('/api/relay/connect', async (_req, res) => {
+  try {
+    await connectToRelay();
+    res.json({
+      connected: relayConnected,
+      roomCode: relayRoomCode,
+      phoneUrl: relayPhoneUrl
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/profile', (req, res) => {
   const { profile } = req.body;
   if (!SOFTWARE_PROFILES[profile]) {
@@ -442,6 +464,8 @@ app.post('/api/profile', (req, res) => {
     sessionState,
   });
   res.json({ success: true, profile, profileInfo: SOFTWARE_PROFILES[profile] });
+});
+
 // ─────────────────────────────────────────────────────────────────────
 // Remote Presenter Device Tracker (Free: 1 remote, Pro: Unlimited)
 // ─────────────────────────────────────────────────────────────────────

@@ -276,7 +276,7 @@ async function updateUser(id, updates) {
 
 function isUserPro(user) {
   if (!user) return false;
-  if (ADMIN_EMAILS.includes(user.email)) return true;
+  if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) return true;
   if (user.plan === 'free') return false;
   if (!user.subscriptionExpiresAt) return false;
   return new Date(user.subscriptionExpiresAt) > new Date();
@@ -663,10 +663,10 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', rooms: rooms.size, up
 
 app.get('/api/version', (_req, res) => {
   res.json({
-    latestVersion: '2.2.0',
+    latestVersion: '2.3.0',
     minSupportedVersion: '1.0.0',
     windows: {
-      version: '2.2.0',
+      version: '2.3.0',
       installerUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe',
       portableUrl:  'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide-Portable.exe'
     },
@@ -684,11 +684,11 @@ app.get(['/downloads/NXTslide.apk', '/NXTslide.apk', '/download/android'], (_req
 });
 
 app.get(['/download/windows', '/downloads/NXTslide-Setup.exe', '/downloads/nextPresent-Setup.exe'], (_req, res) => {
-  res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/releases/latest');
+  res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe');
 });
 
 app.get(['/download/portable', '/downloads/NXTslide-Portable.exe', '/downloads/nextPresent-Portable.exe'], (_req, res) => {
-  res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/releases/latest');
+  res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide-Portable.exe');
 });
 
 // ─── Cloud-Synced UI Routes ────────────────────────────────────────────────────
@@ -1310,27 +1310,7 @@ app.post('/api/rooms/:code/command', (req, res) => {
   res.json({ success: true, action });
 });
 
-// Mobile QR / deep-link landing page
-app.get('/r/:code', (req, res) => {
-  const code = req.params.code.toUpperCase();
-  res.send(`<!DOCTYPE html><html lang="en"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NXTslide - Connect</title>
-<style>*{box-sizing:border-box;margin:0;padding:0}body{background:#05070d;color:#fff;
-font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;
-justify-content:center;min-height:100vh;padding:2rem;text-align:center}
-h1{font-size:1.5rem;margin-bottom:.5rem;color:#818cf8}p{color:#94a3b8;margin-bottom:1rem}
-.code{font-size:3rem;font-weight:700;letter-spacing:.4rem;color:#818cf8;margin:1.5rem 0}
-a.btn{display:block;padding:1rem 2rem;background:#6366f1;color:#fff;text-decoration:none;
-border-radius:12px;font-weight:600;font-size:1.1rem;margin-bottom:1rem}
-</style></head><body>
-<h1>NXTslide</h1><p>Your room code is:</p>
-<div class="code">${code}</div>
-<a class="btn" href="nextpresent://connect?code=${code}">Open in App</a>
-<p style="font-size:.85rem">Don't have the app? Download from Google Play Store.</p>
-<script>setTimeout(()=>{window.location='intent://connect?code=${code}#Intent;scheme=nextpresent;package=com.nextpresent.remote;end';},500);</script>
-</body></html>`);
-});
+
 
 // Serve Landing Page (index.html)
 app.get(['/', '/index.html'], async (req, res) => {

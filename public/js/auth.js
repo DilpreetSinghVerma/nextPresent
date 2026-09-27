@@ -300,12 +300,38 @@
         },
         theme: { color: '#6366f1' },
         handler: async function (response) {
-          // Payment success — refresh user plan
           console.log('[Auth] Payment success:', response.razorpay_payment_id);
-          // Wait a moment for webhook to process
-          await new Promise(r => setTimeout(r, 2000));
+          try {
+            const token = loadTokenLocally();
+            const verifyHeaders = { 'Content-Type': 'application/json' };
+            if (token) verifyHeaders['Authorization'] = `Bearer ${token}`;
+
+            const vRes = await fetch(`${RELAY_BASE}/api/billing/verify`, {
+              method: 'POST',
+              headers: verifyHeaders,
+              body: JSON.stringify({
+                orderId:   response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                email:     currentUser?.email || order.user?.email || ''
+              })
+            });
+            if (vRes.ok) {
+              const vData = await vRes.json();
+              if (vData.token) localStorage.setItem('nxtslide_auth_token', vData.token);
+              if (vData.user) saveUserLocally(vData.user);
+            }
+          } catch (e) {
+            console.warn('[Auth] Direct verification warning:', e);
+          }
+
+          // Trigger local desktop server to connect to cloud relay if running locally
+          try {
+            await fetch('/api/relay/connect', { method: 'POST' });
+          } catch (_) {}
+
           await refreshAuthState();
-          alert('🎉 Welcome to NXTslide Pro!');
+          alert('🎉 Welcome to NXTslide Lifetime Pro!');
         },
       });
 

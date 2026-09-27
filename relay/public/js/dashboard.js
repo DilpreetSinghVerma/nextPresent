@@ -354,7 +354,8 @@ async function initDashboard() {
   initModeSwitcher();
 
   // Detect if we're running on the cloud (Render) vs locally
-  const isCloud = location.hostname.includes('onrender.com') ||
+  const isCloud = location.hostname.includes('nxtslide.online') ||
+                  location.hostname.includes('onrender.com') ||
                   location.hostname.includes('netlify.app') ||
                   location.hostname.includes('vercel.app') ||
                   location.hostname.includes('github.io');
