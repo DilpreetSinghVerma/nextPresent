@@ -1098,43 +1098,6 @@ app.post('/api/billing/verify', async (req, res) => {
   }
 });
 
-// Public Community Fund Progress Endpoint (Calculated dynamically from database)
-app.get('/api/community/fund-status', async (req, res) => {
-  const TARGET_INR = 2100; // $25 USD Play Console Fee (~₹2,100 INR)
-  const SEED_BACKERS = 2;   // Early backers / core contributors
-  const SEED_INR = 300;     // Seed contribution in INR
-
-  let dbPaise = 0;
-  let dbBackers = 0;
-
-  if (db) {
-    try {
-      const result = await db.execute({
-        sql: "SELECT COUNT(*) as count, SUM(amount) as total FROM payments WHERE status = 'paid'"
-      });
-      if (result.rows && result.rows[0]) {
-        dbBackers = Number(result.rows[0].count) || 0;
-        dbPaise = Number(result.rows[0].total) || 0;
-      }
-    } catch (e) {
-      console.warn('[CommunityFund] DB query error:', e.message);
-    }
-  }
-
-  const dbInr = Math.round(dbPaise / 100);
-  const totalRaisedInr = SEED_INR + dbInr;
-  const totalBackers = SEED_BACKERS + dbBackers;
-  const percent = Math.min(100, Math.max(5, Math.round((totalRaisedInr / TARGET_INR) * 100)));
-
-  res.json({
-    targetInr: TARGET_INR,
-    raisedInr: totalRaisedInr,
-    backerCount: totalBackers,
-    percent,
-    goalMet: totalRaisedInr >= TARGET_INR
-  });
-});
-
 // Razorpay Webhook — verifies signature, updates user plan to Lifetime Pro
 app.post('/api/billing/webhook', async (req, res) => {
   const secret    = process.env.RAZORPAY_WEBHOOK_SECRET || '';

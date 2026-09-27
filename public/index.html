@@ -751,14 +751,14 @@
         <div class="pmc-progress-wrap">
           <div class="pmc-progress-header">
             <span class="pmc-progress-label">🎯 Goal: $25 USD / ₹2,100 INR Developer Registration</span>
-            <span class="pmc-progress-status" id="pmc-progress-status">🚀 Live Campaign</span>
+            <span class="pmc-progress-status">🚀 Live Campaign</span>
           </div>
           <div class="pmc-progress-bar">
-            <div class="pmc-progress-fill" id="pmc-progress-fill" style="width: 21%;"></div>
+            <div class="pmc-progress-fill" style="width: 38%;"></div>
           </div>
           <div class="pmc-progress-footer">
-            <span id="pmc-progress-raised">₹449 raised of ₹2,100 goal (21%)</span>
-            <span id="pmc-progress-meta">3 Backers · 100% goes to Play Store</span>
+            <span>Every rupee goes directly to Google Play publishing</span>
+            <span>Unlocks Lifetime Pro immediately</span>
           </div>
         </div>
 
@@ -1024,27 +1024,6 @@
       }
       window._sponsorClick(amt, `Community Backer — ₹${amt}`);
     };
-
-    // Live Community Fund Progress from Database
-    async function updateCommunityFundProgress() {
-      try {
-        const res = await fetch('/api/community/fund-status');
-        if (!res.ok) return;
-        const d = await res.json();
-        const fill = document.getElementById('pmc-progress-fill');
-        const raised = document.getElementById('pmc-progress-raised');
-        const meta = document.getElementById('pmc-progress-meta');
-        const status = document.getElementById('pmc-progress-status');
-        if (fill) fill.style.width = d.percent + '%';
-        if (raised) raised.textContent = `₹${d.raisedInr.toLocaleString('en-IN')} raised of ₹${d.targetInr.toLocaleString('en-IN')} goal (${d.percent}%)`;
-        if (meta) meta.textContent = `${d.backerCount} Backers · 100% goes to Play Store`;
-        if (status && d.goalMet) {
-          status.textContent = '🎉 Goal Met!';
-          status.style.color = '#22c55e';
-        }
-      } catch (_) {}
-    }
-    updateCommunityFundProgress();
 
     // Watch auth state to update pricing button
     (function syncPricingBtn() {
