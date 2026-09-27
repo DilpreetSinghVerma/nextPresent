@@ -342,6 +342,39 @@
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="js/mobile.js"></script>
 <script>
+var isExplicitlySignedOut = false;
+
+function showMobileToast(msg) {
+  var t = document.getElementById('mobileAppToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'mobileAppToast';
+    t.style.position = 'fixed';
+    t.style.bottom = '80px';
+    t.style.left = '50%';
+    t.style.transform = 'translateX(-50%)';
+    t.style.background = 'rgba(20,20,20,0.95)';
+    t.style.border = '1px solid rgba(255,255,255,0.18)';
+    t.style.color = '#fff';
+    t.style.padding = '8px 18px';
+    t.style.borderRadius = '999px';
+    t.style.fontSize = '0.8rem';
+    t.style.fontWeight = '600';
+    t.style.zIndex = '999999';
+    t.style.boxShadow = '0 8px 30px rgba(0,0,0,0.8)';
+    t.style.transition = 'opacity 0.3s ease';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function() {
+    t.style.opacity = '0';
+    setTimeout(function() { if (t) t.style.display = 'none'; }, 300);
+  }, 2200);
+}
+
 function handleMobileSignIn() {
   if (window.AndroidApp && typeof window.AndroidApp.openGoogleSignIn === 'function') {
     window.AndroidApp.openGoogleSignIn();
@@ -351,28 +384,59 @@ function handleMobileSignIn() {
 }
 
 function handleMobileSignOut() {
-  if (!confirm('Are you sure you want to sign out?')) return;
-  if (window.AndroidApp && typeof window.AndroidApp.signOut === 'function') {
-    try { window.AndroidApp.signOut(); } catch(e) {}
+  isExplicitlySignedOut = true;
+
+  // 1. Native companion sign out
+  if (window.AndroidApp) {
+    if (typeof window.AndroidApp.signOut === 'function') {
+      try { window.AndroidApp.signOut(); } catch(e) {}
+    }
+    if (typeof window.AndroidApp.setProUnlocked === 'function') {
+      try { window.AndroidApp.setProUnlocked(false, ""); } catch(e) {}
+    }
   }
+
+  // 2. Clear all local storage authentication items
   try {
     localStorage.removeItem('nxtslide_user');
     localStorage.removeItem('nxtslide_pro_unlocked');
     localStorage.removeItem('nxtslide_token');
     localStorage.removeItem('nxtslide_device_pro');
+    localStorage.removeItem('auth_user');
+    localStorage.removeItem('auth_token');
   } catch(e) {}
+
+  // 3. Clear session cookie / relay logout
   try {
     fetch('/api/auth/logout', { method: 'POST' }).catch(function() {});
   } catch(e) {}
-  syncMobileAccountUI(null);
+
+  // 4. Reset UI immediately
+  syncMobileAccountUI(null, true);
+
+  // 5. Visual Toast feedback
+  showMobileToast('Signed out successfully');
+
+  // 6. Buzz feedback
   try { if (typeof buzz === 'function') buzz('prev'); } catch(e) {}
 }
 
-function syncMobileAccountUI(user) {
+function syncMobileAccountUI(user, forceGuest) {
   var nameEl = document.getElementById('modalAccountName');
   var subEl = document.getElementById('modalAccountSub');
   var signInBtn = document.getElementById('modalSignInBtn');
   var signOutBtn = document.getElementById('modalSignOutBtn');
+
+  if (forceGuest || isExplicitlySignedOut) {
+    if (nameEl) nameEl.textContent = 'Guest Account';
+    if (subEl) subEl.textContent = 'Sign in with Google to sync Pro';
+    if (signInBtn) {
+      signInBtn.style.display = 'inline-block';
+      signInBtn.textContent = 'Sign In';
+    }
+    if (signOutBtn) signOutBtn.style.display = 'none';
+    return;
+  }
 
   var u = user;
   if (!u) {
@@ -412,6 +476,7 @@ function syncMobileAccountUI(user) {
 }
 
 window.nxtslideOnAuthSuccess = function(userJson) {
+  isExplicitlySignedOut = false;
   try {
     var u = typeof userJson === 'string' ? JSON.parse(userJson) : userJson;
     if (u) {
@@ -421,13 +486,14 @@ window.nxtslideOnAuthSuccess = function(userJson) {
         localStorage.removeItem('nxtslide_pro_unlocked');
       }
       localStorage.setItem('nxtslide_user', JSON.stringify(u));
-      syncMobileAccountUI(u);
+      syncMobileAccountUI(u, false);
     }
   } catch(e) {}
 };
 
 window.nxtslideOnSignedOut = function() {
-  syncMobileAccountUI(null);
+  isExplicitlySignedOut = true;
+  syncMobileAccountUI(null, true);
 };
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -437,6 +503,22 @@ document.addEventListener('DOMContentLoaded', function() {
   if (hudAccountBtn && modal) {
     hudAccountBtn.addEventListener('click', function() {
       modal.classList.add('open');
+    });
+  }
+  var signOutBtn = document.getElementById('modalSignOutBtn');
+  if (signOutBtn) {
+    signOutBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleMobileSignOut();
+    });
+  }
+  var signInBtn = document.getElementById('modalSignInBtn');
+  if (signInBtn) {
+    signInBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      handleMobileSignIn();
     });
   }
 });

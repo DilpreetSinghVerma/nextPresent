@@ -115,6 +115,48 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
             setBackgroundColor(0xFF05070D.toInt())
 
             addJavascriptInterface(AndroidBridge(this@MainActivity), "AndroidApp")
+            webChromeClient = object : android.webkit.WebChromeClient() {
+                override fun onJsAlert(
+                    view: WebView?,
+                    url: String?,
+                    message: String?,
+                    result: android.webkit.JsResult?
+                ): Boolean {
+                    try {
+                        androidx.appcompat.app.AlertDialog.Builder(this@MainActivity)
+                            .setTitle("NXTslide")
+                            .setMessage(message ?: "")
+                            .setPositiveButton("OK") { _, _ -> result?.confirm() }
+                            .setOnCancelListener { result?.cancel() }
+                            .show()
+                        return true
+                    } catch (_: Exception) {
+                        result?.confirm()
+                        return false
+                    }
+                }
+
+                override fun onJsConfirm(
+                    view: WebView?,
+                    url: String?,
+                    message: String?,
+                    result: android.webkit.JsResult?
+                ): Boolean {
+                    try {
+                        androidx.appcompat.app.AlertDialog.Builder(this@MainActivity)
+                            .setTitle("NXTslide")
+                            .setMessage(message ?: "")
+                            .setPositiveButton("Yes") { _, _ -> result?.confirm() }
+                            .setNegativeButton("Cancel") { _, _ -> result?.cancel() }
+                            .setOnCancelListener { result?.cancel() }
+                            .show()
+                        return true
+                    } catch (_: Exception) {
+                        result?.confirm()
+                        return false
+                    }
+                }
+            }
             webViewClient = object : WebViewClient() {
                 override fun shouldOverrideUrlLoading(
                     view: WebView?,
