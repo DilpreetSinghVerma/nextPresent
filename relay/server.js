@@ -508,6 +508,14 @@ app.use('/api/billing/webhook', express.raw({ type: '*/*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Normalize multiple leading slashes (e.g. //sitemap.xml -> /sitemap.xml)
+app.use((req, _res, next) => {
+  if (req.url && req.url.startsWith('//')) {
+    req.url = req.url.replace(/^\/+/, '/');
+  }
+  next();
+});
+
 // ─── CORS ────────────────────────────────────────────────────────────────────
 app.use((_req, res, next) => {
   const origin = _req.headers.origin;
@@ -666,9 +674,9 @@ app.get('/api/version', (_req, res) => {
     latestVersion: '2.3.2',
     minSupportedVersion: '1.0.0',
     windows: {
-      version: '2.3.0',
-      installerUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe',
-      portableUrl:  'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide-Portable.exe'
+      version: '2.3.2',
+      installerUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v2.3.2/NXTslide-Setup.exe',
+      portableUrl:  'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v2.3.2/NXTslide-Portable.exe'
     },
     android: {
       versionName: '2.3.2',
@@ -695,20 +703,26 @@ app.get(['/download/portable', '/downloads/NXTslide-Portable.exe', '/downloads/n
 // The Android app and (optionally) Electron load these routes instead of local
 // static files. Pushing new HTML/JS/CSS here updates all clients instantly.
 
+const GITHUB_RAW_BASE   = 'https://raw.githubusercontent.com/DilpreetSinghVerma/nextPresent/main/public';
+const GITHUB_MOBILE_URL = `${GITHUB_RAW_BASE}/mobile.html`;
+const MOBILE_CACHE_TTL  = 60 * 1000;
+let _mobileCache        = null;
+const _staticCache      = new Map();
+
 // ─── SEO & AI Crawlers (robots.txt, sitemap.xml, llms.txt) ────────────────────
-app.get('/robots.txt', (_req, res) => {
+app.get(['/robots.txt', '//robots.txt'], (_req, res) => {
   const p = path.resolve(__dirname, 'public', 'robots.txt');
   if (fs.existsSync(p)) return res.type('text/plain').sendFile(p);
   res.redirect(`${GITHUB_RAW_BASE}/robots.txt`);
 });
 
-app.get('/sitemap.xml', (_req, res) => {
+app.get(['/sitemap.xml', '//sitemap.xml', '/sitemap_index.xml'], (_req, res) => {
   const p = path.resolve(__dirname, 'public', 'sitemap.xml');
   if (fs.existsSync(p)) return res.type('application/xml').sendFile(p);
   res.redirect(`${GITHUB_RAW_BASE}/sitemap.xml`);
 });
 
-app.get('/llms.txt', (_req, res) => {
+app.get(['/llms.txt', '//llms.txt'], (_req, res) => {
   const p = path.resolve(__dirname, 'public', 'llms.txt');
   if (fs.existsSync(p)) return res.type('text/plain').sendFile(p);
   res.redirect(`${GITHUB_RAW_BASE}/llms.txt`);
@@ -755,6 +769,19 @@ app.get(['/css/{*file}', '/js/{*file}', '/logo.png', '/favicon.ico', '/logo-icon
 });
 
 app.get(['/mobile', '/r/:code'], async (req, res) => {
+  const localPaths = [
+    path.resolve(__dirname, 'public', 'mobile.html'),
+    path.resolve(__dirname, '..', 'public', 'mobile.html')
+  ];
+  for (const p of localPaths) {
+    if (fs.existsSync(p)) {
+      try {
+        const html = fs.readFileSync(p, 'utf8');
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return res.send(html);
+      } catch (_) {}
+    }
+  }
   if (_mobileCache && (Date.now() - _mobileCache.ts) < MOBILE_CACHE_TTL) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('X-Source', 'cache');

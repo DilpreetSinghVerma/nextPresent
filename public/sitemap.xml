@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
-        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
-  <!-- Homepage & Main Landing -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Homepage & Main Presentation Remote Landing -->
   <url>
     <loc>https://nxtslide.online/</loc>
     <lastmod>2026-09-27</lastmod>
@@ -11,36 +8,12 @@
     <priority>1.0</priority>
   </url>
 
-  <!-- Instant Web Remote (iPhone / Safari / No App Install) -->
+  <!-- Instant Web Remote (iPhone / Safari / Android / No App Install) -->
   <url>
     <loc>https://nxtslide.online/mobile</loc>
     <lastmod>2026-09-27</lastmod>
     <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <!-- Android Native Companion APK Download -->
-  <url>
-    <loc>https://nxtslide.online/NXTslide.apk</loc>
-    <lastmod>2026-09-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-
-  <!-- Windows Host Installer (.exe) -->
-  <url>
-    <loc>https://nxtslide.online/downloads/NXTslide-Setup.exe</loc>
-    <lastmod>2026-09-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.85</priority>
-  </url>
-
-  <!-- Windows Portable Executable (.exe) -->
-  <url>
-    <loc>https://nxtslide.online/downloads/NXTslide-Portable.exe</loc>
-    <lastmod>2026-09-27</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.80</priority>
+    <priority>0.90</priority>
   </url>
 
   <!-- Contact & Support -->
@@ -51,7 +24,7 @@
     <priority>0.70</priority>
   </url>
 
-  <!-- Terms & Conditions -->
+  <!-- Terms of Service -->
   <url>
     <loc>https://nxtslide.online/terms</loc>
     <lastmod>2026-09-27</lastmod>
