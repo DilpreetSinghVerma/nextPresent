@@ -5,7 +5,7 @@
 
 [![Website](https://img.shields.io/badge/Website-nxtslide.online-blue?style=flat-square&logo=googlechrome)](https://nxtslide.online)
 [![Android APK](https://img.shields.io/badge/Android%20APK-v2.3.2-brightgreen?style=flat-square&logo=android)](https://nxtslide.online/NXTslide.apk)
-[![Windows](https://img.shields.io/badge/Windows%20Host-v2.3.0-informational?style=flat-square&logo=windows)](https://github.com/DilpreetSinghVerma/nextPresent/releases/latest)
+[![Windows](https://img.shields.io/badge/Windows%20Host-v2.3.2-informational?style=flat-square&logo=windows)](https://github.com/DilpreetSinghVerma/nextPresent/releases/latest)
 [![Pricing](https://img.shields.io/badge/Lifetime%20Pro-₹89%20One--Time-orange?style=flat-square)](https://nxtslide.online#pricing)
 [![License](https://img.shields.io/badge/License-Proprietary%20%2F%20EventFold%20Studio-blueviolet?style=flat-square)](LICENSE)
 
