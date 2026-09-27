@@ -49,8 +49,8 @@ Physical presentation remotes (Logitech Spotlight, Kensington) cost **$60 to $13
 
 ### Option 1: Official Website & Prebuilt Installers (Recommended)
 1. **Windows Presentation PC:**
-   - [Download Windows Installer (.exe)](https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe)
-   - Or [Download Portable Standalone (.exe)](https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide-Portable.exe) — *Runs directly from a USB drive without admin rights on corporate laptops.*
+   - [Download Windows Installer (.exe)](https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v2.3.2/NXTslide-Setup.exe)
+   - Or [Download Portable Standalone (.exe)](https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v2.3.2/NXTslide-Portable.exe) — *Runs directly from a USB drive without admin rights on corporate laptops.*
 2. **Android Phone:**
    - [Download Official NXTslide Companion APK (v2.3.2)](https://nxtslide.online/NXTslide.apk) (or [Direct GitHub Raw Link](https://github.com/DilpreetSinghVerma/nextPresent/raw/main/public/NXTslide.apk))
 3. **iPhone / iPad / Guest Presenters:**

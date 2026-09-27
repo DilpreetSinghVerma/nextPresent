@@ -684,11 +684,11 @@ app.get(['/downloads/NXTslide.apk', '/NXTslide.apk', '/download/android'], (_req
 });
 
 app.get(['/download/windows', '/downloads/NXTslide-Setup.exe', '/downloads/nextPresent-Setup.exe'], (_req, res) => {
-  res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe');
+  res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v2.3.2/NXTslide-Setup.exe');
 });
 
 app.get(['/download/portable', '/downloads/NXTslide-Portable.exe', '/downloads/nextPresent-Portable.exe'], (_req, res) => {
-  res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide-Portable.exe');
+  res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v2.3.2/NXTslide-Portable.exe');
 });
 
 // ─── Cloud-Synced UI Routes ────────────────────────────────────────────────────

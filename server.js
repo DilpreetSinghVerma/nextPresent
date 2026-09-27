@@ -185,9 +185,9 @@ app.get('/api/version', (_req, res) => {
     latestVersion: '2.3.2',
     minSupportedVersion: '1.0.0',
     windows: {
-      version: '2.3.0',
-      installerUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide.Setup.1.0.0.exe',
-      portableUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v1.0.0/NXTslide-Portable.exe'
+      version: '2.3.2',
+      installerUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v2.3.2/NXTslide-Setup.exe',
+      portableUrl: 'https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v2.3.2/NXTslide-Portable.exe'
     },
     android: {
       versionName: '2.3.2',
