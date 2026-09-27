@@ -517,6 +517,7 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
     private var isVolUpHeld: Boolean = false
     private var isVolDownHeld: Boolean = false
     private var hasLaserStarted: Boolean = false
+    private var isHoldTriggered: Boolean = false
     private val keyHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var holdLaserRunnable: Runnable? = null
 
@@ -677,6 +678,13 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
         override fun onAccuracyChanged(sensor: android.hardware.Sensor?, accuracy: Int) {}
     }
 
+    fun isProUnlocked(): Boolean {
+        val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+        val unlocked = prefs.getBoolean("nxtslide_pro_unlocked", false)
+        val email = prefs.getString("nxtslide_google_email", "")?.trim()?.lowercase() ?: ""
+        return unlocked || email == "dilpreetsinghverma@gmail.com"
+    }
+
     fun hasHardwareGyro(): Boolean {
         if (sensorManager == null) {
             sensorManager = getSystemService(Context.SENSOR_SERVICE) as? android.hardware.SensorManager
@@ -685,6 +693,16 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
     }
 
     fun startHardwareLaser() {
+        if (!isProUnlocked()) {
+            android.util.Log.d("NXTslide_Sensor", "startHardwareLaser aborted: Pro not unlocked")
+            vibrateFeedback(45)
+            webView.post {
+                webView.evaluateJavascript(
+                    "if(typeof window.showProPaywall==='function') window.showProPaywall('Virtual Laser Pointer & 3D Gyro Aiming');", null)
+            }
+            return
+        }
+
         if (!hasHardwareGyro()) {
             android.util.Log.d("NXTslide_Sensor", "startHardwareLaser aborted: No physical gyroscope sensor on device")
             return
@@ -747,6 +765,7 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
     }
 
     fun sendLaserDown(x: Float, y: Float, style: String = "laser") {
+        if (!isProUnlocked()) return
         val safeX = if (x.isNaN() || x.isInfinite()) 0.5f else x.coerceIn(0.01f, 0.99f)
         val safeY = if (y.isNaN() || y.isInfinite()) 0.5f else y.coerceIn(0.01f, 0.99f)
         try {
@@ -763,6 +782,7 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
     }
 
     fun sendLaserMove(x: Float, y: Float) {
+        if (!isProUnlocked()) return
         val safeX = if (x.isNaN() || x.isInfinite()) 0.5f else x.coerceIn(0.01f, 0.99f)
         val safeY = if (y.isNaN() || y.isInfinite()) 0.5f else y.coerceIn(0.01f, 0.99f)
         try {
@@ -815,8 +835,18 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
                     // Schedule hold-to-laser timer (200ms)
                     if (!isLaserActive) {
                         hasLaserStarted = false
+                        isHoldTriggered = false
                         val r = Runnable {
                             if (isVolUpHeld || isVolDownHeld) {
+                                isHoldTriggered = true
+                                if (!isProUnlocked()) {
+                                    vibrateFeedback(45)
+                                    webView.post {
+                                        webView.evaluateJavascript(
+                                            "if(typeof window.showProPaywall==='function') window.showProPaywall('Virtual Laser Pointer & 3D Gyro Aiming');", null)
+                                    }
+                                    return@Runnable
+                                }
                                 hasLaserStarted = true
                                 startHardwareLaser()
                             }
@@ -838,8 +868,8 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
                         stopHardwareLaser()
                         hasLaserStarted = false
                     }
-                } else {
-                    // Quick tap (< 180ms) -> Change slide!
+                } else if (!isHoldTriggered) {
+                    // Quick tap (< 200ms) -> Change slide!
                     val action = if (isUpKey) "NEXT" else "PREV"
                     vibrateFeedback(35)
                     sendSlideAction(action)
@@ -848,6 +878,7 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
                             "if(typeof window.onHardwareVolumeKey==='function') window.onHardwareVolumeKey('$action');", null)
                     }
                 }
+                isHoldTriggered = false
             }
             return true // Consume BOTH ACTION_DOWN and ACTION_UP completely
         }
@@ -978,9 +1009,29 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
         fun isNativeApp(): Boolean = true
 
         @JavascriptInterface
-        fun isProUnlocked(): Boolean {
+        fun isProUnlocked(): Boolean = activity.isProUnlocked()
+
+        @JavascriptInterface
+        fun signOut() {
             val prefs = activity.getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
-            return prefs.getBoolean("nxtslide_pro_unlocked", false)
+            prefs.edit()
+                .remove("auth_user")
+                .remove("auth_token")
+                .remove("nxtslide_google_email")
+                .remove("nxtslide_google_name")
+                .remove("nxtslide_pro_unlocked")
+                .remove("nxtslide_plan")
+                .apply()
+
+            activity.runOnUiThread {
+                try {
+                    android.webkit.CookieManager.getInstance().removeAllCookies(null)
+                    android.webkit.CookieManager.getInstance().flush()
+                } catch (_: Exception) {}
+                Toast.makeText(activity, "Signed out successfully", Toast.LENGTH_SHORT).show()
+                activity.webView.evaluateJavascript(
+                    "if(typeof window.nxtslideOnSignedOut==='function') window.nxtslideOnSignedOut();", null)
+            }
         }
 
         @JavascriptInterface
@@ -1059,6 +1110,13 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
 
         @JavascriptInterface
         fun startHardwareLaser() {
+            if (!activity.isProUnlocked()) {
+                activity.runOnUiThread {
+                    activity.webView.evaluateJavascript(
+                        "if(typeof window.showProPaywall==='function') window.showProPaywall('Virtual Laser Pointer & 3D Gyro Aiming');", null)
+                }
+                return
+            }
             activity.runOnUiThread { activity.startHardwareLaser() }
         }
 
@@ -1069,6 +1127,13 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
 
         @JavascriptInterface
         fun sendLaserEvent(type: String, x: Float, y: Float, style: String = "laser") {
+            if (type != "LASER_UP" && !activity.isProUnlocked()) {
+                activity.runOnUiThread {
+                    activity.webView.evaluateJavascript(
+                        "if(typeof window.showProPaywall==='function') window.showProPaywall('Virtual Laser Pointer & 3D Gyro Aiming');", null)
+                }
+                return
+            }
             when (type) {
                 "LASER_DOWN" -> activity.sendLaserDown(x, y, style)
                 "LASER_MOVE" -> activity.sendLaserMove(x, y)

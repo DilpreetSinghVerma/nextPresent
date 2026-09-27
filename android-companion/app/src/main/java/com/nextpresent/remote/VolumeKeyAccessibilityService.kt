@@ -39,7 +39,11 @@ class VolumeKeyAccessibilityService : AccessibilityService() {
         val sensorManager = getSystemService(android.content.Context.SENSOR_SERVICE) as? android.hardware.SensorManager
         val hasGyro = (sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE) != null)
 
-        if (!hasGyro) {
+        val prefs = getSharedPreferences("NXTslidePrefs", android.content.Context.MODE_PRIVATE)
+        val isPro = prefs.getBoolean("nxtslide_pro_unlocked", false) ||
+            (prefs.getString("nxtslide_google_email", "")?.trim()?.lowercase() == "dilpreetsinghverma@gmail.com")
+
+        if (!hasGyro || !isPro) {
             if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) {
                 val action = if (isUpKey) "NEXT" else "PREV"
                 service?.sendSlideAction(action)

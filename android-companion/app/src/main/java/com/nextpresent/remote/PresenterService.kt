@@ -308,8 +308,19 @@ class PresenterService : Service() {
         return sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE) != null
     }
 
+    fun isProUnlocked(): Boolean {
+        val prefs = getSharedPreferences("NXTslidePrefs", Context.MODE_PRIVATE)
+        val unlocked = prefs.getBoolean("nxtslide_pro_unlocked", false)
+        val email = prefs.getString("nxtslide_google_email", "")?.trim()?.lowercase() ?: ""
+        return unlocked || email == "dilpreetsinghverma@gmail.com"
+    }
+
     @Synchronized
     fun startBackgroundLaser() {
+        if (!isProUnlocked()) {
+            android.util.Log.d("NXTslide_Sensor", "startBackgroundLaser aborted: Pro not unlocked")
+            return
+        }
         if (!hasHardwareGyro()) {
             android.util.Log.d("NXTslide_Sensor", "startBackgroundLaser aborted: No physical gyroscope sensor on device")
             return
@@ -399,6 +410,7 @@ class PresenterService : Service() {
     }
 
     private fun sendLaserDown(x: Float, y: Float, style: String = "laser") {
+        if (!isProUnlocked()) return
         val safeX = if (x.isNaN() || x.isInfinite()) 0.5f else x.coerceIn(0.01f, 0.99f)
         val safeY = if (y.isNaN() || y.isInfinite()) 0.5f else y.coerceIn(0.01f, 0.99f)
         try {
@@ -416,6 +428,7 @@ class PresenterService : Service() {
     }
 
     private fun sendLaserMove(x: Float, y: Float) {
+        if (!isProUnlocked()) return
         val safeX = if (x.isNaN() || x.isInfinite()) 0.5f else x.coerceIn(0.01f, 0.99f)
         val safeY = if (y.isNaN() || y.isInfinite()) 0.5f else y.coerceIn(0.01f, 0.99f)
         try {
@@ -483,6 +496,10 @@ class PresenterService : Service() {
                 holdThresholdRunnable?.let { mainHandler.removeCallbacks(it) }
                 val holdRunnable = Runnable {
                     if (isVolKeyHeld && !hasLaserStarted) {
+                        if (!isProUnlocked()) {
+                            vibrateFeedback(45)
+                            return@Runnable
+                        }
                         hasLaserStarted = true
                         startBackgroundLaser()
                     }
@@ -494,6 +511,9 @@ class PresenterService : Service() {
                 holdThresholdRunnable?.let { mainHandler.removeCallbacks(it) }
                 holdThresholdRunnable = null
                 if (!hasLaserStarted) {
+                    if (!isProUnlocked()) {
+                        return
+                    }
                     hasLaserStarted = true
                     startBackgroundLaser()
                 }
@@ -563,7 +583,7 @@ class PresenterService : Service() {
                 ACTION_NEXT -> { vibrateFeedback(38); sendSlideAction("NEXT") }
                 ACTION_STOP -> stopSelf()
                 "com.nextpresent.remote.ACTION_START_LASER" -> {
-                    if (hasHardwareGyro()) startBackgroundLaser()
+                    if (isProUnlocked() && hasHardwareGyro()) startBackgroundLaser()
                 }
                 "com.nextpresent.remote.ACTION_STOP_LASER"  -> stopBackgroundLaser()
             }

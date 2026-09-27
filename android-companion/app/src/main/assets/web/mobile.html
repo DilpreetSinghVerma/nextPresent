@@ -31,7 +31,13 @@
       </svg>
     </div>
 
-    <div class="hud-right">
+    <div class="hud-right" style="display:flex;align-items:center;gap:6px;">
+      <button class="hud-icon" id="hudAccountBtn" aria-label="Account" title="Account & Settings">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </button>
       <button class="hud-icon" id="infoBtn" aria-label="Info">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
@@ -194,12 +200,15 @@
     </div>
 
     <!-- Account & Pro Status -->
-    <div id="modalAccountBox" style="margin-bottom:14px;padding:12px 14px;background:#161616;border:1px solid rgba(255,255,255,0.08);border-radius:12px;display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <div id="modalAccountName" style="font-size:0.85rem;font-weight:700;color:#fff;">Guest Account</div>
-        <div id="modalAccountSub" style="font-size:0.72rem;color:#94a3b8;">Sign in with Google to sync Pro</div>
+    <div id="modalAccountBox" style="margin-bottom:14px;padding:12px 14px;background:#161616;border:1px solid rgba(255,255,255,0.08);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div style="flex:1;min-width:0;">
+        <div id="modalAccountName" style="font-size:0.85rem;font-weight:700;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Guest Account</div>
+        <div id="modalAccountSub" style="font-size:0.72rem;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Sign in with Google to sync Pro</div>
       </div>
-      <button id="modalSignInBtn" style="padding:6px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:0.75rem;font-weight:600;cursor:pointer;" onclick="if(window.AndroidApp&&window.AndroidApp.openGoogleSignIn){window.AndroidApp.openGoogleSignIn();}else{window.open('https://nxtslide.online/auth/google?redirect=nxtslide://auth','_blank');}">Sign In</button>
+      <div id="modalAccountActions" style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <button id="modalSignInBtn" style="padding:6px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:0.75rem;font-weight:600;cursor:pointer;" onclick="handleMobileSignIn()">Sign In</button>
+        <button id="modalSignOutBtn" style="display:none;padding:6px 12px;background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);border-radius:8px;font-size:0.75rem;font-weight:600;cursor:pointer;" onclick="handleMobileSignOut()">Sign Out</button>
+      </div>
     </div>
 
     <h3 class="sheet-title" style="margin-top:0;">📱 Controls &amp; Volume Keys</h3>
@@ -333,31 +342,105 @@
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script src="js/mobile.js"></script>
 <script>
+function handleMobileSignIn() {
+  if (window.AndroidApp && typeof window.AndroidApp.openGoogleSignIn === 'function') {
+    window.AndroidApp.openGoogleSignIn();
+  } else {
+    window.open('https://nxtslide.online/auth/google?redirect=nxtslide://auth', '_blank');
+  }
+}
+
+function handleMobileSignOut() {
+  if (!confirm('Are you sure you want to sign out?')) return;
+  if (window.AndroidApp && typeof window.AndroidApp.signOut === 'function') {
+    try { window.AndroidApp.signOut(); } catch(e) {}
+  }
+  try {
+    localStorage.removeItem('nxtslide_user');
+    localStorage.removeItem('nxtslide_pro_unlocked');
+    localStorage.removeItem('nxtslide_token');
+    localStorage.removeItem('nxtslide_device_pro');
+  } catch(e) {}
+  try {
+    fetch('/api/auth/logout', { method: 'POST' }).catch(function() {});
+  } catch(e) {}
+  syncMobileAccountUI(null);
+  try { if (typeof buzz === 'function') buzz('prev'); } catch(e) {}
+}
+
+function syncMobileAccountUI(user) {
+  var nameEl = document.getElementById('modalAccountName');
+  var subEl = document.getElementById('modalAccountSub');
+  var signInBtn = document.getElementById('modalSignInBtn');
+  var signOutBtn = document.getElementById('modalSignOutBtn');
+
+  var u = user;
+  if (!u) {
+    try {
+      var saved = localStorage.getItem('nxtslide_user');
+      if (saved) u = JSON.parse(saved);
+    } catch(e) {}
+  }
+  if (!u && window.AndroidApp && typeof window.AndroidApp.getUserEmail === 'function') {
+    var email = window.AndroidApp.getUserEmail();
+    if (email) {
+      var name = typeof window.AndroidApp.getUserName === 'function' ? window.AndroidApp.getUserName() : '';
+      var isPro = typeof window.AndroidApp.isProUnlocked === 'function' ? window.AndroidApp.isProUnlocked() : false;
+      u = { email: email, name: name || email.split('@')[0], isPro: isPro };
+    }
+  }
+
+  if (u && (u.email || u.name)) {
+    var displayName = u.name || (u.email ? u.email.split('@')[0] : 'User');
+    var isPro = !!(u.isPro || u.plan === 'pro');
+    if (nameEl) nameEl.textContent = displayName;
+    if (subEl) {
+      subEl.innerHTML = (u.email ? '<span style="color:#cbd5e1;">' + u.email + '</span> • ' : '') + 
+        (isPro ? '<span style="color:#22c55e;font-weight:700;">✦ Pro Active</span>' : '<span style="color:#94a3b8;">Free Plan</span>');
+    }
+    if (signInBtn) signInBtn.style.display = 'none';
+    if (signOutBtn) signOutBtn.style.display = 'inline-block';
+  } else {
+    if (nameEl) nameEl.textContent = 'Guest Account';
+    if (subEl) subEl.textContent = 'Sign in with Google to sync Pro';
+    if (signInBtn) {
+      signInBtn.style.display = 'inline-block';
+      signInBtn.textContent = 'Sign In';
+    }
+    if (signOutBtn) signOutBtn.style.display = 'none';
+  }
+}
+
 window.nxtslideOnAuthSuccess = function(userJson) {
   try {
     var u = typeof userJson === 'string' ? JSON.parse(userJson) : userJson;
-    var nameEl = document.getElementById('modalAccountName');
-    var subEl = document.getElementById('modalAccountSub');
-    var btn = document.getElementById('modalSignInBtn');
-    if (u && u.name) {
-      if (nameEl) nameEl.textContent = u.name;
-      if (subEl) subEl.textContent = u.isPro ? '✦ Pro Active' : 'Free Plan';
+    if (u) {
       if (u.isPro) {
         localStorage.setItem('nxtslide_pro_unlocked', 'true');
-        localStorage.setItem('nxtslide_user', JSON.stringify(u));
       } else {
         localStorage.removeItem('nxtslide_pro_unlocked');
       }
-      if (btn) {
-        btn.textContent = 'Signed In';
-        btn.style.background = 'rgba(255,255,255,0.1)';
-        btn.onclick = function() {
-          alert('Logged in as ' + u.name + ' (' + (u.email || '') + ')' + (u.isPro ? '\n✦ Pro Subscriber' : '\nFree Account'));
-        };
-      }
+      localStorage.setItem('nxtslide_user', JSON.stringify(u));
+      syncMobileAccountUI(u);
     }
   } catch(e) {}
 };
+
+window.nxtslideOnSignedOut = function() {
+  syncMobileAccountUI(null);
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+  syncMobileAccountUI();
+  var hudAccountBtn = document.getElementById('hudAccountBtn');
+  var modal = document.getElementById('modal');
+  if (hudAccountBtn && modal) {
+    hudAccountBtn.addEventListener('click', function() {
+      modal.classList.add('open');
+    });
+  }
+});
+syncMobileAccountUI();
 </script>
 </body>
 

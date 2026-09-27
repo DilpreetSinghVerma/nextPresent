@@ -694,6 +694,10 @@ const laserFilterX = new LaserOneEuroFilter(60, 0.45, 0.002, 1.0);
 const laserFilterY = new LaserOneEuroFilter(60, 0.45, 0.002, 1.0);
 
 function sendLaserWs(data) {
+  if (data && data.type !== 'LASER_UP' && !isProActive()) {
+    showProPaywall('Virtual Laser Pointer & 3D Gyro Aiming');
+    return;
+  }
   if (window.AndroidApp && typeof window.AndroidApp.sendLaserEvent === 'function') {
     try {
       window.AndroidApp.sendLaserEvent(data.type, data.x !== undefined ? data.x : 0.5, data.y !== undefined ? data.y : 0.5, data.style || laserStyle || 'laser');
@@ -806,11 +810,13 @@ function isProActive() {
     if (userStr) {
       const u = JSON.parse(userStr);
       if (u && (u.isPro || u.plan === 'pro')) return true;
+      if (u && u.email && u.email.trim().toLowerCase() === 'dilpreetsinghverma@gmail.com') return true;
     }
     if (localStorage.getItem('nxtslide_pro_unlocked') === 'true') return true;
   } catch(_) {}
   return false;
 }
+window.isProActive = isProActive;
 
 function showProPaywall(featureName) {
   const modal = document.getElementById('mobileProModal');
@@ -840,6 +846,7 @@ function showProPaywall(featureName) {
     modal.style.display = 'flex';
   }
 }
+window.showProPaywall = showProPaywall;
 
 const closeMobileProModal = document.getElementById('closeMobileProModal');
 if (closeMobileProModal) {
@@ -1190,6 +1197,10 @@ window.addEventListener('devicemotion', (e) => {
 
 // Global callbacks from Android companion hardware
 window.onHardwareLaserStart = function() {
+  if (!isProActive()) {
+    showProPaywall('Virtual Laser Pointer & 3D Gyro Aiming');
+    return;
+  }
   if (!hasHardwareGyro) return;
   if (laserModal) laserModal.classList.add('open');
   if (laserClutchBtn) laserClutchBtn.classList.add('pressed');
@@ -1203,6 +1214,10 @@ window.onHardwareLaserStop = function() {
 if (laserClutchBtn) {
   laserClutchBtn.addEventListener('pointerdown', (e) => {
     e.preventDefault();
+    if (!isProActive()) {
+      showProPaywall('Virtual Laser Pointer & 3D Gyro Aiming');
+      return;
+    }
     if (window.AndroidApp && typeof window.AndroidApp.startHardwareLaser === 'function') {
       window.AndroidApp.startHardwareLaser();
       return;
