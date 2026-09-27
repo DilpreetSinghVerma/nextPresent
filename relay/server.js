@@ -698,7 +698,7 @@ app.get(['/download/portable', '/downloads/NXTslide-Portable.exe', '/downloads/n
 const GITHUB_RAW_BASE = 'https://raw.githubusercontent.com/DilpreetSinghVerma/nextPresent/main/public';
 const _staticCache = new Map();
 
-app.get(['/css/{*file}', '/js/{*file}', '/logo.png', '/favicon.ico', '/logo-icon.png', '/logo-icon.jpg', '/logo-wordmark.jpg'], async (req, res) => {
+app.get(['/css/{*file}', '/js/{*file}', '/logo.png', '/favicon.ico', '/logo-icon.png', '/logo-icon.jpg', '/logo-wordmark.jpg', '/robots.txt', '/sitemap.xml', '/llms.txt'], async (req, res) => {
   const filePath = req.path.replace(/^\/+/, '');
   const localPath = path.resolve(__dirname, 'public', filePath);
   if (fs.existsSync(localPath)) {
@@ -707,6 +707,8 @@ app.get(['/css/{*file}', '/js/{*file}', '/logo.png', '/favicon.ico', '/logo-icon
     if (filePath.endsWith('.png')) res.setHeader('Content-Type', 'image/png');
     if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) res.setHeader('Content-Type', 'image/jpeg');
     if (filePath.endsWith('.ico')) res.setHeader('Content-Type', 'image/x-icon');
+    if (filePath.endsWith('.txt')) res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    if (filePath.endsWith('.xml')) res.setHeader('Content-Type', 'application/xml; charset=utf-8');
     return res.sendFile(localPath);
   }
   const cached = _staticCache.get(filePath);
@@ -716,6 +718,8 @@ app.get(['/css/{*file}', '/js/{*file}', '/logo.png', '/favicon.ico', '/logo-icon
     if (filePath.endsWith('.png')) res.setHeader('Content-Type', 'image/png');
     if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) res.setHeader('Content-Type', 'image/jpeg');
     if (filePath.endsWith('.ico')) res.setHeader('Content-Type', 'image/x-icon');
+    if (filePath.endsWith('.txt')) res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    if (filePath.endsWith('.xml')) res.setHeader('Content-Type', 'application/xml; charset=utf-8');
     return res.send(cached.content);
   }
   try {
