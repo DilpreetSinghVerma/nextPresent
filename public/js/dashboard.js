@@ -809,7 +809,7 @@ function showMultiDeviceAlert(msg) {
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;">
       <button onclick="this.closest('#multiDeviceAlertBanner').remove()" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#a1a1aa;padding:6px 12px;border-radius:6px;font-size:0.8rem;cursor:pointer;">Dismiss</button>
-      <button onclick="openLicenseModal();this.closest('#multiDeviceAlertBanner').remove();" style="background:#fbbf24;color:#000;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">Unlock Multi-Presenter (₹89)</button>
+      <button onclick="if(typeof openProModal==='function')openProModal();this.closest('#multiDeviceAlertBanner').remove();" style="background:#fbbf24;color:#000;border:none;padding:6px 14px;border-radius:6px;font-weight:700;font-size:0.8rem;cursor:pointer;">Unlock Multi-Presenter (₹89)</button>
     </div>
   `;
 }

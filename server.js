@@ -604,15 +604,28 @@ wss.on('connection', (ws, req) => {
   cleanDeadRemoteSockets();
 
   const fullUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const role = fullUrl.searchParams.get('role');
+  const role = (fullUrl.searchParams.get('role') || '').toLowerCase().trim();
   const rawDeviceId = fullUrl.searchParams.get('deviceId');
 
   const clientIp = (req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress || '127.0.0.1')
     .replace(/^.*:/, ''); // normalize IPv6 ::ffff:192.168.x.x
 
+  const isLoopback = clientIp === '127.0.0.1' || clientIp === '1' || clientIp === 'localhost' || req.socket.remoteAddress === '::1' || req.socket.remoteAddress === '127.0.0.1';
+
   const isDashboard = role === 'dashboard' || (req.headers.referer && req.headers.referer.includes('/dashboard'));
-  const isRemotePresenter = !isDashboard;
-  const deviceId = rawDeviceId || (isRemotePresenter ? `ip_${clientIp}` : `dash_${Date.now()}`);
+  const isLaser = role === 'laser-overlay' || (req.headers.referer && req.headers.referer.includes('/laser'));
+
+  // A connection is a remote presenter ONLY if it's explicitly a remote controller,
+  // or an external phone/device (not internal localhost dashboard/laser overlay).
+  const isRemotePresenter = !isDashboard && !isLaser && (
+    role === 'remote' ||
+    role === 'companion' ||
+    role === 'companion_service' ||
+    (req.headers.referer && req.headers.referer.includes('/remote')) ||
+    (!isLoopback && role !== 'dashboard' && role !== 'laser-overlay')
+  );
+
+  const deviceId = rawDeviceId || (isRemotePresenter ? `ip_${clientIp}` : `host_${role || 'internal'}`);
 
   const isPro = licenseService.getLicenseStatus().isPro;
 
