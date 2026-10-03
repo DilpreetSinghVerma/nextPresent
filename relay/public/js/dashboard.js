@@ -196,6 +196,8 @@ function isProUnlocked() {
     if (u.isPro || u.isAdmin || (u.email && u.email.toLowerCase() === 'dilpreetsinghverma@gmail.com')) {
       return true;
     }
+    if (u.trial && u.trial.active) return true;
+    if (u.trialExpiresAt && new Date(u.trialExpiresAt) > new Date()) return true;
   } catch (_) {}
   return false;
 }
@@ -212,6 +214,7 @@ function updateProBadge() {
     cloudModeBadge.style.boxShadow = '';
   }
 }
+window.updateProBadge = updateProBadge;
 
 function switchMode(mode) {
   if (mode === 'local') {
@@ -230,6 +233,7 @@ function switchMode(mode) {
     if (connectSubtitle) connectSubtitle.textContent = 'Enter the 6-letter room code or scan cloud QR code';
   }
 }
+window.switchMode = switchMode;
 
 function openProModal() {
   if (proModalBackdrop) {
@@ -369,6 +373,12 @@ function initModeSwitcher() {
 
   if (btnStartDemoSession) {
     btnStartDemoSession.addEventListener('click', async () => {
+      // If user is signed in with Google and eligible for their free 30-min trial, activate via Google ID
+      const user = (window.NXTAuth && typeof window.NXTAuth.getCurrentUser === 'function') ? window.NXTAuth.getCurrentUser() : null;
+      if (user && user.trial && user.trial.eligible && typeof window.NXTAuth.startTrial === 'function') {
+        return window.NXTAuth.startTrial();
+      }
+
       btnStartDemoSession.disabled = true;
       btnStartDemoSession.textContent = '⏳ Starting evaluation session...';
       try {

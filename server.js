@@ -472,6 +472,26 @@ app.post('/api/relay/demo', async (req, res) => {
   }
 });
 
+app.post('/api/auth/start-trial', async (_req, res) => {
+  try {
+    const result = await licenseService.startGoogleTrial();
+    if (result.success) {
+      await connectToRelay();
+      broadcast({ type: 'PRO_STATUS_CHANGED', isPro: true, isTrial: true, expiresAt: result.trialExpiresAt });
+      res.json({
+        ...result,
+        connected: relayConnected,
+        roomCode: relayRoomCode,
+        phoneUrl: relayPhoneUrl
+      });
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/api/profile', (req, res) => {
   const { profile } = req.body;
   if (!SOFTWARE_PROFILES[profile]) {

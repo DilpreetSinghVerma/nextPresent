@@ -68,15 +68,159 @@
     return null;
   }
 
+  // ─── Trial Countdown Timer & Logic ─────────────────────────────────────────
+  let trialInterval = null;
+
+  function stopTrialCountdown() {
+    if (trialInterval) {
+      clearInterval(trialInterval);
+      trialInterval = null;
+    }
+  }
+
+  function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+
+  function startTrialCountdown(expiresAt) {
+    stopTrialCountdown();
+    if (!expiresAt) return;
+
+    function tick() {
+      const now = Date.now();
+      const end = new Date(expiresAt).getTime();
+      const diffSec = Math.max(0, Math.floor((end - now) / 1000));
+
+      const badgeCountdown = $('auth-trial-countdown');
+      const modalActiveTime = $('modal-trial-active-time');
+      const timeStr = formatTime(diffSec);
+
+      if (badgeCountdown) badgeCountdown.textContent = timeStr + ' left';
+      if (modalActiveTime) modalActiveTime.textContent = timeStr;
+
+      if (diffSec <= 0) {
+        stopTrialCountdown();
+        if (currentUser && (currentUser.isTrial || currentUser.trial?.active)) {
+          console.log('[Auth] 30-min trial session ended.');
+          if (badgeCountdown) badgeCountdown.textContent = 'Expired';
+          if (modalActiveTime) modalActiveTime.textContent = '00:00';
+          refreshAuthState().then(() => {
+            alert('⏱️ Your free 30-minute demo has ended. Upgrade to Lifetime Pro (₹89) anytime to keep using Cloud Relay!');
+          });
+        }
+      }
+    }
+
+    tick();
+    trialInterval = setInterval(tick, 1000);
+  }
+
+  // ─── Activate Google ID One-Time 30-Min Demo ────────────────────────────────
+  async function activateGoogleTrial() {
+    if (!currentUser) {
+      openGoogleSignIn();
+      return;
+    }
+
+    const activateBtns = [
+      $('btnActivateGoogleTrial'),
+      $('auth-start-trial-btn'),
+      $('account-modal-start-trial-btn')
+    ].filter(Boolean);
+
+    activateBtns.forEach(btn => {
+      btn.disabled = true;
+      btn.dataset.prevHtml = btn.innerHTML;
+      btn.innerHTML = '<span>⏳</span> <span>Activating Demo...</span>';
+    });
+
+    try {
+      const token = loadTokenLocally();
+      const isDesktop = !(typeof window !== 'undefined' && window.location && (window.location.hostname.includes('nxtslide.online') || window.location.hostname.includes('render.com')));
+
+      let endpoint = '/api/auth/start-trial';
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      // If running directly on web dashboard, call relay base
+      if (!isDesktop) {
+        endpoint = `${RELAY_BASE}/api/auth/start-trial`;
+      }
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        credentials: 'include',
+        headers
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        currentUser = {
+          ...currentUser,
+          isPro: true,
+          isTrial: true,
+          trialStartedAt: data.trialStartedAt || new Date().toISOString(),
+          trialExpiresAt: data.trialExpiresAt,
+          trial: data.trial || { active: true, eligible: false, used: true, remainingSeconds: data.remainingSeconds || 1800 }
+        };
+        saveUserLocally(currentUser);
+        localStorage.setItem('nxtslide_pro_unlocked', 'true');
+
+        renderAuthUI(currentUser);
+        updateLegacyLicenseUI(currentUser);
+
+        // Close modals
+        const proModal = $('proModalBackdrop');
+        if (proModal) proModal.style.display = 'none';
+        const accModal = $('accountModalBackdrop');
+        if (accModal) accModal.style.display = 'none';
+
+        // Switch to cloud mode if dashboard switchMode exists
+        if (typeof window.switchMode === 'function') {
+          window.switchMode('cloud');
+        } else if (typeof switchMode === 'function') {
+          switchMode('cloud');
+        }
+
+        // Refresh QR / Relay UI
+        try {
+          const infoRes = await fetch('/api/info');
+          const infoData = await infoRes.json();
+          const cloudQr = $('cloudQrCodeImg');
+          if (cloudQr && infoData.cloudQrDataUrl) cloudQr.src = infoData.cloudQrDataUrl;
+          if (typeof updateRelayUI === 'function') updateRelayUI(infoData.relay);
+        } catch (_) {}
+
+        alert(data.message || '🎉 Your 30-Minute Free Demo is now active! Cloud Relay & Multi-Presenter are unlocked.');
+      } else {
+        alert(data.error || 'Could not start free trial.');
+        await refreshAuthState();
+      }
+    } catch (err) {
+      console.error('[Auth] Trial activation error:', err);
+      alert('Error activating trial: ' + err.message);
+    } finally {
+      activateBtns.forEach(btn => {
+        btn.disabled = false;
+        if (btn.dataset.prevHtml) btn.innerHTML = btn.dataset.prevHtml;
+      });
+    }
+  }
+
   // ─── Update the UI based on auth state ────────────────────────────────────
   function renderAuthUI(user) {
-    const signedInEl  = $('auth-signed-in');
-    const signedOutEl = $('auth-signed-out');
-    const userNameEl  = $('auth-user-name');
-    const userEmailEl = $('auth-user-email');
-    const userAvatarEl = $('auth-user-avatar');
-    const proBadgeEl  = $('auth-pro-badge');
-    const upgradeBtn  = $('auth-upgrade-btn');
+    const signedInEl       = $('auth-signed-in');
+    const signedOutEl      = $('auth-signed-out');
+    const userNameEl       = $('auth-user-name');
+    const userEmailEl      = $('auth-user-email');
+    const userAvatarEl     = $('auth-user-avatar');
+    const proBadgeEl       = $('auth-pro-badge');
+    const trialBadgeEl     = $('auth-trial-badge');
+    const startTrialBtn    = $('auth-start-trial-btn');
+    const upgradeBtn       = $('auth-upgrade-btn');
 
     if (signedInEl && signedOutEl) {
       if (user) {
@@ -93,8 +237,37 @@
             userAvatarEl.style.display = 'none';
           }
         }
-        if (proBadgeEl)  proBadgeEl.style.display = user.isPro ? 'inline-flex' : 'none';
-        if (upgradeBtn)  upgradeBtn.style.display  = user.isPro ? 'none' : 'inline-flex';
+
+        const isTrialActive = !!(user.isTrial || (user.trial && user.trial.active) || (user.trialExpiresAt && new Date(user.trialExpiresAt) > new Date()));
+        const isTrialEligible = !isTrialActive && !user.isPro && (user.trial ? user.trial.eligible : !user.trialUsed);
+        const isPaidPro = !!(user.isPro && !isTrialActive);
+
+        if (isTrialActive) {
+          if (trialBadgeEl)  trialBadgeEl.style.display  = 'inline-flex';
+          if (proBadgeEl)    proBadgeEl.style.display    = 'none';
+          if (startTrialBtn) startTrialBtn.style.display = 'none';
+          if (upgradeBtn)    upgradeBtn.style.display    = 'inline-flex';
+          startTrialCountdown(user.trialExpiresAt);
+        } else if (isTrialEligible) {
+          if (trialBadgeEl)  trialBadgeEl.style.display  = 'none';
+          if (proBadgeEl)    proBadgeEl.style.display    = 'none';
+          if (startTrialBtn) startTrialBtn.style.display = 'inline-flex';
+          if (upgradeBtn)    upgradeBtn.style.display    = 'none';
+          stopTrialCountdown();
+        } else if (isPaidPro) {
+          if (trialBadgeEl)  trialBadgeEl.style.display  = 'none';
+          if (proBadgeEl)    proBadgeEl.style.display    = 'inline-flex';
+          if (startTrialBtn) startTrialBtn.style.display = 'none';
+          if (upgradeBtn)    upgradeBtn.style.display    = 'none';
+          stopTrialCountdown();
+        } else {
+          // Free tier, trial already used
+          if (trialBadgeEl)  trialBadgeEl.style.display  = 'none';
+          if (proBadgeEl)    proBadgeEl.style.display    = 'none';
+          if (startTrialBtn) startTrialBtn.style.display = 'none';
+          if (upgradeBtn)    upgradeBtn.style.display    = 'inline-flex';
+          stopTrialCountdown();
+        }
 
         const adminBtn = $('auth-admin-btn');
         const isAdmin = !!(user && (user.isAdmin || (user.email && user.email.toLowerCase() === 'dilpreetsinghverma@gmail.com')));
@@ -104,22 +277,27 @@
         signedOutEl.style.display = 'flex';
         const adminBtn = $('auth-admin-btn');
         if (adminBtn) adminBtn.style.display = 'none';
+        if (trialBadgeEl)  trialBadgeEl.style.display  = 'none';
+        if (startTrialBtn) startTrialBtn.style.display = 'none';
+        stopTrialCountdown();
       }
     }
 
     // Also update upgrade modal and account modal
     updateModalCta(user);
     updateAccountModalUI(user);
+    if (typeof updateProBadge === 'function') updateProBadge();
   }
 
   // ─── Account Modal UI Helpers ─────────────────────────────────────────────
   function updateAccountModalUI(user) {
-    const avatarEl = $('account-modal-avatar');
-    const nameEl   = $('account-modal-name');
-    const emailEl  = $('account-modal-email');
-    const badgeEl  = $('account-modal-plan-badge');
-    const detailEl = $('account-modal-details');
-    const upBtn    = $('account-modal-upgrade-btn');
+    const avatarEl   = $('account-modal-avatar');
+    const nameEl     = $('account-modal-name');
+    const emailEl    = $('account-modal-email');
+    const badgeEl    = $('account-modal-plan-badge');
+    const detailEl   = $('account-modal-details');
+    const upBtn      = $('account-modal-upgrade-btn');
+    const trialBox   = $('account-modal-trial-box');
 
     if (!nameEl) return;
 
@@ -134,8 +312,18 @@
           avatarEl.style.display = 'none';
         }
       }
+
+      const isTrialActive = !!(user.isTrial || (user.trial && user.trial.active) || (user.trialExpiresAt && new Date(user.trialExpiresAt) > new Date()));
+      const isTrialEligible = !isTrialActive && !user.isPro && (user.trial ? user.trial.eligible : !user.trialUsed);
+      const isPaidPro = !!(user.isPro && !isTrialActive);
+
       if (badgeEl) {
-        if (user.isPro) {
+        if (isTrialActive) {
+          badgeEl.textContent = '⏱️ 30-MIN FREE DEMO';
+          badgeEl.style.background = 'rgba(34,197,94,0.18)';
+          badgeEl.style.color = '#4ade80';
+          badgeEl.style.border = '1px solid rgba(34,197,94,0.4)';
+        } else if (isPaidPro) {
           badgeEl.textContent = '✦ PRO ACTIVE';
           badgeEl.style.background = 'rgba(34,197,94,0.15)';
           badgeEl.style.color = '#4ade80';
@@ -147,17 +335,25 @@
           badgeEl.style.border = '1px solid rgba(148,163,184,0.3)';
         }
       }
+
       if (detailEl) {
-        if (user.isPro) {
+        if (isTrialActive) {
+          const expTime = user.trialExpiresAt ? new Date(user.trialExpiresAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '30 mins';
+          detailEl.innerHTML = `<strong>30-Minute Free Demo Active</strong> &bull; Ends at: ${expTime}<br><span style="color:#94a3b8;font-size:0.75rem;">Global Cloud Relay and multi-presenter unlocked. Upgrade anytime to keep forever.</span>`;
+        } else if (isPaidPro) {
           const exp = user.subscriptionExpiresAt
             ? new Date(user.subscriptionExpiresAt).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' })
-            : 'Active';
-          detailEl.innerHTML = `<strong>Active Pro Subscription</strong> &bull; Valid until: ${exp}<br><span style="color:#94a3b8;font-size:0.75rem;">Global Cloud Relay and multi-presenter enabled.</span>`;
+            : 'Lifetime';
+          detailEl.innerHTML = `<strong>Active Pro Subscription</strong> &bull; Valid: ${exp}<br><span style="color:#94a3b8;font-size:0.75rem;">Global Cloud Relay and multi-presenter enabled.</span>`;
+        } else if (isTrialEligible) {
+          detailEl.innerHTML = `Standard local Wi-Fi mode.<br><span style="color:#a5b4fc;font-size:0.75rem;font-weight:600;">🎁 You have a free 30-minute demo ready to activate anytime!</span>`;
         } else {
-          detailEl.innerHTML = `Standard local Wi-Fi mode active.<br><span style="color:#94a3b8;font-size:0.75rem;">Upgrade to Pro to present from anywhere via global cloud relay.</span>`;
+          detailEl.innerHTML = `Standard local Wi-Fi mode active.<br><span style="color:#94a3b8;font-size:0.75rem;">Upgrade to Pro (₹89) to present from anywhere via global cloud relay.</span>`;
         }
       }
-      if (upBtn) upBtn.style.display = user.isPro ? 'none' : 'block';
+
+      if (trialBox) trialBox.style.display = isTrialEligible ? 'block' : 'none';
+      if (upBtn) upBtn.style.display = isPaidPro ? 'none' : 'block';
 
       const modalAdminBtn = $('account-modal-admin-btn');
       const isAdmin = !!(user && (user.isAdmin || (user.email && user.email.toLowerCase() === 'dilpreetsinghverma@gmail.com')));
@@ -172,7 +368,8 @@
         badgeEl.style.color = '#94a3b8';
         badgeEl.style.border = '1px solid rgba(148,163,184,0.3)';
       }
-      if (detailEl) detailEl.textContent = 'Sign in with Google to view and sync your subscription.';
+      if (detailEl) detailEl.textContent = 'Sign in with Google to get your free 30-minute demo or sync your subscription.';
+      if (trialBox) trialBox.style.display = 'none';
       if (upBtn) upBtn.style.display = 'none';
 
       const modalAdminBtn = $('account-modal-admin-btn');
@@ -408,11 +605,12 @@
     signIn:        openGoogleSignIn,
     signOut:       logout,
     upgrade:       startProUpgrade,
+    startTrial:    activateGoogleTrial,
     refresh:       refreshAuthState,
     openAccount:   openAccountModal,
     closeAccount:  closeAccountModal,
     getCurrentUser: () => currentUser,
-    isPro:         () => !!(currentUser && currentUser.isPro),
+    isPro:         () => !!(currentUser && (currentUser.isPro || (currentUser.trial && currentUser.trial.active))),
   };
 
   // ─── Init ────────────────────────────────────────────────────────────────
@@ -472,26 +670,31 @@
     } catch (_) {}
 
     // 3. Wire up header buttons
-    const signInBtn  = $('auth-google-signin-btn');
-    const signOutBtn = $('auth-signout-btn');
-    const upgradeBtn = $('auth-upgrade-btn');
-    const accountBtn = $('auth-account-btn');
-    const userPill   = $('auth-user-pill');
+    const signInBtn       = $('auth-google-signin-btn');
+    const signOutBtn      = $('auth-signout-btn');
+    const upgradeBtn      = $('auth-upgrade-btn');
+    const accountBtn      = $('auth-account-btn');
+    const userPill        = $('auth-user-pill');
+    const startTrialBtn   = $('auth-start-trial-btn');
+    const trialBadge      = $('auth-trial-badge');
 
-    if (signInBtn)  signInBtn.addEventListener('click',  openGoogleSignIn);
-    if (signOutBtn) signOutBtn.addEventListener('click',  logout);
-    if (upgradeBtn) upgradeBtn.addEventListener('click', startProUpgrade);
-    if (accountBtn) accountBtn.addEventListener('click', openAccountModal);
-    if (userPill)   userPill.addEventListener('click',   openAccountModal);
+    if (signInBtn)     signInBtn.addEventListener('click',     openGoogleSignIn);
+    if (signOutBtn)    signOutBtn.addEventListener('click',    logout);
+    if (upgradeBtn)    upgradeBtn.addEventListener('click',    startProUpgrade);
+    if (accountBtn)    accountBtn.addEventListener('click',    openAccountModal);
+    if (userPill)      userPill.addEventListener('click',      openAccountModal);
+    if (startTrialBtn) startTrialBtn.addEventListener('click', activateGoogleTrial);
+    if (trialBadge)    trialBadge.addEventListener('click',    openAccountModal);
 
     // 4. Wire up Account Modal buttons
-    const closeAccBtn = $('closeAccountModalBtn');
-    const accModalBackdrop = $('accountModalBackdrop');
-    const accUpgradeBtn = $('account-modal-upgrade-btn');
-    const accRefreshBtn = $('account-modal-refresh-btn');
-    const accSignoutBtn = $('account-modal-signout-btn');
+    const closeAccBtn          = $('closeAccountModalBtn');
+    const accModalBackdrop     = $('accountModalBackdrop');
+    const accUpgradeBtn        = $('account-modal-upgrade-btn');
+    const accRefreshBtn        = $('account-modal-refresh-btn');
+    const accSignoutBtn        = $('account-modal-signout-btn');
+    const accStartTrialBtn     = $('account-modal-start-trial-btn');
 
-    if (closeAccBtn) closeAccBtn.addEventListener('click', closeAccountModal);
+    if (closeAccBtn)      closeAccBtn.addEventListener('click', closeAccountModal);
     if (accModalBackdrop) {
       accModalBackdrop.addEventListener('click', (e) => {
         if (e.target === accModalBackdrop) closeAccountModal();
@@ -502,6 +705,9 @@
         closeAccountModal();
         startProUpgrade();
       });
+    }
+    if (accStartTrialBtn) {
+      accStartTrialBtn.addEventListener('click', activateGoogleTrial);
     }
     if (accRefreshBtn) {
       accRefreshBtn.addEventListener('click', async () => {
@@ -526,18 +732,31 @@
 
   // Update modal UI based on sign-in state
   function updateModalCta(user) {
-    const signedOutCta = $('modal-signed-out-cta');
-    const signedInCta  = $('modal-signed-in-cta');
-    const modalEmail   = $('modal-user-email');
-    const modalPayBtn  = $('modal-pay-btn');
+    const signedOutCta   = $('modal-signed-out-cta');
+    const signedInCta    = $('modal-signed-in-cta');
+    const modalEmail     = $('modal-user-email');
+    const modalPayBtn    = $('modal-pay-btn');
+    const trialEligible  = $('modal-trial-eligible-box');
+    const trialActive    = $('modal-trial-active-box');
+    const trialUsed      = $('modal-trial-used-box');
+
     if (!signedOutCta || !signedInCta) return;
+
     if (user) {
       signedOutCta.style.display = 'none';
       signedInCta.style.display  = 'block';
       if (modalEmail) modalEmail.textContent = user.email;
-      const isPro = !!(user.isPro || (user.email && user.email.toLowerCase() === 'dilpreetsinghverma@gmail.com'));
+
+      const isTrialActive = !!(user.isTrial || (user.trial && user.trial.active) || (user.trialExpiresAt && new Date(user.trialExpiresAt) > new Date()));
+      const isTrialEligible = !isTrialActive && !user.isPro && (user.trial ? user.trial.eligible : !user.trialUsed);
+      const isPaidPro = !!((user.isPro && !isTrialActive) || (user.email && user.email.toLowerCase() === 'dilpreetsinghverma@gmail.com'));
+
+      if (trialEligible) trialEligible.style.display = isTrialEligible ? 'block' : 'none';
+      if (trialActive)   trialActive.style.display   = isTrialActive ? 'block' : 'none';
+      if (trialUsed)     trialUsed.style.display     = (!isTrialActive && !isPaidPro && !isTrialEligible) ? 'block' : 'none';
+
       if (modalPayBtn) {
-        if (isPro) {
+        if (isPaidPro) {
           modalPayBtn.innerHTML = '✅ Lifetime Pro Active — Cloud Relay Unlocked';
           modalPayBtn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
           modalPayBtn.onclick = function() {
@@ -545,15 +764,26 @@
             if (m) m.style.display = 'none';
             if (typeof switchMode === 'function') switchMode('cloud');
           };
+        } else if (isTrialActive) {
+          modalPayBtn.innerHTML = '✦ Upgrade to Lifetime Pro — ₹89 (Keep Forever)';
+          modalPayBtn.style.background = '';
+          modalPayBtn.onclick = () => startProUpgrade();
+        } else if (isTrialEligible) {
+          modalPayBtn.innerHTML = '✦ Or Unlock Lifetime Pro Directly — ₹89 Only';
+          modalPayBtn.style.background = '';
+          modalPayBtn.onclick = () => startProUpgrade();
         } else {
           modalPayBtn.innerHTML = '✦ Unlock Lifetime Pro — ₹89 Only';
           modalPayBtn.style.background = '';
-          modalPayBtn.onclick = startProUpgrade;
+          modalPayBtn.onclick = () => startProUpgrade();
         }
       }
     } else {
       signedOutCta.style.display = 'block';
       signedInCta.style.display  = 'none';
+      if (trialEligible) trialEligible.style.display = 'none';
+      if (trialActive)   trialActive.style.display   = 'none';
+      if (trialUsed)     trialUsed.style.display     = 'none';
     }
   }
 
@@ -566,10 +796,13 @@
 
   // Wire upgrade modal buttons after DOM load
   function wireModalButtons() {
-    const modalSignInBtn = $('modal-google-signin-btn');
-    const modalPayBtn    = $('modal-pay-btn');
+    const modalSignInBtn   = $('modal-google-signin-btn');
+    const modalPayBtn      = $('modal-pay-btn');
+    const modalTrialBtn    = $('btnActivateGoogleTrial');
+
     if (modalSignInBtn) modalSignInBtn.addEventListener('click', openGoogleSignIn);
     if (modalPayBtn)    modalPayBtn.addEventListener('click', startProUpgrade);
+    if (modalTrialBtn)  modalTrialBtn.addEventListener('click', activateGoogleTrial);
   }
 
   if (document.readyState === 'loading') {

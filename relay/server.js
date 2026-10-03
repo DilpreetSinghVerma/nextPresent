@@ -102,6 +102,9 @@ async function setupDatabase() {
         subscriptionStartedAt  TEXT,
         subscriptionExpiresAt  TEXT,
         razorpayCustomerId     TEXT,
+        trialStartedAt         TEXT,
+        trialExpiresAt         TEXT,
+        trialUsed              INTEGER DEFAULT 0,
         createdAt              TEXT NOT NULL DEFAULT (datetime('now'))
       );`,
       `CREATE TABLE IF NOT EXISTS auth_tokens (
@@ -130,6 +133,11 @@ async function setupDatabase() {
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_paymentId ON payments(paymentId) WHERE paymentId IS NOT NULL;`,
       `CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`
     ]);
+
+    // Idempotent column migrations for 30-min one-time trial
+    try { await client.execute("ALTER TABLE users ADD COLUMN trialStartedAt TEXT;"); } catch(_) {}
+    try { await client.execute("ALTER TABLE users ADD COLUMN trialExpiresAt TEXT;"); } catch(_) {}
+    try { await client.execute("ALTER TABLE users ADD COLUMN trialUsed INTEGER DEFAULT 0;"); } catch(_) {}
 
     console.log('[DB] Database schema verified and ready.');
     return client;
@@ -256,7 +264,7 @@ async function createUser(data) {
 
 async function updateUser(id, updates) {
   if (!db || !id) return null;
-  const allowed = ['googleId','name','avatar','plan','subscriptionStartedAt','subscriptionExpiresAt','razorpayCustomerId'];
+  const allowed = ['googleId','name','avatar','plan','subscriptionStartedAt','subscriptionExpiresAt','razorpayCustomerId','trialStartedAt','trialExpiresAt','trialUsed'];
   const fields  = Object.keys(updates).filter(k => allowed.includes(k));
   if (fields.length === 0) return await getUserById(id);
   const setClause = fields.map(f => `${f} = ?`).join(', ');
@@ -277,9 +285,33 @@ async function updateUser(id, updates) {
 function isUserPro(user) {
   if (!user) return false;
   if (user.email && ADMIN_EMAILS.includes(user.email.toLowerCase())) return true;
-  if (user.plan === 'free') return false;
-  if (!user.subscriptionExpiresAt) return false;
-  return new Date(user.subscriptionExpiresAt) > new Date();
+  if (user.plan === 'pro') {
+    if (!user.subscriptionExpiresAt) return true;
+    return new Date(user.subscriptionExpiresAt) > new Date();
+  }
+  // Check active 30-min one-time trial
+  if (user.trialExpiresAt && new Date(user.trialExpiresAt) > new Date()) {
+    return true;
+  }
+  return false;
+}
+
+function getTrialInfo(user) {
+  if (!user) return { eligible: false, active: false, used: false, remainingSeconds: 0 };
+  const now = Date.now();
+  const expiresAt = user.trialExpiresAt ? new Date(user.trialExpiresAt).getTime() : 0;
+  const active = expiresAt > now;
+  const remainingSeconds = active ? Math.max(0, Math.floor((expiresAt - now) / 1000)) : 0;
+  const used = !!user.trialUsed || (!!user.trialStartedAt && !active);
+  const eligible = !used && user.plan !== 'pro';
+  return {
+    eligible,
+    active,
+    used,
+    startedAt: user.trialStartedAt || null,
+    expiresAt: user.trialExpiresAt || null,
+    remainingSeconds,
+  };
 }
 
 // ─── Payments & Admin DB Helpers ──────────────────────────────────────────────
@@ -856,6 +888,7 @@ app.get(['/auth/google/callback', '/api/auth/google/callback'],
     const redirect = req.session.postLoginRedirect || req.query.state || '';
     delete req.session.postLoginRedirect;
 
+    const trial = getTrialInfo(user);
     const safeUser = {
       id:                    user.id,
       email:                 user.email,
@@ -863,6 +896,9 @@ app.get(['/auth/google/callback', '/api/auth/google/callback'],
       avatar:                user.avatar,
       plan:                  user.plan,
       isPro:                 isUserPro(user),
+      isTrial:               trial.active,
+      trial,
+      trialExpiresAt:        trial.expiresAt,
       subscriptionExpiresAt: user.subscriptionExpiresAt,
       token,
     };
@@ -958,6 +994,7 @@ app.get(['/auth/me', '/api/auth/me'], async (req, res) => {
   const user = await resolveUser(req);
   if (!user) return res.status(401).json({ error: 'Not authenticated' });
   const isAdmin = !!(user.email && ADMIN_EMAILS.includes(user.email.toLowerCase()));
+  const trial = getTrialInfo(user);
   res.json({
     id:                   user.id,
     email:                user.email,
@@ -965,9 +1002,64 @@ app.get(['/auth/me', '/api/auth/me'], async (req, res) => {
     avatar:               user.avatar,
     plan:                 user.plan,
     isPro:                isUserPro(user),
+    isTrial:              trial.active,
+    trial,
     isAdmin,
     subscriptionExpiresAt: user.subscriptionExpiresAt,
     createdAt:            user.createdAt,
+  });
+});
+
+// Start one-time 30-minute free demo per Google account
+app.post(['/auth/start-trial', '/api/auth/start-trial'], async (req, res) => {
+  const user = await resolveUser(req);
+  if (!user) return res.status(401).json({ error: 'Please sign in with Google first.' });
+
+  if (user.plan === 'pro') {
+    return res.json({ success: true, message: 'You already have Lifetime Pro!', isPro: true, plan: 'pro' });
+  }
+
+  const trial = getTrialInfo(user);
+  if (trial.active) {
+    return res.json({
+      success: true,
+      isPro: true,
+      isTrial: true,
+      trialExpiresAt: user.trialExpiresAt,
+      remainingSeconds: trial.remainingSeconds,
+      message: 'Your 30-minute free demo is already active!'
+    });
+  }
+
+  if (!trial.eligible) {
+    return res.status(403).json({
+      error: 'Your one-time 30-minute demo has already been used for this Google account.',
+      trialUsed: true
+    });
+  }
+
+  // Activate the 30-minute demo
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
+  await updateUser(user.id, {
+    trialStartedAt: now.toISOString(),
+    trialExpiresAt: expiresAt,
+    trialUsed: 1,
+  });
+
+  console.log(`[Trial] Activated 30-min trial for ${user.email} (expires: ${expiresAt})`);
+  const updatedUser = await getUserById(user.id);
+  const updatedTrial = getTrialInfo(updatedUser);
+
+  res.json({
+    success: true,
+    isPro: true,
+    isTrial: true,
+    trialStartedAt: now.toISOString(),
+    trialExpiresAt: expiresAt,
+    remainingSeconds: 30 * 60,
+    trial: updatedTrial,
+    message: '🎉 30-Minute Free Demo Activated! Cloud Relay, Gyro Laser & Multi-Presenter unlocked.'
   });
 });
 
