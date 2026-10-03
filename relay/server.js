@@ -699,6 +699,29 @@ app.get(['/download/portable', '/downloads/NXTslide-Portable.exe', '/downloads/n
   res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/releases/download/v2.3.2/NXTslide-Portable.exe');
 });
 
+app.get(['/download/portable-32', '/downloads/NXTslide-Portable-32bit.exe', '/download/windows-32'], (_req, res) => {
+  const localPaths = [
+    path.resolve(__dirname, 'public', 'downloads', 'NXTslide-Portable-32bit.exe'),
+    path.resolve(__dirname, '..', 'public', 'downloads', 'NXTslide-Portable-32bit.exe')
+  ];
+  for (const p of localPaths) {
+    if (fs.existsSync(p)) return res.download(p);
+  }
+  res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/releases/latest');
+});
+
+app.get(['/downloads/NXTslide-Investor-Pitch-Deck.pptx', '/pitch.pptx'], (_req, res) => {
+  const localPaths = [
+    path.resolve(__dirname, 'public', 'downloads', 'NXTslide-Investor-Pitch-Deck.pptx'),
+    path.resolve(__dirname, '..', 'public', 'downloads', 'NXTslide-Investor-Pitch-Deck.pptx'),
+    path.resolve(__dirname, '..', 'NXTslide-Investor-Pitch-Deck.pptx')
+  ];
+  for (const p of localPaths) {
+    if (fs.existsSync(p)) return res.download(p);
+  }
+  res.redirect('https://github.com/DilpreetSinghVerma/nextPresent/raw/main/public/downloads/NXTslide-Investor-Pitch-Deck.pptx');
+});
+
 // ─── Cloud-Synced UI Routes ────────────────────────────────────────────────────
 // The Android app and (optionally) Electron load these routes instead of local
 // static files. Pushing new HTML/JS/CSS here updates all clients instantly.
@@ -1454,8 +1477,8 @@ app.get(['/laser', '/laser.html'], async (_req, res) => {
   res.status(404).send('<h1>Laser Not Found</h1>');
 });
 
-// Policy Pages (terms, privacy, refund, contact)
-['terms', 'privacy', 'refund', 'contact'].forEach((page) => {
+// Policy & Pitch Pages (terms, privacy, refund, contact, pitch)
+['terms', 'privacy', 'refund', 'contact', 'pitch'].forEach((page) => {
   app.get([`/${page}`, `/${page}.html`], async (_req, res) => {
     const localPaths = [
       path.resolve(__dirname, 'public', `${page}.html`),

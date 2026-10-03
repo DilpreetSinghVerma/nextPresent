@@ -29,6 +29,8 @@ Thumbs.db
 # Large installer executables (>100MB)
 public/downloads/*.exe
 public/downloads/*.apk
+relay/public/downloads/*.exe
+relay/public/downloads/*.apk
 NXTslide_Installers/
 assets/logos_source/
 

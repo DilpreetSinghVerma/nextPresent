@@ -10,7 +10,11 @@
     "build:portable": "electron-builder --win portable --x64",
     "build:installer": "electron-builder --win nsis --x64",
     "build:all": "electron-builder --win --x64",
-    "compile-sender": "C:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /nologo /optimize+ /out:bin\\keySender.exe lib\\keySender.cs"
+    "build:32": "electron-builder --win --ia32 --config.electronVersion \"32.2.8\"",
+    "build:32:portable": "electron-builder --win portable --ia32 --config.electronVersion \"32.2.8\"",
+    "build:32:installer": "electron-builder --win nsis --ia32 --config.electronVersion \"32.2.8\"",
+    "build:both": "electron-builder --win --x64 && electron-builder --win --ia32 --config.electronVersion \"32.2.8\"",
+    "compile-sender": "C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe /nologo /optimize+ /platform:anycpu /out:bin\\keySender.exe lib\\keySender.cs"
   },
   "build": {
     "appId": "com.nextpresent.desktop",

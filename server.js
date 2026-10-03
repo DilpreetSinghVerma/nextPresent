@@ -346,8 +346,9 @@ app.get(['/download/android', '/downloads/NXTslide.apk', '/downloads/nextPresent
 
 app.get('/api/info', async (req, res) => {
   try {
+    const activePrimaryIp = getPrimaryLocalIp();
     const overrideIp = req.query.ip;
-    const useIp  = overrideIp || primaryIp;
+    const useIp  = overrideIp || activePrimaryIp;
     const lanUrl = `http://${useIp}:${PORT}/remote`;
 
     // Generate distinct QR codes for Local LAN and Cloud Relay
@@ -369,7 +370,7 @@ app.get('/api/info', async (req, res) => {
 
     res.json({
       port: PORT,
-      primaryIp,
+      primaryIp:    activePrimaryIp,
       remoteUrl:    lanUrl,
       allIps:       getLocalIpAddresses(),
       qrDataUrl:    lanQrDataUrl,
