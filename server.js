@@ -452,6 +452,26 @@ app.post('/api/relay/connect', async (_req, res) => {
   }
 });
 
+app.post('/api/relay/demo', async (req, res) => {
+  try {
+    const minutes = req.body?.minutes || 30;
+    const demo = licenseService.startDemoSession(minutes);
+    await connectToRelay();
+    broadcast({ type: 'PRO_STATUS_CHANGED', isPro: true, isDemo: true, expiresAt: demo.expiresAt });
+    res.json({
+      success: true,
+      isDemo: true,
+      connected: relayConnected,
+      roomCode: relayRoomCode,
+      phoneUrl: relayPhoneUrl,
+      expiresAt: demo.expiresAt,
+      message: demo.message
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/profile', (req, res) => {
   const { profile } = req.body;
   if (!SOFTWARE_PROFILES[profile]) {

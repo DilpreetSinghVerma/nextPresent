@@ -425,6 +425,38 @@
           </button>
         </div>
 
+        <!-- Evaluation / Demo Option for Teachers & Investors -->
+        <div style="width:100%;border-top:1px solid rgba(255,255,255,0.08);padding-top:12px;margin-top:4px;text-align:center;">
+          <button id="btnStartDemoSession" type="button" style="
+            width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+            background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.35);border-radius:10px;
+            color:#a5b4fc;font-size:0.86rem;font-weight:600;padding:10px 16px;cursor:pointer;
+            transition:all 0.2s;
+          ">
+            <span>🎓</span>
+            <span>Start 30-Min Free Evaluation Session</span>
+          </button>
+          
+          <div style="margin-top:8px;">
+            <a href="#" id="toggleEvalKeyLink" style="color:#64748b;font-size:0.75rem;text-decoration:underline;">
+              Have a Teacher or Investor Passcode?
+            </a>
+            <div id="evalKeyContainer" style="display:none;margin-top:8px;">
+              <div style="display:flex;gap:6px;justify-content:center;">
+                <input type="text" id="licenseKeyInput" placeholder="Code (e.g. TEACHER)" style="
+                  background:#111;border:1px solid rgba(255,255,255,0.15);border-radius:8px;
+                  color:#fff;font-size:0.8rem;padding:6px 10px;text-transform:uppercase;width:160px;text-align:center;
+                ">
+                <button type="button" id="btnActivateKey" style="
+                  background:#6366f1;color:#fff;border:none;border-radius:8px;
+                  font-size:0.78rem;font-weight:600;padding:6px 12px;cursor:pointer;
+                ">Apply</button>
+              </div>
+              <div id="licenseFeedback" class="license-feedback" style="font-size:0.75rem;margin-top:4px;"></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Signed-in: Show Pay button -->
         <div id="modal-signed-in-cta" style="display:none;">
           <p style="color:#94a3b8;font-size:0.82rem;margin-bottom:12px;text-align:center;">

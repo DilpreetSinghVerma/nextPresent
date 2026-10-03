@@ -252,10 +252,10 @@ const btnBuyProLifetime  = document.getElementById('btnBuyProLifetime');
 
 async function handleLicenseActivation() {
   const key = (licenseKeyInput ? licenseKeyInput.value : '').trim();
-  if (!key || key.length < 6) {
+  if (!key || key.length < 4) {
     if (licenseFeedback) {
       licenseFeedback.className = 'license-feedback error';
-      licenseFeedback.textContent = 'Please enter a valid license key (min 6 characters).';
+      licenseFeedback.textContent = 'Please enter a valid license or evaluation key.';
     }
     return;
   }
@@ -286,10 +286,18 @@ async function handleLicenseActivation() {
         licenseFeedback.className = 'license-feedback success';
         licenseFeedback.textContent = data.message || '✅ Pro Lifetime Activated!';
       }
-      setTimeout(() => {
+      setTimeout(async () => {
         closeProModal();
         switchMode('cloud');
-      }, 1200);
+        try {
+          const infoRes = await fetch('/api/info');
+          const infoData = await infoRes.json();
+          if (infoData.cloudQrDataUrl && cloudQrCodeImg) {
+            cloudQrCodeImg.src = infoData.cloudQrDataUrl;
+          }
+          updateRelayUI(infoData.relay);
+        } catch (_) {}
+      }, 1000);
     } else {
       localStorage.removeItem('nxtslide_pro_unlocked');
       updateProBadge();
@@ -306,7 +314,7 @@ async function handleLicenseActivation() {
   } finally {
     if (btnActivateKey) {
       btnActivateKey.disabled = false;
-      btnActivateKey.textContent = 'Activate';
+      btnActivateKey.textContent = 'Apply';
     }
   }
 }
@@ -345,6 +353,49 @@ function initModeSwitcher() {
   if (licenseKeyInput) {
     licenseKeyInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') handleLicenseActivation();
+    });
+  }
+
+  const btnStartDemoSession = document.getElementById('btnStartDemoSession');
+  const toggleEvalKeyLink = document.getElementById('toggleEvalKeyLink');
+  const evalKeyContainer = document.getElementById('evalKeyContainer');
+
+  if (toggleEvalKeyLink && evalKeyContainer) {
+    toggleEvalKeyLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      evalKeyContainer.style.display = evalKeyContainer.style.display === 'none' ? 'block' : 'none';
+    });
+  }
+
+  if (btnStartDemoSession) {
+    btnStartDemoSession.addEventListener('click', async () => {
+      btnStartDemoSession.disabled = true;
+      btnStartDemoSession.textContent = '⏳ Starting evaluation session...';
+      try {
+        const res = await fetch('/api/relay/demo', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          localStorage.setItem('nxtslide_pro_unlocked', 'true');
+          updateProBadge();
+          closeProModal();
+          switchMode('cloud');
+          try {
+            const infoRes = await fetch('/api/info');
+            const infoData = await infoRes.json();
+            if (infoData.cloudQrDataUrl && cloudQrCodeImg) {
+              cloudQrCodeImg.src = infoData.cloudQrDataUrl;
+            }
+            updateRelayUI(infoData.relay);
+          } catch (_) {}
+        } else {
+          alert('Could not start demo: ' + (data.error || 'Server error'));
+        }
+      } catch (err) {
+        alert('Could not start demo: ' + err.message);
+      } finally {
+        btnStartDemoSession.disabled = false;
+        btnStartDemoSession.innerHTML = '<span>🎓</span><span>Start 30-Min Free Evaluation Session</span>';
+      }
     });
   }
 }

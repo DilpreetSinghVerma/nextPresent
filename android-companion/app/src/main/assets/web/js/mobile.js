@@ -614,6 +614,21 @@ initWS();
 // (browsers require a gesture before AudioContext can start)
 document.addEventListener('pointerdown', activateMediaSession, { once: true });
 
+// ── Screen Wake Lock (prevents phone screen from turning off while presenting) ──
+let screenWakeLock = null;
+async function requestScreenWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      screenWakeLock = await navigator.wakeLock.request('screen');
+      screenWakeLock.addEventListener('release', () => { screenWakeLock = null; });
+    } catch (_) {}
+  }
+}
+document.addEventListener('pointerdown', requestScreenWakeLock, { once: true });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') requestScreenWakeLock();
+});
+
 // ══════════════════════════════════════════════════════════
 //  Virtual Laser Pointer & Compass Yaw Engine
 // ══════════════════════════════════════════════════════════
