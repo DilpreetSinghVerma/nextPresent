@@ -325,6 +325,11 @@ app.get(['/admin', '/admin.html'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+app.get(['/laser', '/laser.html'], (_req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.sendFile(path.join(__dirname, 'public', 'laser.html'));
+});
+
 
 // Direct Download Convenience Endpoints
 app.get(['/download/windows', '/downloads/NXTslide-Setup.exe', '/downloads/nextPresent-Setup.exe'], (req, res) => {

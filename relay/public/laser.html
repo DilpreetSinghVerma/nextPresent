@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>NXTslide Laser Overlay</title>
   <style>
@@ -158,12 +160,26 @@
 
     // Connect to local WebSocket
     function connectWs() {
-      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${location.host}/ws?role=laser-overlay`;
-      const ws = new WebSocket(wsUrl);
+      const urlParams = new URLSearchParams(window.location.search);
+      const targetPort = urlParams.get('port') || '3333';
+      const host = (location.host && location.host.trim() !== '') ? location.host : `127.0.0.1:${targetPort}`;
+      const protocol = (location.protocol === 'https:') ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${host}/ws?role=laser-overlay`;
+
+      let ws;
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch (e) {
+        setTimeout(connectWs, 1500);
+        return;
+      }
 
       ws.onopen = () => {
-        console.log('[Laser Overlay] Connected to host WebSocket');
+        console.log('[Laser Overlay] Connected to host WebSocket at', wsUrl);
+      };
+
+      ws.onerror = () => {
+        try { ws.close(); } catch (_) {}
       };
 
       ws.onmessage = (event) => {

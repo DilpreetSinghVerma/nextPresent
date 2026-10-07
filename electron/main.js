@@ -1,71 +1,72 @@
 const { app, BrowserWindow, Tray, Menu, shell, ipcMain, screen } = require('electron');
 const path = require('path');
 const http = require('http');
+const net = require('net');
 const { execSync } = require('child_process');
 
 let autoUpdater = null;
 
+const PORT = process.env.PORT || 3333;
+const DASHBOARD_URL = `http://localhost:${PORT}/dashboard`;
+const RELAY_BASE = 'https://nxtslide.online';
+
 /**
- * Frees port 3333 by killing the process occupying it.
- * Uses PowerShell Get-NetTCPConnection for reliability on Windows.
+ * Checks if the port is in use and only frees it if occupied.
+ * Checking via Node net takes < 2ms without spawning any child process when free.
  */
-function freePort(port) {
-  try {
-    // PowerShell approach — most reliable on modern Windows
-    const psCmd = `powershell -NoProfile -Command "` +
-      `$c = Get-NetTCPConnection -LocalPort ${port} -ErrorAction SilentlyContinue;` +
-      `if ($c) { $c.OwningProcess | Sort-Object -Unique | ForEach-Object { taskkill /PID $_ /F 2>$null } }"`;
-    execSync(psCmd, { windowsHide: true, timeout: 5000 });
-    console.log(`[Electron] freePort(${port}) completed via PowerShell`);
-  } catch (_) {
-    // Fallback: cmd /c with netstat pipe
-    try {
-      const output = execSync(
-        `cmd /c "netstat -ano | findstr :${port}"`,
-        { encoding: 'utf8', windowsHide: true, timeout: 5000 }
-      );
-      const pids = new Set();
-      output.split('\n').forEach(line => {
-        // Match lines that have :PORT followed by a space (avoids matching :PORT1 etc.)
-        if (new RegExp(`:${port}[\\s\\r]`).test(line)) {
-          const parts = line.trim().split(/\s+/);
-          const pid = parseInt(parts[parts.length - 1], 10);
-          if (pid > 4) pids.add(pid); // skip system PIDs (0, 4)
-        }
-      });
-      pids.forEach(pid => {
+function freePortIfNeeded(port) {
+  return new Promise((resolve) => {
+    const tester = net.createServer();
+    tester.once('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`[Electron] Port ${port} is occupied. Freeing port...`);
         try {
-          execSync(`taskkill /PID ${pid} /F`, { windowsHide: true });
-          console.log(`[Electron] Freed port ${port} — killed PID ${pid}`);
+          const output = execSync(
+            `cmd /c "netstat -ano | findstr :${port}"`,
+            { encoding: 'utf8', windowsHide: true, timeout: 2500 }
+          );
+          const pids = new Set();
+          output.split('\n').forEach(line => {
+            if (new RegExp(`:${port}[\\s\\r]`).test(line)) {
+              const parts = line.trim().split(/\s+/);
+              const pid = parseInt(parts[parts.length - 1], 10);
+              if (pid > 4 && pid !== process.pid) pids.add(pid);
+            }
+          });
+          pids.forEach(pid => {
+            try {
+              execSync(`taskkill /PID ${pid} /F`, { windowsHide: true });
+              console.log(`[Electron] Freed port ${port} — killed PID ${pid}`);
+            } catch (_) {}
+          });
         } catch (_) {}
-      });
-    } catch (_) {
-      // Port was already free
-    }
-  }
+        setTimeout(resolve, 250);
+      } else {
+        resolve();
+      }
+    });
+    tester.once('listening', () => {
+      tester.close(() => resolve());
+    });
+    tester.listen(port, '127.0.0.1');
+  });
 }
 
-// Free port 3333 before starting the internal server so we never get EADDRINUSE
-freePort(3333);
-
-// Wait for OS to fully release the socket before binding again
-setTimeout(() => {
+// Start internal server asynchronously without blocking Electron startup thread
+freePortIfNeeded(PORT).then(() => {
   try {
     require('../server.js');
+    console.log('[Electron] Server initialized successfully.');
   } catch (err) {
     console.error('[Electron] Server start error:', err);
   }
-}, 600);
+});
 
 const licenseService = require('../lib/licenseService');
 let mainWindow = null;
 let laserWindow = null;
 let tray = null;
 let isQuitting = false;
-
-const PORT = process.env.PORT || 3333;
-const DASHBOARD_URL = `http://localhost:${PORT}/dashboard`;
-const RELAY_BASE = 'https://nxtslide.online';
 
 // ─── Register nxtslide:// deep-link protocol ──────────────────────────────────
 // This lets Google OAuth redirect back to the desktop app after sign-in.
@@ -243,15 +244,17 @@ function createLaserOverlayWindow() {
     laserWindow.setVisibleOnAllWorkspaces(true);
     laserWindow.setIgnoreMouseEvents(true, { forward: true });
 
-    const LASER_URL = `http://localhost:${PORT}/laser.html`;
-    waitForServer(LASER_URL, () => {
-      if (laserWindow && !laserWindow.isDestroyed()) {
-        laserWindow.loadURL(LASER_URL);
-        laserWindow.once('ready-to-show', () => {
-          laserWindow.showInactive();
-          console.log('[Electron] Transparent Laser Overlay window active.');
-        });
-      }
+    // Load local laser overlay HTML file directly (0ms latency, immune to HTTP server delays or MIME bugs)
+    const laserPath = path.join(__dirname, '..', 'public', 'laser.html');
+    laserWindow.loadFile(laserPath, { query: { port: String(PORT) } });
+
+    laserWindow.webContents.on('did-fail-load', (_event, _code, desc) => {
+      console.warn('[Electron] Laser overlay failed to load:', desc);
+    });
+
+    laserWindow.once('ready-to-show', () => {
+      laserWindow.showInactive();
+      console.log('[Electron] Transparent Laser Overlay window active.');
     });
   } catch (err) {
     console.error('[Electron] Failed to initialize laser overlay:', err.message);
@@ -377,7 +380,7 @@ function setupAutoUpdater() {
   }, 4 * 60 * 60 * 1000);
 }
 
-function waitForServer(url, callback, maxTries = 30) {
+function waitForServer(url, callback, maxTries = 40) {
   let tries = 0;
   const check = () => {
     http.get(url, (res) => {
@@ -392,8 +395,9 @@ function waitForServer(url, callback, maxTries = 30) {
   const retry = () => {
     tries++;
     if (tries < maxTries) {
-      setTimeout(check, 300);
+      setTimeout(check, 200);
     } else {
+      console.warn(`[Electron] Server not responding yet at ${url}. Attempting loadURL anyway.`);
       callback();
     }
   };
