@@ -457,23 +457,31 @@ app.post('/api/relay/connect', async (_req, res) => {
   }
 });
 
-app.post('/api/relay/demo', async (req, res) => {
-  try {
-    const minutes = req.body?.minutes || 30;
-    const demo = licenseService.startDemoSession(minutes);
-    await connectToRelay();
-    broadcast({ type: 'PRO_STATUS_CHANGED', isPro: true, isDemo: true, expiresAt: demo.expiresAt });
-    res.json({
-      success: true,
-      isDemo: true,
-      connected: relayConnected,
-      roomCode: relayRoomCode,
-      phoneUrl: relayPhoneUrl,
-      expiresAt: demo.expiresAt,
-      message: demo.message
+app.post('/api/relay/demo', async (_req, res) => {
+  const cached = licenseService.readCachedUser();
+  if (!cached || !cached.email) {
+    return res.status(401).json({
+      success: false,
+      error: 'Please sign in with your Google account first to activate your one-time 30-minute free demo.'
     });
+  }
+
+  try {
+    const result = await licenseService.startGoogleTrial();
+    if (result.success) {
+      await connectToRelay();
+      broadcast({ type: 'PRO_STATUS_CHANGED', isPro: true, isTrial: true, expiresAt: result.trialExpiresAt });
+      res.json({
+        ...result,
+        connected: relayConnected,
+        roomCode: relayRoomCode,
+        phoneUrl: relayPhoneUrl
+      });
+    } else {
+      res.status(400).json(result);
+    }
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

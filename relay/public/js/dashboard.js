@@ -189,10 +189,12 @@ const licenseFeedback   = document.getElementById('licenseFeedback');
 let currentMode = 'local';
 
 function isProUnlocked() {
-  if (localStorage.getItem('nxtslide_pro_unlocked') === 'true') return true;
-  if (window.NXTAuth && typeof window.NXTAuth.isPro === 'function' && window.NXTAuth.isPro()) return true;
+  if (window.NXTAuth && typeof window.NXTAuth.isPro === 'function') {
+    return window.NXTAuth.isPro();
+  }
   try {
     const u = JSON.parse(localStorage.getItem('nxtslide_user') || '{}');
+    if (!u.email) return false;
     if (u.isPro || u.isAdmin || (u.email && u.email.toLowerCase() === 'dilpreetsinghverma@gmail.com')) {
       return true;
     }
@@ -373,38 +375,18 @@ function initModeSwitcher() {
 
   if (btnStartDemoSession) {
     btnStartDemoSession.addEventListener('click', async () => {
-      // If user is signed in with Google and eligible for their free 30-min trial, activate via Google ID
       const user = (window.NXTAuth && typeof window.NXTAuth.getCurrentUser === 'function') ? window.NXTAuth.getCurrentUser() : null;
-      if (user && user.trial && user.trial.eligible && typeof window.NXTAuth.startTrial === 'function') {
-        return window.NXTAuth.startTrial();
-      }
-
-      btnStartDemoSession.disabled = true;
-      btnStartDemoSession.textContent = '⏳ Starting evaluation session...';
-      try {
-        const res = await fetch('/api/relay/demo', { method: 'POST' });
-        const data = await res.json();
-        if (data.success) {
-          localStorage.setItem('nxtslide_pro_unlocked', 'true');
-          updateProBadge();
-          closeProModal();
-          switchMode('cloud');
-          try {
-            const infoRes = await fetch('/api/info');
-            const infoData = await infoRes.json();
-            if (infoData.cloudQrDataUrl && cloudQrCodeImg) {
-              cloudQrCodeImg.src = infoData.cloudQrDataUrl;
-            }
-            updateRelayUI(infoData.relay);
-          } catch (_) {}
+      if (!user || !user.email) {
+        alert('Please sign in with your Google account first to activate your one-time 30-minute free demo.');
+        if (window.NXTAuth && typeof window.NXTAuth.openSignIn === 'function') {
+          window.NXTAuth.openSignIn();
         } else {
-          alert('Could not start demo: ' + (data.error || 'Server error'));
+          window.location.href = '/api/auth/google';
         }
-      } catch (err) {
-        alert('Could not start demo: ' + err.message);
-      } finally {
-        btnStartDemoSession.disabled = false;
-        btnStartDemoSession.innerHTML = '<span>🎓</span><span>Start 30-Min Free Evaluation Session</span>';
+        return;
+      }
+      if (typeof window.NXTAuth.startTrial === 'function') {
+        return window.NXTAuth.startTrial();
       }
     });
   }

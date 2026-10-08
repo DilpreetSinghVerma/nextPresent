@@ -119,7 +119,8 @@
 
   // ─── Activate Google ID One-Time 30-Min Demo ────────────────────────────────
   async function activateGoogleTrial() {
-    if (!currentUser) {
+    if (!currentUser || !currentUser.email) {
+      alert('Please sign in with your Google account first to activate your one-time 30-minute free demo.');
       openGoogleSignIn();
       return;
     }
