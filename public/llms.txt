@@ -3,7 +3,7 @@
 > Turn any smartphone into a physical presentation clicker and 3D virtual laser pointer. Zero USB dongles, zero subscriptions.
 
 ## Overview
-NXTslide is a presentation controller application that allows presenters to control PowerPoint, Google Slides, Keynote, Canva, and PDF documents using their smartphone's physical volume buttons from inside their pocket, even behind a locked screen. It includes a 3D gyroscope-tracked virtual laser pointer and spotlight, a stealth OLED touchpad, and multi-presenter synchronization.
+NXTslide is a presentation controller application that allows presenters to control PowerPoint, Google Slides, Keynote, Canva, and PDF documents using their smartphone's physical volume buttons from inside their pocket, even behind a locked screen. It includes a 3D gyroscope-tracked virtual laser pointer and optical screen magnifier lens, a stealth OLED touchpad, silent haptic vibration cues, and multi-presenter synchronization.
 
 - **Developer & Founder:** Dilpreet Singh
 - **Parent Company:** EventFold Studio
@@ -13,14 +13,15 @@ NXTslide is a presentation controller application that allows presenters to cont
 
 ## Key Features & Capabilities
 1. **Pocket Mode (Physical Volume Button Control):** Uses background MediaSession to intercept Volume Up (Next slide) and Volume Down (Previous slide) without needing to look at or unlock the phone screen. Volume audio remains completely silent.
-2. **3D Gyro Virtual Laser Pointer & Spotlight:** Aim the phone at the presentation screen like a wand to project a glowing red laser dot or dim the background into an illuminated spotlight.
-3. **Smart Touchpad Fallback:** Seamless touchpad laser control for smartphones without a physical gyroscope (such as entry-level devices).
-4. **Sub-2ms Native C# Key Injection:** Uses native Win32 `SendInput` via `keySender.exe` for instantaneous slide transitions.
-5. **Universal Software Profiles:** Native support for Microsoft PowerPoint, Google Slides, Apple Keynote, Canva, Adobe Acrobat PDF, Web PDF Readers, LibreOffice Impress, and Prezi.
-6. **Multi-Presenter Mode:** Up to 5 presenters can connect their phones to the same presentation simultaneously using a 6-letter room code.
-7. **Cross-Network Cloud Relay:** Present over Wi-Fi, 4G/5G cellular, hotel networks, or college campus firewalls without complex network setup.
-8. **100% Offline Capability:** Operates fully offline over local LAN or phone hotspot without internet access.
-9. **Zero-Install Portable Mode:** Standalone `.exe` runs directly from a USB flash drive without Windows administrator rights.
+2. **3D Gyro Virtual Laser Pointer & Screen Magnifier:** Aim the phone at the presentation screen like a wand to project a glowing red laser dot or engage an optical-grade illuminated screen magnifier lens to emphasize charts, fine text, and code.
+3. **Silent Haptic Vibration Cues:** Tactile feedback on slide button presses and subtle silent vibration cues at presentation time checkpoints (1-minute pace pulses, 5-minute milestone cues).
+4. **Smart Touchpad Fallback:** Seamless touchpad laser control for smartphones without a physical gyroscope (such as entry-level devices).
+5. **Sub-2ms Native C# Key Injection:** Uses native Win32 `SendInput` via `keySender.exe` for instantaneous slide transitions.
+6. **Universal Software Profiles:** Native support for Microsoft PowerPoint, Google Slides, Apple Keynote, Canva, Adobe Acrobat PDF, Web PDF Readers, LibreOffice Impress, and Prezi.
+7. **Multi-Presenter Mode:** Up to 5 presenters can connect their phones to the same presentation simultaneously using a 6-letter room code.
+8. **Cross-Network Cloud Relay:** Present over Wi-Fi, 4G/5G cellular, hotel networks, or college campus firewalls without complex network setup.
+9. **100% Offline Capability:** Operates fully offline over local LAN or phone hotspot without internet access.
+10. **Zero-Install Portable Mode:** Standalone `.exe` runs directly from a USB flash drive without Windows administrator rights.
 
 ## Downloads
 - **Windows Host App (Installer):** https://nxtslide.online/downloads/NXTslide-Setup.exe
@@ -30,7 +31,7 @@ NXTslide is a presentation controller application that allows presenters to cont
 
 ## Pricing & Licensing
 - **Free Community Plan:** ₹0 forever. Local Wi-Fi, physical volume key control, all presentation software profiles, portable mode.
-- **Lifetime Pro Plan:** ₹89 INR single one-time payment. Unlocks Cloud Relay, 3D Gyro Laser Pointer, Spotlight Beam, and Multi-Presenter mode. 7-Day 100% Money-Back Guarantee.
+- **Lifetime Pro Plan:** ₹89 INR single one-time payment. Unlocks Cloud Relay, 3D Gyro Laser Pointer, Screen Magnifier Lens, Silent Haptics, and Multi-Presenter mode. 7-Day 100% Money-Back Guarantee.
 
 ## Contact & Support
 - **Support Email:** dilpreetsinghverma@gmail.com

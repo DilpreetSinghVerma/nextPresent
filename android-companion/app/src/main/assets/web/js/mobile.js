@@ -320,6 +320,8 @@ function syncState(s) {
   syncTimer(s);
 }
 
+let lastHapticMinute = -1;
+
 function syncTimer(s) {
   if (!s) return;
   const secs = s.elapsedSeconds || 0;
@@ -331,6 +333,27 @@ function syncTimer(s) {
   timerIcon.innerHTML = running
     ? `<rect x="6" y="4" width="4" height="16" fill="#f59e0b"/><rect x="14" y="4" width="4" height="16" fill="#f59e0b"/>`
     : `<polygon points="5 3 19 12 5 21 5 3" fill="#818cf8"/>`;
+
+  // Silent Haptic Vibration Checkpoint Cues (Pocket Presets)
+  if (running && secs > 0 && secs % 60 === 0) {
+    const currentMin = Math.floor(secs / 60);
+    if (currentMin !== lastHapticMinute) {
+      lastHapticMinute = currentMin;
+      if (vibrate && 'vibrate' in navigator) {
+        try {
+          if (currentMin % 5 === 0) {
+            // Milestone alert every 5 minutes: Double distinct haptic pulse
+            navigator.vibrate([120, 80, 120]);
+          } else {
+            // Subtle pulse every 1 minute
+            navigator.vibrate(40);
+          }
+        } catch (_) {}
+      }
+    }
+  } else if (!running && secs === 0) {
+    lastHapticMinute = -1;
+  }
 }
 
 // ══════════════════════════════════════════════════════════
@@ -344,7 +367,13 @@ function doFlash() {
 function buzz(action) {
   if (!vibrate || !('vibrate' in navigator)) return;
   try {
-    navigator.vibrate(action === 'NEXT' ? 30 : [20, 15, 20]);
+    if (action === 'NEXT') {
+      navigator.vibrate(35); // Crisp forward tactile tap
+    } else if (action === 'PREV') {
+      navigator.vibrate([25, 30, 25]); // Distinct reverse double-tap
+    } else {
+      navigator.vibrate(25);
+    }
   } catch (_) {}
 }
 
@@ -655,7 +684,7 @@ if (window.AndroidApp && typeof window.AndroidApp.hasHardwareGyro === 'function'
 }
 
 let laserActiveMode = hasHardwareGyro ? 'gyro' : 'touch'; // 'gyro' | 'touch'
-let laserStyle      = 'laser'; // 'laser' | 'spotlight'
+let laserStyle      = 'laser'; // 'laser' | 'magnifier'
 let isLaserPointing = false;
 let laserPointerX   = 0.5;
 let laserPointerY   = 0.5;
@@ -1111,11 +1140,11 @@ if (closeLaserModal) {
 if (laserStyleBtn) {
   laserStyleBtn.addEventListener('click', () => {
     if (laserStyle === 'laser') {
-      laserStyle = 'spotlight';
-      laserStyleBtn.textContent = '🔦 Spotlight';
-      laserStyleBtn.style.color = '#fef08a';
-      laserStyleBtn.style.background = 'rgba(234,179,8,0.18)';
-      laserStyleBtn.style.borderColor = 'rgba(234,179,8,0.35)';
+      laserStyle = 'magnifier';
+      laserStyleBtn.textContent = '🔍 Magnifier';
+      laserStyleBtn.style.color = '#38bdf8';
+      laserStyleBtn.style.background = 'rgba(56,189,248,0.18)';
+      laserStyleBtn.style.borderColor = 'rgba(56,189,248,0.35)';
     } else {
       laserStyle = 'laser';
       laserStyleBtn.textContent = '🔴 Laser';

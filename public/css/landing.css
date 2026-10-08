@@ -1538,11 +1538,11 @@ section { padding: 96px 0; }
   animation: laserPulse 1.2s infinite ease-out;
 }
 
-/* Simulation Spotlight Mask on Slide */
+/* Simulation Screen Magnifier Lens on Slide */
 .sim-spotlight-mask {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.72);
+  background: rgba(10, 15, 28, 0.68);
   pointer-events: none;
   z-index: 25;
   display: none;
