@@ -316,7 +316,7 @@ class PresenterService : Service() {
     }
 
     @Synchronized
-    fun startBackgroundLaser() {
+    fun startBackgroundLaser(style: String = "laser") {
         if (!isProUnlocked()) {
             android.util.Log.d("NXTslide_Sensor", "startBackgroundLaser aborted: Pro not unlocked")
             return
@@ -385,7 +385,7 @@ class PresenterService : Service() {
         }
 
         vibrateFeedback(75) // Strong laser active feedback
-        sendLaserDown(0.5f, 0.5f, "laser")
+        sendLaserDown(0.5f, 0.5f, style)
 
         laserTimeoutRunnable?.let { mainHandler.removeCallbacks(it) }
         val timeout = Runnable { stopBackgroundLaser() }
@@ -501,13 +501,14 @@ class PresenterService : Service() {
                             return@Runnable
                         }
                         hasLaserStarted = true
-                        startBackgroundLaser()
+                        val style = if (pendingDirection > 0) "laser" else "magnifier"
+                        startBackgroundLaser(style)
                     }
                 }
                 holdThresholdRunnable = holdRunnable
                 mainHandler.postDelayed(holdRunnable, 200L)
             } else {
-                // Repeat event arrived while held -> user is holding, trigger laser immediately!
+                // Repeat event arrived while held -> user is holding, trigger laser/magnifier immediately!
                 holdThresholdRunnable?.let { mainHandler.removeCallbacks(it) }
                 holdThresholdRunnable = null
                 if (!hasLaserStarted) {
@@ -515,7 +516,8 @@ class PresenterService : Service() {
                         return
                     }
                     hasLaserStarted = true
-                    startBackgroundLaser()
+                    val style = if (pendingDirection > 0) "laser" else "magnifier"
+                    startBackgroundLaser(style)
                 }
             }
         } else {
@@ -583,7 +585,8 @@ class PresenterService : Service() {
                 ACTION_NEXT -> { vibrateFeedback(38); sendSlideAction("NEXT") }
                 ACTION_STOP -> stopSelf()
                 "com.nextpresent.remote.ACTION_START_LASER" -> {
-                    if (isProUnlocked() && hasHardwareGyro()) startBackgroundLaser()
+                    val style = intent.getStringExtra("style") ?: "laser"
+                    if (isProUnlocked() && hasHardwareGyro()) startBackgroundLaser(style)
                 }
                 "com.nextpresent.remote.ACTION_STOP_LASER"  -> stopBackgroundLaser()
             }

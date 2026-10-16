@@ -68,7 +68,8 @@ class VolumeKeyAccessibilityService : AccessibilityService() {
                     val r = Runnable {
                         if (isVolUpHeld || isVolDownHeld) {
                             hasLaserStarted = true
-                            service?.startBackgroundLaser()
+                            val style = if (isVolUpHeld) "laser" else "magnifier"
+                            service?.startBackgroundLaser(style)
                         }
                     }
                     holdLaserRunnable = r

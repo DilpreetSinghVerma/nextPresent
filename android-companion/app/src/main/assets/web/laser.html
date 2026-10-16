@@ -5,7 +5,7 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NXTslide Laser & Magnifier Overlay</title>
+  <title>NXTslide Laser & Optical Magnifier Overlay</title>
   <style>
     :root {
       --laser-red: #ff1244;
@@ -103,26 +103,40 @@
       position: absolute;
       top: 0;
       left: 0;
-      width: 230px;
-      height: 230px;
+      width: 240px;
+      height: 240px;
       transform: translate(-50%, -50%);
       border-radius: 50%;
       border: 3.5px solid var(--lens-cyan);
       box-shadow: 
-        0 0 0 9999px rgba(10, 15, 28, 0.62),
-        0 0 35px 8px var(--lens-glow),
-        inset 0 0 25px rgba(56, 189, 248, 0.35),
-        0 0 0 1.5px rgba(255, 255, 255, 0.85);
-      background: radial-gradient(circle, rgba(56, 189, 248, 0.04) 0%, rgba(56, 189, 248, 0.12) 100%);
+        0 0 0 9999px rgba(10, 15, 28, 0.65),
+        0 0 38px 10px var(--lens-glow),
+        inset 0 0 28px rgba(56, 189, 248, 0.35),
+        0 0 0 2px rgba(255, 255, 255, 0.9);
+      background: #090d16;
+      overflow: hidden;
       pointer-events: none;
+    }
+
+    #magnifierCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      pointer-events: none;
+      display: block;
+      background: transparent;
     }
 
     .lens-glare {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
       border-radius: 50%;
-      background: linear-gradient(135deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0.05) 45%, transparent 60%);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.04) 45%, transparent 60%);
       pointer-events: none;
+      z-index: 3;
     }
 
     .reticle-top {
@@ -130,9 +144,10 @@
       top: 6px;
       left: 50%;
       width: 2px;
-      height: 12px;
-      background: rgba(56, 189, 248, 0.85);
+      height: 14px;
+      background: rgba(56, 189, 248, 0.95);
       transform: translateX(-50%);
+      z-index: 4;
     }
 
     .reticle-bottom {
@@ -140,41 +155,45 @@
       bottom: 6px;
       left: 50%;
       width: 2px;
-      height: 12px;
-      background: rgba(56, 189, 248, 0.85);
+      height: 14px;
+      background: rgba(56, 189, 248, 0.95);
       transform: translateX(-50%);
+      z-index: 4;
     }
 
     .reticle-left {
       position: absolute;
       left: 6px;
       top: 50%;
-      width: 12px;
+      width: 14px;
       height: 2px;
-      background: rgba(56, 189, 248, 0.85);
+      background: rgba(56, 189, 248, 0.95);
       transform: translateY(-50%);
+      z-index: 4;
     }
 
     .reticle-right {
       position: absolute;
       right: 6px;
       top: 50%;
-      width: 12px;
+      width: 14px;
       height: 2px;
-      background: rgba(56, 189, 248, 0.85);
+      background: rgba(56, 189, 248, 0.95);
       transform: translateY(-50%);
+      z-index: 4;
     }
 
     .reticle-center {
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 5px;
-      height: 5px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: #38bdf8;
-      box-shadow: 0 0 8px #38bdf8;
+      box-shadow: 0 0 10px #38bdf8;
       transform: translate(-50%, -50%);
+      z-index: 4;
     }
 
     .magnifier-badge {
@@ -183,16 +202,17 @@
       font-weight: 800;
       letter-spacing: 0.12em;
       color: #38bdf8;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid rgba(56, 189, 248, 0.6);
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(56, 189, 248, 0.65);
       border-radius: 999px;
-      padding: 2px 10px;
+      padding: 3px 12px;
       position: absolute;
-      bottom: -13px;
+      bottom: -14px;
       left: 50%;
       transform: translateX(-50%);
       white-space: nowrap;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.65);
+      z-index: 5;
     }
   </style>
 </head>
@@ -202,19 +222,23 @@
   </div>
   <div id="magnifierOverlay">
     <div class="magnifier-lens">
+      <canvas id="magnifierCanvas" width="480" height="480"></canvas>
       <div class="lens-glare"></div>
       <div class="reticle-top"></div>
       <div class="reticle-bottom"></div>
       <div class="reticle-left"></div>
       <div class="reticle-right"></div>
       <div class="reticle-center"></div>
-      <div class="magnifier-badge">🔍 MAGNIFIER</div>
+      <div class="magnifier-badge">🔍 MAGNIFIER 2x</div>
     </div>
   </div>
+  <video id="screenVideo" autoplay playsinline muted style="display:none; position:fixed; pointer-events:none;"></video>
 
   <script>
     const laserDot = document.getElementById('laserDot');
     const magnifierOverlay = document.getElementById('magnifierOverlay');
+    const magnifierCanvas = document.getElementById('magnifierCanvas');
+    const screenVideo = document.getElementById('screenVideo');
 
     let pointerStyle = 'laser'; // 'laser' | 'magnifier'
     let isPointing = false;
@@ -227,6 +251,90 @@
     // Fast, responsive tracking (0.55 = instant crisp follow)
     const GLIDE_FACTOR = 0.55;
 
+    // ─── Real-Time Screen Capture for True Optical Zoom ──────────────────────
+    let screenStream = null;
+    let isCaptureStarting = false;
+
+    async function initScreenCapture() {
+      if (screenStream || isCaptureStarting) return;
+      isCaptureStarting = true;
+      try {
+        let sourceId = null;
+        if (window.electronScreen && typeof window.electronScreen.getPrimaryScreenId === 'function') {
+          sourceId = await window.electronScreen.getPrimaryScreenId();
+        }
+
+        let stream = null;
+        if (sourceId) {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: {
+              mandatory: {
+                chromeMediaSource: 'desktop',
+                chromeMediaSourceId: sourceId,
+                minWidth: 1280,
+                maxWidth: 3840,
+                minHeight: 720,
+                maxHeight: 2160,
+                minFrameRate: 30,
+                maxFrameRate: 60
+              }
+            }
+          });
+        }
+
+        if (stream) {
+          screenStream = stream;
+          screenVideo.srcObject = stream;
+          await screenVideo.play();
+          console.log('[Laser Overlay] Optical desktop capture stream active.');
+        }
+      } catch (err) {
+        console.warn('[Laser Overlay] Screen capture initialization failed:', err);
+      } finally {
+        isCaptureStarting = false;
+      }
+    }
+
+    // Initialize screen capture early
+    initScreenCapture();
+
+    function renderMagnifierFrame() {
+      if (!magnifierCanvas || !screenVideo || screenVideo.readyState < 2 || screenVideo.videoWidth === 0) return;
+
+      const ctx = magnifierCanvas.getContext('2d');
+      const cw = magnifierCanvas.width;
+      const ch = magnifierCanvas.height;
+
+      // Calculate screen DPI scale factor
+      const scaleX = screenVideo.videoWidth / window.innerWidth;
+      const scaleY = screenVideo.videoHeight / window.innerHeight;
+
+      // 2.0x optical magnification: lens is 240px, so we crop 120px area of source desktop
+      const MAGNIFICATION = 2.0;
+      const lensCssSize = 240;
+      const srcW = (lensCssSize / MAGNIFICATION) * scaleX;
+      const srcH = (lensCssSize / MAGNIFICATION) * scaleY;
+      const srcX = (currentX * scaleX) - (srcW / 2);
+      const srcY = (currentY * scaleY) - (srcH / 2);
+
+      ctx.save();
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
+      // Circular clip mask
+      ctx.beginPath();
+      ctx.arc(cw / 2, ch / 2, cw / 2, 0, Math.PI * 2);
+      ctx.clip();
+
+      try {
+        ctx.drawImage(screenVideo, srcX, srcY, srcW, srcH, 0, 0, cw, ch);
+      } catch (_) {}
+
+      ctx.restore();
+    }
+
     function renderLoop() {
       if (isPointing) {
         currentX += (targetX - currentX) * GLIDE_FACTOR;
@@ -238,6 +346,7 @@
         } else {
           magnifierOverlay.style.left = `${currentX}px`;
           magnifierOverlay.style.top = `${currentY}px`;
+          renderMagnifierFrame();
         }
       }
       requestAnimationFrame(renderLoop);
@@ -257,11 +366,17 @@
       } else {
         laserDot.classList.remove('visible');
         if (visible) {
+          initScreenCapture();
           magnifierOverlay.classList.add('visible');
           magnifierOverlay.style.left = `${currentX}px`;
           magnifierOverlay.style.top = `${currentY}px`;
+          renderMagnifierFrame();
         } else {
           magnifierOverlay.classList.remove('visible');
+          if (magnifierCanvas) {
+            const ctx = magnifierCanvas.getContext('2d');
+            ctx.clearRect(0, 0, magnifierCanvas.width, magnifierCanvas.height);
+          }
         }
       }
     }

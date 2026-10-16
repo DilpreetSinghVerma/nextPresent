@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, shell, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, ipcMain, screen, desktopCapturer } = require('electron');
 const path = require('path');
 const http = require('http');
 const net = require('net');
@@ -236,13 +236,21 @@ function createLaserOverlayWindow() {
       backgroundColor: '#00000000',
       webPreferences: {
         nodeIntegration: false,
-        contextIsolation: true
+        contextIsolation: true,
+        preload: path.join(__dirname, 'laser-preload.js')
       }
     });
 
     laserWindow.setAlwaysOnTop(true, 'screen-saver');
     laserWindow.setVisibleOnAllWorkspaces(true);
     laserWindow.setIgnoreMouseEvents(true, { forward: true });
+
+    // Exclude the overlay window from desktop screen capture so the magnifier captures the desktop without capturing itself
+    try {
+      laserWindow.setContentProtection(true);
+    } catch (e) {
+      console.warn('[Electron] Could not enable content protection for laser overlay:', e.message);
+    }
 
     // Load local laser overlay HTML file directly (0ms latency, immune to HTTP server delays or MIME bugs)
     const laserPath = path.join(__dirname, '..', 'public', 'laser.html');
@@ -260,6 +268,21 @@ function createLaserOverlayWindow() {
     console.error('[Electron] Failed to initialize laser overlay:', err.message);
   }
 }
+
+// IPC: Provide screen source ID for real-time optical screen magnification
+ipcMain.handle('get-primary-screen-id', async () => {
+  try {
+    const sources = await desktopCapturer.getSources({ types: ['screen'] });
+    if (sources && sources.length > 0) {
+      const primary = screen.getPrimaryDisplay();
+      const match = sources.find(s => s.display_id === String(primary.id)) || sources[0];
+      return match.id;
+    }
+  } catch (err) {
+    console.error('[Electron] Failed to get desktop capture sources:', err);
+  }
+  return null;
+});
 
 function createTray() {
   const iconPath = path.join(__dirname, '..', 'assets', 'icon.ico');

@@ -734,7 +734,7 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
         return sensorManager?.getDefaultSensor(android.hardware.Sensor.TYPE_GYROSCOPE) != null
     }
 
-    fun startHardwareLaser() {
+    fun startHardwareLaser(style: String = "laser") {
         if (!isProUnlocked()) {
             android.util.Log.d("NXTslide_Sensor", "startHardwareLaser aborted: Pro not unlocked")
             vibrateFeedback(45)
@@ -787,10 +787,10 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
         }
 
         vibrateFeedback(60) // Strong laser active vibration
-        sendLaserDown(0.5f, 0.5f, "laser")
+        sendLaserDown(0.5f, 0.5f, style)
 
         webView.post {
-            webView.evaluateJavascript("if(typeof window.onHardwareLaserStart==='function') window.onHardwareLaserStart();", null)
+            webView.evaluateJavascript("if(typeof window.onHardwareLaserStart==='function') window.onHardwareLaserStart('$style');", null)
         }
     }
 
@@ -890,7 +890,8 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
                                     return@Runnable
                                 }
                                 hasLaserStarted = true
-                                startHardwareLaser()
+                                val style = if (isVolUpHeld) "laser" else "magnifier"
+                                startHardwareLaser(style)
                             }
                         }
                         holdLaserRunnable = r
@@ -1150,8 +1151,21 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
             }
         }
 
+        private var selectedLaserStyle: String = "laser"
+
+        @JavascriptInterface
+        fun setLaserStyle(style: String) {
+            selectedLaserStyle = if (style == "magnifier") "magnifier" else "laser"
+        }
+
         @JavascriptInterface
         fun startHardwareLaser() {
+            startHardwareLaser(selectedLaserStyle)
+        }
+
+        @JavascriptInterface
+        fun startHardwareLaser(style: String?) {
+            val finalStyle = if (style.isNullOrBlank()) selectedLaserStyle else style
             if (!activity.isProUnlocked()) {
                 activity.runOnUiThread {
                     activity.webView.evaluateJavascript(
@@ -1159,7 +1173,7 @@ class MainActivity : AppCompatActivity(), PaymentResultWithDataListener {
                 }
                 return
             }
-            activity.runOnUiThread { activity.startHardwareLaser() }
+            activity.runOnUiThread { activity.startHardwareLaser(finalStyle) }
         }
 
         @JavascriptInterface

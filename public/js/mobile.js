@@ -1153,6 +1153,9 @@ if (laserStyleBtn) {
       laserStyleBtn.style.borderColor = 'rgba(244,63,94,0.3)';
     }
     sendLaserWs({ type: 'LASER_STYLE', style: laserStyle });
+    if (window.AndroidApp && typeof window.AndroidApp.setLaserStyle === 'function') {
+      window.AndroidApp.setLaserStyle(laserStyle);
+    }
   });
 }
 
@@ -1240,12 +1243,28 @@ window.addEventListener('devicemotion', (e) => {
 });
 
 // Global callbacks from Android companion hardware
-window.onHardwareLaserStart = function() {
+window.onHardwareLaserStart = function(style) {
   if (!isProActive()) {
     showProPaywall('Virtual Laser Pointer & 3D Gyro Aiming');
     return;
   }
   if (!hasHardwareGyro) return;
+  if (style) {
+    laserStyle = (style === 'magnifier') ? 'magnifier' : 'laser';
+    if (laserStyleBtn) {
+      if (laserStyle === 'magnifier') {
+        laserStyleBtn.textContent = '🔍 Magnifier';
+        laserStyleBtn.style.color = '#38bdf8';
+        laserStyleBtn.style.background = 'rgba(56,189,248,0.18)';
+        laserStyleBtn.style.borderColor = 'rgba(56,189,248,0.35)';
+      } else {
+        laserStyleBtn.textContent = '🔴 Laser';
+        laserStyleBtn.style.color = '#fda4af';
+        laserStyleBtn.style.background = 'rgba(244,63,94,0.15)';
+        laserStyleBtn.style.borderColor = 'rgba(244,63,94,0.3)';
+      }
+    }
+  }
   if (laserModal) laserModal.classList.add('open');
   if (laserClutchBtn) laserClutchBtn.classList.add('pressed');
 };
@@ -1263,7 +1282,7 @@ if (laserClutchBtn) {
       return;
     }
     if (window.AndroidApp && typeof window.AndroidApp.startHardwareLaser === 'function') {
-      window.AndroidApp.startHardwareLaser();
+      window.AndroidApp.startHardwareLaser(laserStyle);
       return;
     }
     isLaserPointing = true;
