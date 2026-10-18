@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, shell, ipcMain, screen, desktopCapturer } = require('electron');
+const { app, BrowserWindow, Tray, Menu, shell, ipcMain, screen, desktopCapturer, session } = require('electron');
 const path = require('path');
 const http = require('http');
 const net = require('net');
@@ -283,6 +283,26 @@ ipcMain.handle('get-primary-screen-id', async () => {
   }
   return null;
 });
+
+// Setup display media request handler for modern getDisplayMedia in laserWindow
+try {
+  session.defaultSession.setDisplayMediaRequestHandler(async (_request, callback) => {
+    try {
+      const sources = await desktopCapturer.getSources({ types: ['screen'] });
+      if (sources && sources.length > 0) {
+        const primary = screen.getPrimaryDisplay();
+        const match = sources.find(s => s.display_id === String(primary.id)) || sources[0];
+        callback({ video: match });
+        return;
+      }
+    } catch (err) {
+      console.warn('[Electron] Display media handler error:', err.message);
+    }
+    callback({ video: null });
+  });
+} catch (e) {
+  console.warn('[Electron] setDisplayMediaRequestHandler not supported:', e.message);
+}
 
 function createTray() {
   const iconPath = path.join(__dirname, '..', 'assets', 'icon.ico');

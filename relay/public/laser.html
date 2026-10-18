@@ -113,7 +113,7 @@
         0 0 38px 10px var(--lens-glow),
         inset 0 0 28px rgba(56, 189, 248, 0.35),
         0 0 0 2px rgba(255, 255, 255, 0.9);
-      background: #090d16;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.04) 0%, rgba(15, 23, 42, 0.20) 100%);
       overflow: hidden;
       pointer-events: none;
     }
@@ -259,35 +259,52 @@
       if (screenStream || isCaptureStarting) return;
       isCaptureStarting = true;
       try {
-        let sourceId = null;
-        if (window.electronScreen && typeof window.electronScreen.getPrimaryScreenId === 'function') {
-          sourceId = await window.electronScreen.getPrimaryScreenId();
+        let stream = null;
+
+        // 1. Try modern getDisplayMedia (handled by Electron setDisplayMediaRequestHandler)
+        if (navigator.mediaDevices && typeof navigator.mediaDevices.getDisplayMedia === 'function') {
+          try {
+            stream = await navigator.mediaDevices.getDisplayMedia({
+              video: {
+                cursor: 'never',
+                frameRate: { ideal: 60, max: 60 }
+              },
+              audio: false
+            });
+          } catch (e) {
+            console.warn('[Laser Overlay] getDisplayMedia fallback needed:', e.message);
+          }
         }
 
-        let stream = null;
-        if (sourceId) {
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: false,
-            video: {
-              mandatory: {
-                chromeMediaSource: 'desktop',
-                chromeMediaSourceId: sourceId,
-                minWidth: 1280,
-                maxWidth: 3840,
-                minHeight: 720,
-                maxHeight: 2160,
-                minFrameRate: 30,
-                maxFrameRate: 60
-              }
+        // 2. Fallback to legacy Electron getUserMedia chromeMediaSource if needed
+        if (!stream && window.electronScreen && typeof window.electronScreen.getPrimaryScreenId === 'function') {
+          try {
+            const sourceId = await window.electronScreen.getPrimaryScreenId();
+            if (sourceId) {
+              stream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                  mandatory: {
+                    chromeMediaSource: 'desktop',
+                    chromeMediaSourceId: sourceId,
+                    minFrameRate: 30,
+                    maxFrameRate: 60
+                  }
+                }
+              });
             }
-          });
+          } catch (e) {
+            console.warn('[Laser Overlay] getUserMedia legacy fallback error:', e.message);
+          }
         }
 
         if (stream) {
           screenStream = stream;
-          screenVideo.srcObject = stream;
-          await screenVideo.play();
-          console.log('[Laser Overlay] Optical desktop capture stream active.');
+          if (screenVideo) {
+            screenVideo.srcObject = stream;
+            await screenVideo.play();
+            console.log('[Laser Overlay] Optical desktop capture stream active.');
+          }
         }
       } catch (err) {
         console.warn('[Laser Overlay] Screen capture initialization failed:', err);
@@ -315,8 +332,12 @@
       const lensCssSize = 240;
       const srcW = (lensCssSize / MAGNIFICATION) * scaleX;
       const srcH = (lensCssSize / MAGNIFICATION) * scaleY;
-      const srcX = (currentX * scaleX) - (srcW / 2);
-      const srcY = (currentY * scaleY) - (srcH / 2);
+      const rawSrcX = (currentX * scaleX) - (srcW / 2);
+      const rawSrcY = (currentY * scaleY) - (srcH / 2);
+
+      // Clamp coordinates to strictly prevent IndexSizeError at screen edges
+      const srcX = Math.max(0, Math.min(screenVideo.videoWidth - srcW, rawSrcX));
+      const srcY = Math.max(0, Math.min(screenVideo.videoHeight - srcH, rawSrcY));
 
       ctx.save();
       ctx.clearRect(0, 0, cw, ch);
